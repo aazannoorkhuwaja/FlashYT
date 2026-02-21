@@ -185,11 +185,11 @@
 
         // YouTube changes these IDs constantly. We check all of them.
         const possibleTargets = [
-            { selector: 'ytd-watch-metadata', position: 'prepend' }, // Best spot, right under video
             { selector: '#owner-inner', position: 'append' },
             { selector: '#top-row.ytd-watch-metadata', position: 'append' },
             { selector: '#owner.ytd-watch-metadata', position: 'append' },
             { selector: '#actions.ytd-watch-metadata', position: 'append' },
+            { selector: 'ytd-watch-metadata', position: 'prepend' }, // Fallback
             { selector: '#top-level-buttons-computed', position: 'prepend' },
             { selector: '#actions-inner', position: 'prepend' }
         ];
