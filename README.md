@@ -1,12 +1,30 @@
 # One-Click YouTube Downloader (yt-dlp + Flask)
 
+**Built by Aazan Noor Khuwaja**
+
 A seamless YouTube downloading experience integrated directly into your browser via Tampermonkey. It automatically bypasses YouTube bot protections and drops files directly into your `Downloads` folder using the fastest available quality (up to 1080p) combined with high-quality audio.
 
 ## 🌟 Key Features
 1. **Multi-Tasking**: You can click download on 5 different YouTube videos at the same time. The server handles them all in parallel with independent UI progress tracking!
 2. **One-Click Native App**: No Python required! You can download the pre-compiled `.exe` (Windows) or Linux binary, double click it, and the server runs silently in the background.
-3. **Frontend (`userscript.js`)**: A Tampermonkey script securely injects a "Download" button directly into the YouTube player area.
-4. **Backend (`server.py`)**: A lightweight Python server that receives the download command and uses `yt-dlp` + Deno JS solvers to bypass YouTube's restrictive bot-challenges.
+3. **Smart URL Detection**: Automatically strips playlist parameters from URLs — even if you're watching a video in a playlist or mix, it downloads only the specific video you're on.
+4. **Frontend (`userscript.js`)**: A Tampermonkey script securely injects a "Download" button directly into the YouTube player area.
+5. **Backend (`server.py`)**: A lightweight Python server that receives the download command and uses `yt-dlp` + Deno JS solvers to bypass YouTube's restrictive bot-challenges.
+
+---
+
+## 🌐 Browser Compatibility
+
+This extension works on **any browser that supports Tampermonkey**:
+
+| Browser | Supported | Notes |
+|---------|-----------|-------|
+| Google Chrome | ✅ | Full support |
+| Brave | ✅ | Full support (default cookie config) |
+| Mozilla Firefox | ✅ | Full support via Tampermonkey/Greasemonkey |
+| Microsoft Edge | ✅ | Full support |
+| Opera / Opera GX | ✅ | Full support |
+| Safari | ⚠️ | Requires Userscripts app from App Store |
 
 ---
 
@@ -36,7 +54,7 @@ sudo apt update
 sudo apt install ffmpeg python3 python3-pip python3-venv
 
 # Clone this repository
-git clone https://github.com/aazan-noor-khuwaja/one_click_ytmp4_download.git
+git clone https://github.com/aazannoorkhuwaja/one_click_ytmp4_download.git
 cd one_click_ytmp4_download
 ```
 
@@ -73,3 +91,8 @@ python3 server.py
 2. You will see a red `Download` button right underneath the video.
 3. Click it! The button will update to show you the progress (e.g. `Downloading 45%` -> `Merging...` -> `Complete!`).
 4. Find the high-quality MP4 file in your computer's `~/Downloads` folder!
+
+---
+
+*Vibe coded* 🎵
+
