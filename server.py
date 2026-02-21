@@ -165,6 +165,17 @@ def download_video():
         return jsonify({"error": "No URL provided"}), 400
 
     selected_format = "MP4"
+
+    # Strip playlist parameters from URL so yt-dlp only downloads the single video
+    # YouTube URLs like watch?v=xxx&list=yyy cause yt-dlp to download the entire playlist
+    import urllib.parse
+    parsed = urllib.parse.urlparse(url)
+    params = urllib.parse.parse_qs(parsed.query)
+    # Keep only the video ID parameter, strip list/index/start_radio etc.
+    clean_params = {k: v for k, v in params.items() if k in ('v',)}
+    clean_query = urllib.parse.urlencode(clean_params, doseq=True)
+    url = urllib.parse.urlunparse(parsed._replace(query=clean_query))
+    print(f"[Server] Sanitized URL: {url}")
     
     # Generate unique ID for this download
     job_id = str(uuid.uuid4())
