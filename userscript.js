@@ -185,10 +185,12 @@
 
         // YouTube changes these IDs constantly. We check all of them.
         const possibleTargets = [
+            { selector: 'ytd-watch-metadata', position: 'prepend' }, // Best spot, right under video
             { selector: '#owner-inner', position: 'append' },
             { selector: '#top-row.ytd-watch-metadata', position: 'append' },
             { selector: '#owner.ytd-watch-metadata', position: 'append' },
-            { selector: '#top-level-buttons-computed', position: 'prepend' }, // Like/Share button area
+            { selector: '#actions.ytd-watch-metadata', position: 'append' },
+            { selector: '#top-level-buttons-computed', position: 'prepend' },
             { selector: '#actions-inner', position: 'prepend' }
         ];
 
@@ -239,8 +241,8 @@
             injectionAttempts = 0;
         } else {
             injectionAttempts++;
-            if (injectionAttempts > 50) { // After 25 seconds of trying on one page, stop spamming.
-                console.log("[YT-Downloader] Gave up trying to inject button after 50 attempts.");
+            if (injectionAttempts > 120) { // After 60 seconds of trying, give up.
+                console.log("[YT-Downloader] Gave up trying to inject button after 120 attempts.");
                 clearInterval(injectionInterval);
             }
         }
