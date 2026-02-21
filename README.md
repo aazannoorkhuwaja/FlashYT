@@ -1,18 +1,34 @@
 # One-Click YouTube Downloader (yt-dlp + Flask)
 
-A seamless YouTube and YouTube Playlist downloading experience integrated directly into your browser via Tampermonkey. It automatically bypasses YouTube bot protections and drops files directly into your `Downloads` folder using the fastest available quality (up to 1080p) combined with high-quality audio.
+A seamless YouTube downloading experience integrated directly into your browser via Tampermonkey. It automatically bypasses YouTube bot protections and drops files directly into your `Downloads` folder using the fastest available quality (up to 1080p) combined with high-quality audio.
 
-## How it works
-1. **Frontend (`userscript.js`)**: A Tampermonkey script securely injects a "Download" button directly into the YouTube player area (next to Subscribe/Like buttons).
-2. **Backend (`server.py`)**: A lightweight Python Flask server runs quietly in the background on your PC. It receives the download command and uses `yt-dlp` to download the video bypassing bot-challenges using JS solvers.
-3. **Progress Tracking**: You can click download on multiple videos at once. The button tracks the live download and merging progress directly on your YouTube screen.
+## 🌟 Key Features
+1. **Multi-Tasking**: You can click download on 5 different YouTube videos at the same time. The server handles them all in parallel with independent UI progress tracking!
+2. **One-Click Native App**: No Python required! You can download the pre-compiled `.exe` (Windows) or Linux binary, double click it, and the server runs silently in the background.
+3. **Frontend (`userscript.js`)**: A Tampermonkey script securely injects a "Download" button directly into the YouTube player area.
+4. **Backend (`server.py`)**: A lightweight Python server that receives the download command and uses `yt-dlp` + Deno JS solvers to bypass YouTube's restrictive bot-challenges.
 
 ---
 
-## 🚀 Setup Instructions
+## 🚀 1-Click Setup (For Friends & Non-Developers)
 
-### Step 1: Install Dependencies
-You need Python & [FFmpeg](https://ffmpeg.org/) installed on your computer.
+The easiest way to use this is to download the standalone app. You don't need to install Python!
+
+1. Go to the [Releases Tab](../../releases/latest) on this GitHub repository.
+2. Download the app for your system:
+   - **Windows:** Download `youtube-downloader-windows.exe`
+   - **Linux:** Download `youtube-downloader-linux`
+3. Double-click to run the app. It will open a background terminal (do not close it).
+4. *Important: You still need to have [FFmpeg](https://ffmpeg.org/download.html) installed on your system for audio/video merging!*
+
+### Install the Browser Extension
+1. Install the [Tampermonkey Extension](https://www.tampermonkey.net/) in your web browser.
+2. Open the `userscript.js` file from this project, copy all of its text.
+3. Click the Tampermonkey icon -> **Create a new script...**, paste the text, and click **File -> Save**.
+
+---
+
+## 💻 Developer Setup (Running from Python Source)
 
 ```bash
 # On Ubuntu/Debian
