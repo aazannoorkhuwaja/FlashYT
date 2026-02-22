@@ -8,8 +8,9 @@ A seamless YouTube downloading experience integrated directly into your browser 
 1. **Multi-Tasking**: You can click download on 5 different YouTube videos at the same time. The server handles them all in parallel with independent UI progress tracking!
 2. **One-Click Native App**: No Python required! You can download the pre-compiled `.exe` (Windows) or Linux binary, double click it, and the server runs silently in the background.
 3. **Smart URL Detection**: Automatically strips playlist parameters from URLs — even if you're watching a video in a playlist or mix, it downloads only the specific video you're on.
-4. **Frontend (`userscript.js`)**: A Tampermonkey script securely injects a "Download" button directly into the YouTube player area.
-5. **Backend (`server.py`)**: A lightweight Python server that receives the download command and uses `yt-dlp` + Deno JS solvers to bypass YouTube's restrictive bot-challenges.
+4. **Auto Browser Detection**: Automatically finds your installed browser (Brave, Chrome, Firefox, Edge, etc.) for cookie import — no manual configuration needed.
+5. **Customizable Settings**: Click the ⚙️ gear icon on YouTube to change your download folder or browser settings at any time.
+6. **Auto-Start on Boot**: The setup script configures the server to start automatically when your computer turns on — run setup once and forget about it forever.
 
 ---
 
@@ -20,11 +21,13 @@ This extension works on **any browser that supports Tampermonkey**:
 | Browser | Supported | Notes |
 |---------|-----------|-------|
 | Google Chrome | ✅ | Full support |
-| Brave | ✅ | Full support (default cookie config) |
+| Brave | ✅ | Full support |
 | Mozilla Firefox | ✅ | Full support via Tampermonkey/Greasemonkey |
 | Microsoft Edge | ✅ | Full support |
 | Opera / Opera GX | ✅ | Full support |
 | Safari | ⚠️ | Requires Userscripts app from App Store |
+
+The server **auto-detects** which browser you have installed — no manual configuration needed!
 
 ---
 
@@ -46,53 +49,45 @@ The easiest way to use this is to download the standalone app. You don't need to
 
 ---
 
-## 💻 Developer Setup (Running from Python Source)
+## 💻 Developer Setup (Linux — One Command!)
 
 ```bash
-# On Ubuntu/Debian
-sudo apt update
-sudo apt install ffmpeg python3 python3-pip python3-venv
-
-# Clone this repository
+# Clone and run setup — that's it!
 git clone https://github.com/aazannoorkhuwaja/one_click_ytmp4_download.git
 cd one_click_ytmp4_download
+./setup.sh
 ```
 
-### Step 2: Setup Python Backend
-Create a virtual environment and install the required Python packages (`yt-dlp`, `flask`, `flask-cors`):
+The setup script will:
+- ✅ Install `python3`, `ffmpeg`, and all dependencies automatically
+- ✅ Create a virtual environment with all Python packages
+- ✅ Set up a background service that **auto-starts on every boot**
+- ✅ Verify everything is working
 
-```bash
-# Create a virtual environment (optional but recommended)
-python3 -m venv venv
-source venv/bin/activate
+After setup, just install the Tampermonkey userscript (the setup will tell you how).
 
-# Install the exact requirements 
-pip install yt-dlp flask flask-cors secretstorage
-```
+---
 
-> **Note on Browser Cookies:** The script is currently configured to use `brave` browser cookies to bypass age-restrictions and premium video locks. If you use Chrome instead, edit `server.py` and change `'cookiesfrombrowser': ('brave',)` to `'cookiesfrombrowser': ('chrome',)`.
+## ⚙️ Changing Settings
 
-### Step 3: Start the Background Server
-Run the Flask server. It will listen on `localhost:5000` to receive download commands.
+Click the **⚙️ gear icon** next to the Download button on any YouTube video to:
 
-```bash
-python3 server.py
-# Leave this terminal running in the background while you use YouTube
-```
+- 📁 **Change download folder** — save videos anywhere you want
+- 🌐 **Change browser** — switch between Auto-Detect, Chrome, Brave, Firefox, Edge, etc.
 
-### Step 4: Install the Tampermonkey Userscript
-1. Install the [Tampermonkey Extension](https://www.tampermonkey.net/) in your web browser.
-2. Click the Tampermonkey icon -> **Create a new script...**
-3. Open the `userscript.js` file from this project, copy all of its contents, and paste it into the Tampermonkey editor.
-4. Click **File -> Save**.
+Settings are saved permanently and survive reboots.
 
-### Step 5: Test it out!
-1. Go to any YouTube video (refresh the page if it's already open).
-2. You will see a red `Download` button right underneath the video.
-3. Click it! The button will update to show you the progress (e.g. `Downloading 45%` -> `Merging...` -> `Complete!`).
-4. Find the high-quality MP4 file in your computer's `~/Downloads` folder!
+---
+
+## 🛠️ Useful Commands
+
+| Action | Command |
+|--------|---------|
+| Check if server is running | `systemctl --user status yt-downloader` |
+| Restart the server | `systemctl --user restart yt-downloader` |
+| Stop the server | `systemctl --user stop yt-downloader` |
+| View live logs | `journalctl --user -u yt-downloader -f` |
 
 ---
 
 *Vibe coded* 🎵
-
