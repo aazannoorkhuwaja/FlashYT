@@ -30,10 +30,12 @@ SERVICE_FILE="$HOME/.config/systemd/user/${SERVICE_NAME}.service"
 echo -e "${YELLOW}[0/5]${NC} Checking for updates from GitHub..."
 cd "$SCRIPT_DIR"
 if git rev-parse --is-inside-work-tree &>/dev/null; then
-    # Stash any accidental local changes so pull doesn't fail
-    git stash -q || true
-    git pull origin main --quiet || true
-    echo -e "   ${GREEN}✓ Updated to latest version${NC}"
+    # Force the local repository to perfectly match the remote main branch.
+    # This discards ALL local changes, ensuring the update never fails.
+    git fetch origin main --quiet || true
+    git reset --hard origin/main --quiet || true
+    git clean -fd --quiet || true
+    echo -e "   ${GREEN}✓ Updated to latest version from GitHub${NC}"
 else
     echo -e "   ${BLUE}ℹ Not a git repository, skipping auto-update${NC}"
 fi
@@ -157,7 +159,9 @@ After=network.target
 Type=simple
 WorkingDirectory=$SCRIPT_DIR
 # Silently auto-update the code on every boot/restart (ignores errors if offline)
-ExecStartPre=-/usr/bin/git -C "$SCRIPT_DIR" pull origin main --quiet
+ExecStartPre=-/usr/bin/git -C "$SCRIPT_DIR" fetch origin main --quiet
+ExecStartPre=-/usr/bin/git -C "$SCRIPT_DIR" reset --hard origin/main --quiet
+ExecStartPre=-/usr/bin/git -C "$SCRIPT_DIR" clean -fd --quiet
 # Silently auto-upgrade yt-dlp on every boot/restart to fix YouTube changes
 ExecStartPre=-"$VENV_DIR/bin/pip" install --quiet --upgrade yt-dlp
 ExecStart=/bin/bash -c '"$VENV_DIR/bin/python" "$SCRIPT_DIR/server.py"'
