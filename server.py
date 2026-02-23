@@ -631,10 +631,47 @@ def run_download_thread(url, selected_format, job_id, cached_info=None):
     else:
         print("[Server] No cookies available. Proceeding without cookies.")
 
-    if selected_format and selected_format not in ["MP4", "MP3"]:
-        ydl_opts['format'] = selected_format
+    def build_video_format_string(max_height):
+        """
+        Builds a safe yt-dlp format selector for the requested max height.
+        We never rely on a single fragile itag, so users do not hit
+        "requested format is not available" errors on edge videos.
+        """
+        try:
+            h = int(max_height)
+        except (TypeError, ValueError):
+            h = 1080
+
+        # Chain is ordered from most to least ideal.
+        return (
+            f"bestvideo[ext=mp4][height<={h}]+bestaudio[ext=m4a]/"
+            f"bestvideo[height<={h}]+bestaudio/"
+            f"best[height<={h}]/"
+            "bestvideo+bestaudio/"
+            "best/"
+            "bestvideo/"
+            "bestaudio"
+        )
+
+    # Interpret the selection key coming from the userscript.
+    # Examples:
+    # - "video_1080"  → MP4 video up to 1080p with robust fallbacks
+    # - "audio_only"  → best audio-only track (MP3/M4A)
+    # - "MP4"/"MP3"   → legacy values kept for safety
+    if isinstance(selected_format, str) and selected_format.startswith("video_"):
+        try:
+            requested_height = int(selected_format.split("_", 1)[1])
+        except (IndexError, ValueError):
+            requested_height = 1080
+        ydl_opts['format'] = build_video_format_string(requested_height)
         ydl_opts['merge_output_format'] = 'mp4'
-    elif "MP4" in selected_format:
+    elif selected_format == "audio_only" or "MP3" in str(selected_format):
+        ydl_opts['format'] = 'bestaudio/best'
+        ydl_opts['postprocessors'] = [{
+            'key': 'FFmpegExtractAudio',
+            'preferredcodec': 'mp3',
+        }]
+    elif "MP4" in str(selected_format):
         # Safest fallback chain to avoid "Requested format is not available" errors:
         # 1. Best mp4 video <= 1080p + best m4a audio
         # 2. Best video <= 1080p + best audio (any formats)
@@ -642,26 +679,13 @@ def run_download_thread(url, selected_format, job_id, cached_info=None):
         # 4. Best pre-merged format (usually 720p/360p)
         # 5. Best video only (silent video fallback)
         # 6. Best audio only (audio-only fallback)
-        ydl_opts['format'] = (
-            'bestvideo[ext=mp4][height<=1080]+bestaudio[ext=m4a]/'
-            'bestvideo[height<=1080]+bestaudio/'
-            'bestvideo+bestaudio/'
-            'best/'
-            'bestvideo/'
-            'bestaudio'
-        )
+        ydl_opts['format'] = build_video_format_string(1080)
         ydl_opts['merge_output_format'] = 'mp4'
         ydl_opts['writesubtitles'] = True
         ydl_opts['subtitleslangs'] = ['en', 'all']
         ydl_opts['embedsubtitles'] = True
         ydl_opts['postprocessors'] = [{
             'key': 'FFmpegEmbedSubtitle'
-        }]
-    elif "MP3" in selected_format:
-        ydl_opts['format'] = 'bestaudio/best'
-        ydl_opts['postprocessors'] = [{
-            'key': 'FFmpegExtractAudio',
-            'preferredcodec': 'mp3',
         }]
 
     try:
