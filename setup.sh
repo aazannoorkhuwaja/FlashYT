@@ -67,8 +67,28 @@ fi
 if [ ${#MISSING_DEPS[@]} -gt 0 ]; then
     echo -e "${YELLOW}   Installing missing packages: ${MISSING_DEPS[*]}${NC}"
     echo -e "   ${BLUE}(You may be asked for your password)${NC}"
-    sudo apt update -qq
-    sudo apt install -y -qq "${MISSING_DEPS[@]}"
+    if command -v apt &>/dev/null; then
+        sudo apt update -qq
+        sudo apt install -y -qq "${MISSING_DEPS[@]}"
+    elif command -v dnf &>/dev/null; then
+        # Map Debian/Ubuntu package names to Fedora package names
+        FEDORA_DEPS=()
+        for dep in "${MISSING_DEPS[@]}"; do
+            if [ "$dep" = "python3-venv" ]; then
+                continue # Included in python3 on Fedora
+            elif [ "$dep" = "python3-tk" ]; then
+                FEDORA_DEPS+=("python3-tkinter")
+            else
+                FEDORA_DEPS+=("$dep")
+            fi
+        done
+        if [ ${#FEDORA_DEPS[@]} -gt 0 ]; then
+            sudo dnf install -y "${FEDORA_DEPS[@]}"
+        fi
+    else
+        echo -e "${RED}   Unsupported package manager. Please install manually:${NC} ${MISSING_DEPS[*]}"
+        exit 1
+    fi
     echo -e "   ${GREEN}✓ System dependencies installed${NC}"
 else
     echo -e "   ${GREEN}✓ All system dependencies already installed${NC}"
