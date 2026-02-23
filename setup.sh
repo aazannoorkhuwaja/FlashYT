@@ -56,6 +56,10 @@ if ! python3 -c "import venv" &>/dev/null 2>&1; then
     MISSING_DEPS+=("python3-venv")
 fi
 
+if ! python3 -c "import tkinter" &>/dev/null 2>&1; then
+    MISSING_DEPS+=("python3-tk")
+fi
+
 if ! command -v ffmpeg &>/dev/null; then
     MISSING_DEPS+=("ffmpeg")
 fi
@@ -84,7 +88,7 @@ fi
 echo -e "${YELLOW}[3/5]${NC} Installing Python packages..."
 
 "$VENV_DIR/bin/pip" install --quiet --upgrade pip
-"$VENV_DIR/bin/pip" install --quiet yt-dlp flask flask-cors
+"$VENV_DIR/bin/pip" install --quiet yt-dlp flask flask-cors secretstorage
 echo -e "   ${GREEN}✓ All Python packages installed${NC}"
 
 # ---- Step 4: Create systemd service for auto-start ----
@@ -161,11 +165,9 @@ echo ""
 echo -e "  3. Go to YouTube, play any video, and click the"
 echo -e "     red ${RED}${BOLD}Download${NC} button! 🎉"
 echo ""
-echo -e "  4. Click the ${BOLD}⚙️ gear icon${NC} next to Download to change"
-echo -e "     your download folder or browser settings."
-echo ""
 echo -e "  ${BLUE}Useful commands:${NC}"
 echo -e "    Check status  →  systemctl --user status $SERVICE_NAME"
 echo -e "    View logs     →  journalctl --user -u $SERVICE_NAME -f"
 echo -e "    Restart       →  systemctl --user restart $SERVICE_NAME"
 echo ""
+

@@ -18,425 +18,7 @@
     const STATUS_URL = 'http://127.0.0.1:5000/status';
     const CONFIG_URL = 'http://127.0.0.1:5000/config';
     const BROWSE_URL = 'http://127.0.0.1:5000/browse';
-
-    // =============== SETTINGS PANEL ===============
-
-    function createSettingsPanel() {
-        // Backdrop (click outside to close)
-        const backdrop = document.createElement('div');
-        backdrop.id = 'yt-dl-settings-backdrop';
-        backdrop.style.cssText = `
-            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
-            background: rgba(0,0,0,0.5); z-index: 99998;
-            display: none; backdrop-filter: blur(3px);
-        `;
-
-        const panel = document.createElement('div');
-        panel.id = 'yt-dl-settings-panel';
-        panel.style.cssText = `
-            position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
-            background: #1e1e1e; color: #fff; border-radius: 16px;
-            padding: 28px 32px; z-index: 99999; width: 460px;
-            font-family: 'Roboto', 'Segoe UI', Arial, sans-serif;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.5); display: none;
-            border: 1px solid rgba(255,255,255,0.1);
-        `;
-
-        // Note: Do NOT use innerHTML on YouTube — TrustedTypes policy blocks it silently
-
-        // === Title Row ===
-        const titleRow = document.createElement('div');
-        titleRow.style.cssText = 'display:flex; justify-content:space-between; align-items:center; margin-bottom:24px;';
-
-        const title = document.createElement('h3');
-        title.textContent = '⚙️ Downloader Settings';
-        title.style.cssText = 'margin:0; font-size:18px; font-weight:600; color:#fff;';
-
-        const closeBtn = document.createElement('button');
-        closeBtn.textContent = '✕';
-        closeBtn.style.cssText = `
-            background: none; border: none; color: #888; font-size: 20px;
-            cursor: pointer; padding: 4px 8px; border-radius: 6px;
-        `;
-        closeBtn.addEventListener('mouseenter', () => closeBtn.style.color = '#fff');
-        closeBtn.addEventListener('mouseleave', () => closeBtn.style.color = '#888');
-        closeBtn.addEventListener('click', () => hideSettings());
-
-        titleRow.appendChild(title);
-        titleRow.appendChild(closeBtn);
-        panel.appendChild(titleRow);
-
-        // === Download Folder ===
-        const folderLabel = document.createElement('label');
-        folderLabel.textContent = '📁 Download Folder';
-        folderLabel.style.cssText = 'display:block; margin-bottom:8px; font-size:13px; color:#aaa; font-weight:500;';
-        panel.appendChild(folderLabel);
-
-        // Current folder display + Browse button row
-        const folderRow = document.createElement('div');
-        folderRow.style.cssText = 'display:flex; gap:8px; margin-bottom:8px; align-items:center;';
-
-        const folderDisplay = document.createElement('div');
-        folderDisplay.id = 'yt-dl-folder-display';
-        folderDisplay.style.cssText = `
-            flex: 1; padding: 10px 14px; background: #2a2a2a;
-            border: 1px solid #444; border-radius: 10px;
-            color: #fff; font-size: 13px; overflow: hidden;
-            text-overflow: ellipsis; white-space: nowrap;
-        `;
-        folderDisplay.textContent = '~/Downloads';
-
-        const browseBtn = document.createElement('button');
-        browseBtn.textContent = '📂 Browse';
-        browseBtn.style.cssText = `
-            padding: 10px 16px; background: #333; color: #fff;
-            border: 1px solid #555; border-radius: 10px; font-size: 13px;
-            cursor: pointer; white-space: nowrap; transition: all 0.2s;
-        `;
-        browseBtn.addEventListener('mouseenter', () => browseBtn.style.background = '#444');
-        browseBtn.addEventListener('mouseleave', () => browseBtn.style.background = '#333');
-        browseBtn.addEventListener('click', () => openFolderBrowser());
-
-        folderRow.appendChild(folderDisplay);
-        folderRow.appendChild(browseBtn);
-        panel.appendChild(folderRow);
-
-        // Hidden input to store the actual path
-        const folderInput = document.createElement('input');
-        folderInput.id = 'yt-dl-folder-input';
-        folderInput.type = 'hidden';
-        folderInput.value = '~/Downloads';
-        panel.appendChild(folderInput);
-
-        // === Folder Browser Container (initially hidden) ===
-        const browserContainer = document.createElement('div');
-        browserContainer.id = 'yt-dl-folder-browser';
-        browserContainer.style.cssText = `
-            display: none; background: #252525; border: 1px solid #444;
-            border-radius: 10px; margin-bottom: 16px; overflow: hidden;
-        `;
-
-        // Browser header with current path + parent button
-        const browserHeader = document.createElement('div');
-        browserHeader.id = 'yt-dl-browser-header';
-        browserHeader.style.cssText = `
-            display: flex; align-items: center; gap: 8px;
-            padding: 10px 12px; background: #1a1a1a;
-            border-bottom: 1px solid #333; font-size: 12px; color: #888;
-        `;
-
-        const parentBtn = document.createElement('button');
-        parentBtn.id = 'yt-dl-parent-btn';
-        parentBtn.textContent = '⬆️';
-        parentBtn.title = 'Go to parent folder';
-        parentBtn.style.cssText = `
-            background: none; border: 1px solid #555; border-radius: 6px;
-            color: #fff; font-size: 14px; cursor: pointer; padding: 2px 8px;
-            transition: all 0.2s;
-        `;
-        parentBtn.addEventListener('mouseenter', () => parentBtn.style.borderColor = '#cc0000');
-        parentBtn.addEventListener('mouseleave', () => parentBtn.style.borderColor = '#555');
-
-        const pathDisplay = document.createElement('span');
-        pathDisplay.id = 'yt-dl-browser-path';
-        pathDisplay.style.cssText = 'flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:#aaa;';
-
-        browserHeader.appendChild(parentBtn);
-        browserHeader.appendChild(pathDisplay);
-        browserContainer.appendChild(browserHeader);
-
-        // Folder list
-        const folderList = document.createElement('div');
-        folderList.id = 'yt-dl-folder-list';
-        folderList.style.cssText = 'max-height: 200px; overflow-y: auto; padding: 4px 0;';
-        browserContainer.appendChild(folderList);
-
-        // Select button at bottom of browser
-        const selectRow = document.createElement('div');
-        selectRow.style.cssText = 'padding: 8px 12px; border-top: 1px solid #333; display:flex; justify-content:flex-end;';
-
-        const selectBtn = document.createElement('button');
-        selectBtn.textContent = '✅ Select This Folder';
-        selectBtn.style.cssText = `
-            padding: 8px 16px; background: #2ecc71; color: #fff;
-            border: none; border-radius: 8px; font-size: 13px; font-weight: 600;
-            cursor: pointer; transition: all 0.2s;
-        `;
-        selectBtn.addEventListener('mouseenter', () => selectBtn.style.background = '#27ae60');
-        selectBtn.addEventListener('mouseleave', () => selectBtn.style.background = '#2ecc71');
-        selectBtn.addEventListener('click', () => {
-            const pathEl = document.getElementById('yt-dl-browser-path');
-            const currentPath = pathEl ? pathEl.textContent : '';
-            if (currentPath) {
-                document.getElementById('yt-dl-folder-input').value = currentPath;
-                document.getElementById('yt-dl-folder-display').textContent = currentPath;
-                document.getElementById('yt-dl-folder-browser').style.display = 'none';
-            }
-        });
-
-        selectRow.appendChild(selectBtn);
-        browserContainer.appendChild(selectRow);
-        panel.appendChild(browserContainer);
-
-        // === Browser for Cookies ===
-        const browserLabel = document.createElement('label');
-        browserLabel.textContent = '🌐 Browser (for login cookies)';
-        browserLabel.style.cssText = 'display:block; margin-bottom:8px; margin-top:8px; font-size:13px; color:#aaa; font-weight:500;';
-        panel.appendChild(browserLabel);
-
-        const browserSelect = document.createElement('select');
-        browserSelect.id = 'yt-dl-browser-select';
-        browserSelect.style.cssText = `
-            width: 100%; padding: 10px 14px; box-sizing: border-box;
-            background: #2a2a2a; border: 1px solid #444; border-radius: 10px;
-            color: #fff; font-size: 14px; margin-bottom: 6px;
-            outline: none; cursor: pointer; appearance: none;
-            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23888' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
-            background-repeat: no-repeat; background-position: right 14px center;
-        `;
-
-        const options = [
-            { value: 'auto', label: '🔍 Auto-Detect (Recommended)' },
-            { value: 'brave', label: 'Brave' },
-            { value: 'chrome', label: 'Google Chrome' },
-            { value: 'chromium', label: 'Chromium' },
-            { value: 'firefox', label: 'Mozilla Firefox' },
-            { value: 'edge', label: 'Microsoft Edge' },
-            { value: 'opera', label: 'Opera' },
-            { value: 'none', label: '🚫 None (no cookies)' },
-        ];
-
-        options.forEach(opt => {
-            const el = document.createElement('option');
-            el.value = opt.value;
-            el.textContent = opt.label;
-            el.style.cssText = 'background: #2a2a2a; color: #fff;';
-            browserSelect.appendChild(el);
-        });
-        panel.appendChild(browserSelect);
-
-        const browserHint = document.createElement('p');
-        browserHint.textContent = 'Which browser to borrow cookies from. "Auto-Detect" finds your browser automatically.';
-        browserHint.style.cssText = 'font-size:11px; color:#666; margin:0 0 24px 0;';
-        panel.appendChild(browserHint);
-
-        // === Status Message ===
-        const statusMsg = document.createElement('div');
-        statusMsg.id = 'yt-dl-settings-status';
-        statusMsg.style.cssText = `
-            text-align: center; font-size: 13px; color: #2ecc71;
-            min-height: 20px; margin-bottom: 16px; display: none;
-        `;
-        panel.appendChild(statusMsg);
-
-        // === Save Button ===
-        const saveBtn = document.createElement('button');
-        saveBtn.textContent = '💾 Save Settings';
-        saveBtn.style.cssText = `
-            width: 100%; padding: 12px; background: #cc0000; color: #fff;
-            border: none; border-radius: 10px; font-size: 15px; font-weight: 600;
-            cursor: pointer; transition: all 0.2s;
-        `;
-        saveBtn.addEventListener('mouseenter', () => saveBtn.style.background = '#ff0000');
-        saveBtn.addEventListener('mouseleave', () => saveBtn.style.background = '#cc0000');
-        saveBtn.addEventListener('click', () => saveSettings(statusMsg));
-        panel.appendChild(saveBtn);
-
-        backdrop.addEventListener('click', () => hideSettings());
-
-        document.body.appendChild(backdrop);
-        document.body.appendChild(panel);
-    }
-
-    function openFolderBrowser(startPath) {
-        const container = document.getElementById('yt-dl-folder-browser');
-        if (container) container.style.display = 'block';
-
-        const path = startPath || document.getElementById('yt-dl-folder-input').value || '~';
-        loadFolderList(path);
-    }
-
-    function loadFolderList(path) {
-        const folderList = document.getElementById('yt-dl-folder-list');
-        const pathDisplay = document.getElementById('yt-dl-browser-path');
-        const parentBtn = document.getElementById('yt-dl-parent-btn');
-
-        if (!folderList) return;
-
-        // Clear existing items
-        while (folderList.firstChild) folderList.removeChild(folderList.firstChild);
-
-        // Show loading
-        const loadingEl = document.createElement('div');
-        loadingEl.style.cssText = 'padding: 16px; text-align: center; color: #888; font-size: 13px;';
-        loadingEl.textContent = 'Loading folders...';
-        folderList.appendChild(loadingEl);
-
-        GM_xmlhttpRequest({
-            method: "GET",
-            url: BROWSE_URL + '?path=' + encodeURIComponent(path),
-            onload: function (response) {
-                try {
-                    const data = JSON.parse(response.responseText);
-
-                    if (data.error) {
-                        loadingEl.textContent = '❌ ' + data.error;
-                        return;
-                    }
-
-                    // Update path display
-                    if (pathDisplay) pathDisplay.textContent = data.current;
-
-                    // Setup parent button
-                    if (parentBtn) {
-                        if (data.parent) {
-                            parentBtn.style.opacity = '1';
-                            parentBtn.style.cursor = 'pointer';
-                            parentBtn.onclick = () => loadFolderList(data.parent);
-                        } else {
-                            parentBtn.style.opacity = '0.3';
-                            parentBtn.style.cursor = 'default';
-                            parentBtn.onclick = null;
-                        }
-                    }
-
-                    // Clear and populate folder list
-                    while (folderList.firstChild) folderList.removeChild(folderList.firstChild);
-
-                    if (data.folders.length === 0) {
-                        const emptyEl = document.createElement('div');
-                        emptyEl.style.cssText = 'padding: 16px; text-align: center; color: #666; font-size: 13px;';
-                        emptyEl.textContent = 'No subfolders here';
-                        folderList.appendChild(emptyEl);
-                        return;
-                    }
-
-                    data.folders.forEach(folderName => {
-                        const item = document.createElement('div');
-                        item.style.cssText = `
-                            padding: 8px 14px; cursor: pointer; display: flex;
-                            align-items: center; gap: 8px; font-size: 13px;
-                            color: #ddd; transition: background 0.15s;
-                        `;
-                        item.addEventListener('mouseenter', () => item.style.background = '#333');
-                        item.addEventListener('mouseleave', () => item.style.background = 'transparent');
-
-                        const icon = document.createElement('span');
-                        icon.textContent = '📁';
-                        icon.style.fontSize = '14px';
-
-                        const name = document.createElement('span');
-                        name.textContent = folderName;
-
-                        item.appendChild(icon);
-                        item.appendChild(name);
-
-                        item.addEventListener('click', () => {
-                            loadFolderList(data.current + '/' + folderName);
-                        });
-
-                        folderList.appendChild(item);
-                    });
-
-                } catch (e) {
-                    console.error('[YT-Downloader] Failed to load folders:', e);
-                    loadingEl.textContent = '❌ Failed to load folders';
-                }
-            },
-            onerror: function () {
-                loadingEl.textContent = '❌ Server not running';
-            }
-        });
-    }
-
-    function showSettings() {
-        let panel = document.getElementById('yt-dl-settings-panel');
-        let backdrop = document.getElementById('yt-dl-settings-backdrop');
-        if (!panel) {
-            createSettingsPanel();
-            panel = document.getElementById('yt-dl-settings-panel');
-            backdrop = document.getElementById('yt-dl-settings-backdrop');
-        }
-
-        // Hide folder browser when reopening
-        const browser = document.getElementById('yt-dl-folder-browser');
-        if (browser) browser.style.display = 'none';
-
-        // Load current settings from server
-        GM_xmlhttpRequest({
-            method: "GET",
-            url: CONFIG_URL,
-            onload: function (response) {
-                try {
-                    const config = JSON.parse(response.responseText);
-                    const dir = config.download_dir || '~/Downloads';
-                    document.getElementById('yt-dl-folder-input').value = dir;
-                    document.getElementById('yt-dl-folder-display').textContent = dir;
-                    document.getElementById('yt-dl-browser-select').value = config.browser || 'auto';
-                } catch (e) {
-                    console.error('[YT-Downloader] Failed to load settings:', e);
-                }
-            },
-            onerror: function () {
-                document.getElementById('yt-dl-folder-input').value = '~/Downloads';
-                document.getElementById('yt-dl-folder-display').textContent = '~/Downloads';
-                document.getElementById('yt-dl-browser-select').value = 'auto';
-            }
-        });
-
-        panel.style.display = 'block';
-        backdrop.style.display = 'block';
-    }
-
-    function hideSettings() {
-        const panel = document.getElementById('yt-dl-settings-panel');
-        const backdrop = document.getElementById('yt-dl-settings-backdrop');
-        if (panel) panel.style.display = 'none';
-        if (backdrop) backdrop.style.display = 'none';
-    }
-
-    function saveSettings(statusMsg) {
-        const folderInput = document.getElementById('yt-dl-folder-input');
-        const browserSelect = document.getElementById('yt-dl-browser-select');
-
-        const newConfig = {
-            download_dir: folderInput.value.trim(),
-            browser: browserSelect.value
-        };
-
-        statusMsg.style.display = 'block';
-        statusMsg.textContent = 'Saving...';
-        statusMsg.style.color = '#f39c12';
-
-        GM_xmlhttpRequest({
-            method: "POST",
-            url: CONFIG_URL,
-            headers: { "Content-Type": "application/json" },
-            data: JSON.stringify(newConfig),
-            onload: function (response) {
-                try {
-                    const result = JSON.parse(response.responseText);
-                    if (response.status === 200) {
-                        statusMsg.textContent = '✅ Settings saved!';
-                        statusMsg.style.color = '#2ecc71';
-                        setTimeout(() => {
-                            statusMsg.style.display = 'none';
-                        }, 2000);
-                    } else {
-                        statusMsg.textContent = '❌ ' + (result.error || 'Failed to save');
-                        statusMsg.style.color = '#e74c3c';
-                    }
-                } catch (e) {
-                    statusMsg.textContent = '❌ Unexpected error';
-                    statusMsg.style.color = '#e74c3c';
-                }
-            },
-            onerror: function () {
-                statusMsg.textContent = '❌ Server not running! Start the server first.';
-                statusMsg.style.color = '#e74c3c';
-            }
-        });
-    }
+    const PROGRESS_URL = 'http://127.0.0.1:5000/progress';
 
     // =============== DOWNLOAD LOGIC ===============
 
@@ -549,96 +131,413 @@
 
         btn.addEventListener('click', () => {
             if (btn.disabled) return;
-
             const videoUrl = window.location.href;
 
-            if (spanElement) spanElement.textContent = 'Sending...';
+            if (spanElement) spanElement.textContent = 'Checking config...';
             btn.disabled = true;
             btn.style.backgroundColor = '#999999';
             btn.style.cursor = 'wait';
 
-            GM_xmlhttpRequest({
-                method: "POST",
-                url: SERVER_URL,
-                headers: {
-                    "Content-Type": "application/json"
-                },
-                data: JSON.stringify({ url: videoUrl }),
-                onload: function (response) {
-                    try {
-                        const result = JSON.parse(response.responseText);
-                        if (response.status !== 202 && response.status !== 200) {
-                            console.error('Download error:', result);
-                            alert('Error: ' + (result.error || 'Failed to trigger download'));
-
-                            if (spanElement) spanElement.textContent = 'Download';
-                            btn.disabled = false;
-                            btn.style.backgroundColor = '#cc0000';
-                            btn.style.cursor = 'pointer';
-                        } else {
-                            // Download accepted, start polling for status updates
-                            pollStatus(btn, result.job_id);
-                        }
-                    } catch (e) {
-                        console.error("Failed to parse response", e);
-                        // Reset button so it doesn't get stuck
-                        if (spanElement) spanElement.textContent = 'Download';
-                        btn.disabled = false;
-                        btn.style.backgroundColor = '#cc0000';
-                        btn.style.cursor = 'pointer';
-                    }
-                },
-                onerror: function (error) {
+            function initiateQualities() {
+                if (prefetchCache.status === 'done' && prefetchCache.url === videoUrl) {
                     if (spanElement) spanElement.textContent = 'Download';
                     btn.disabled = false;
                     btn.style.backgroundColor = '#cc0000';
                     btn.style.cursor = 'pointer';
-
-                    console.error('GM_xmlhttpRequest error:', error);
-                    alert('Error connecting to local server. Make sure the Python Flask app is running at ' + SERVER_URL);
+                    showQualityModal(videoUrl, prefetchCache.data.formats, prefetchCache.data.audio_only);
+                } else if (prefetchCache.status === 'fetching' && prefetchCache.url === videoUrl) {
+                    if (spanElement) spanElement.textContent = 'Waiting for qualities...';
+                    // Re-check every 500ms until done
+                    setTimeout(initiateQualities, 500);
+                } else {
+                    // Fallback to fetch directly
+                    fetchFormatsFallback(videoUrl);
                 }
+            }
+
+            // Check config for first-time folder setup
+            GM_xmlhttpRequest({
+                method: "GET",
+                url: CONFIG_URL,
+                onload: function (response) {
+                    try {
+                        const config = JSON.parse(response.responseText);
+                        if (!config.download_dir) {
+                            if (spanElement) spanElement.textContent = 'Select Folder...';
+                            GM_xmlhttpRequest({
+                                method: "POST",
+                                url: 'http://127.0.0.1:5000/choose_folder',
+                                onload: function (res2) {
+                                    const result2 = JSON.parse(res2.responseText);
+                                    if (result2.status === 'success') {
+                                        initiateQualities();
+                                    } else {
+                                        resetBtnError('Cancelled. A download folder is required!');
+                                    }
+                                },
+                                onerror: () => resetBtnError('Failed to open folder picker.')
+                            });
+                        } else {
+                            initiateQualities();
+                        }
+                    } catch (e) {
+                        initiateQualities(); // Fallback
+                    }
+                },
+                onerror: () => resetBtnError('Error connecting to local server. Make sure the Python Flask app is running at ' + SERVER_URL)
             });
+
+            function formatBytes(bytes) {
+                if (bytes === 0) return '0 B';
+                const k = 1024;
+                const sizes = ['B', 'KB', 'MB', 'GB'];
+                const i = Math.floor(Math.log(bytes) / Math.log(k));
+                return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+            }
+
+            function fetchFormatsFallback(url) {
+                if (spanElement) spanElement.textContent = 'Fetching Qualities...';
+                GM_xmlhttpRequest({
+                    method: "POST",
+                    url: 'http://127.0.0.1:5000/get_formats',
+                    headers: { "Content-Type": "application/json" },
+                    data: JSON.stringify({ url: url }),
+                    onload: function (res) {
+                        try {
+                            const result = JSON.parse(res.responseText);
+                            if (result.status === 'success') {
+                                if (spanElement) spanElement.textContent = 'Download';
+                                btn.disabled = false;
+                                btn.style.backgroundColor = '#cc0000';
+                                btn.style.cursor = 'pointer';
+                                showQualityModal(url, result.formats, result.audio_only);
+                            } else {
+                                resetBtnError('Error fetching formats: ' + (result.error || 'Unknown'));
+                            }
+                        } catch (e) {
+                            resetBtnError('Failed to parse formats.');
+                        }
+                    },
+                    onerror: () => resetBtnError('Server is down. Cannot fetch formats.')
+                });
+            }
+
+            function showQualityModal(url, formats, audioOnly) {
+                const backdrop = document.createElement('div');
+                backdrop.style.cssText = `
+                    position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+                    background: rgba(0,0,0,0.6); z-index: 999999;
+                    display: flex; justify-content: center; align-items: center;
+                    backdrop-filter: blur(4px); font-family: 'Roboto', sans-serif;
+                `;
+
+                const modal = document.createElement('div');
+                modal.style.cssText = `
+                    background: #181818; border-radius: 16px; padding: 24px;
+                    width: 340px; border: 1px solid #333; color: white;
+                    box-shadow: 0 10px 40px rgba(0,0,0,0.8);
+                `;
+
+                const title = document.createElement('h3');
+                title.textContent = 'Select Quality';
+                title.style.cssText = 'margin: 0 0 16px 0; font-size: 18px; text-align: center; border-bottom: 1px solid #333; padding-bottom: 12px;';
+                modal.appendChild(title);
+
+                const list = document.createElement('div');
+                list.style.cssText = 'display: flex; flex-direction: column; gap: 8px; max-height: 400px; overflow-y: auto; padding-right: 4px;';
+
+                function createOption(label, sizeBytes, formatId) {
+                    const opt = document.createElement('button');
+                    opt.style.cssText = `
+                        background: #272727; border: 1px solid #444; border-radius: 8px;
+                        padding: 12px 16px; color: white; display: flex;
+                        justify-content: space-between; align-items: center; cursor: pointer;
+                        transition: all 0.2s; font-size: 14px;
+                    `;
+                    opt.addEventListener('mouseenter', () => opt.style.background = '#3f3f3f');
+                    opt.addEventListener('mouseleave', () => opt.style.background = '#272727');
+
+                    const leftSpan = document.createElement('span');
+                    leftSpan.textContent = label;
+                    leftSpan.style.fontWeight = '600';
+
+                    const rightSpan = document.createElement('span');
+                    rightSpan.textContent = formatBytes(sizeBytes || 0);
+                    rightSpan.style.color = '#aaa';
+                    rightSpan.style.fontSize = '12px';
+
+                    opt.appendChild(leftSpan);
+                    opt.appendChild(rightSpan);
+
+                    opt.addEventListener('click', () => {
+                        document.body.removeChild(backdrop);
+                        triggerDownload(url, formatId);
+                    });
+                    return opt;
+                }
+
+                if (formats && formats.length > 0) {
+                    formats.forEach(f => {
+                        list.appendChild(createOption(f.resolution + ' (MP4)', f.size_bytes, f.format_id));
+                    });
+                } else {
+                    const fallback = document.createElement('div');
+                    fallback.textContent = 'No known video formats found.';
+                    fallback.style.cssText = 'color: #aaa; text-align: center; font-size: 13px; margin-bottom: 8px;';
+                    list.appendChild(fallback);
+                }
+
+                if (audioOnly) {
+                    const divArea = document.createElement('div');
+                    divArea.style.cssText = 'height: 1px; background: #333; margin: 8px 0;';
+                    list.appendChild(divArea);
+                    list.appendChild(createOption('Audio Only (M4A)', audioOnly.size_bytes, audioOnly.format_id));
+                }
+
+                const cancelBtn = document.createElement('button');
+                cancelBtn.textContent = 'Cancel';
+                cancelBtn.style.cssText = `
+                    background: transparent; border: none; color: #888;
+                    width: 100%; padding: 12px; margin-top: 12px; cursor: pointer;
+                    font-size: 14px; border-radius: 8px;
+                `;
+                cancelBtn.addEventListener('mouseenter', () => cancelBtn.style.color = 'white');
+                cancelBtn.addEventListener('mouseleave', () => cancelBtn.style.color = '#888');
+                cancelBtn.addEventListener('click', () => {
+                    document.body.removeChild(backdrop);
+                    resetBtnError();
+                });
+
+                modal.appendChild(list);
+                modal.appendChild(cancelBtn);
+                backdrop.appendChild(modal);
+                document.body.appendChild(backdrop);
+            }
+
+            function resetBtnError(msg) {
+                if (spanElement) spanElement.textContent = 'Download';
+                btn.disabled = false;
+                btn.style.backgroundColor = '#cc0000';
+                btn.style.cursor = 'pointer';
+                if (msg) alert(msg);
+            }
+
+            function triggerDownload(url, formatId = 'MP4') {
+                if (spanElement) spanElement.textContent = 'Sending...';
+                btn.disabled = true;
+                btn.style.backgroundColor = '#999999';
+                btn.style.cursor = 'wait';
+
+                GM_xmlhttpRequest({
+                    method: "POST",
+                    url: SERVER_URL,
+                    headers: { "Content-Type": "application/json" },
+                    data: JSON.stringify({ url: url, format: formatId }),
+                    onload: function (response) {
+                        try {
+                            const result = JSON.parse(response.responseText);
+                            if (response.status !== 202 && response.status !== 200) {
+                                console.error('Download error:', result);
+                                resetBtnError('Error: ' + (result.error || 'Failed to trigger download'));
+                            } else {
+                                pollStatus(btn, result.job_id);
+                            }
+                        } catch (e) {
+                            console.error("Failed to parse response", e);
+                            resetBtnError('Failed to parse response from server.');
+                        }
+                    },
+                    onerror: () => resetBtnError('Error triggering download. Server might be down.')
+                });
+            }
         });
 
         return btn;
     }
 
-    function createSettingsGearButton() {
-        const gear = document.createElement('button');
-        gear.id = 'yt-downloader-gear';
-        gear.textContent = '⚙️';
-        gear.title = 'Downloader Settings';
-        gear.style.cssText = `
-            background: none; border: none; font-size: 20px;
-            cursor: pointer; margin-left: 4px; padding: 4px 6px;
-            border-radius: 50%; transition: all 0.2s; opacity: 0.6;
-            line-height: 1; display: flex; align-items: center;
+    // =============== GLOBAL DASHBOARD LOGIC ===============
+
+    let dashboardEl = null;
+    let isDragging = false;
+    let dragStartX = 0, dragStartY = 0;
+
+    function initDashboard() {
+        dashboardEl = document.createElement('div');
+        dashboardEl.id = 'yt-dlp-global-dashboard';
+        dashboardEl.style.cssText = `
+            position: fixed; bottom: 20px; right: 20px; width: 320px;
+            background: #181818; border: 1px solid #333; border-radius: 12px;
+            color: white; font-family: 'Roboto', sans-serif; z-index: 999999;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.8); display: none;
+            overflow: hidden; transition: opacity 0.3s;
         `;
-        gear.addEventListener('mouseenter', () => {
-            gear.style.opacity = '1';
-            gear.style.transform = 'rotate(45deg)';
+
+        const header = document.createElement('div');
+        header.style.cssText = `
+            background: #252525; padding: 12px 14px; display: flex;
+            justify-content: space-between; align-items: center;
+            border-bottom: 1px solid #333; cursor: grab; user-select: none;
+        `;
+        header.innerHTML = '<span style="font-weight:600; font-size:14px; display:flex; align-items:center; gap:6px;">🚀 Downloads</span>';
+
+        // Dragging logic
+        header.addEventListener('mousedown', (e) => {
+            isDragging = true;
+            dragStartX = e.clientX - dashboardEl.getBoundingClientRect().left;
+            dragStartY = e.clientY - dashboardEl.getBoundingClientRect().top;
+            header.style.cursor = 'grabbing';
+            document.body.style.userSelect = 'none';
         });
-        gear.addEventListener('mouseleave', () => {
-            gear.style.opacity = '0.6';
-            gear.style.transform = 'rotate(0deg)';
+        document.addEventListener('mousemove', (e) => {
+            if (!isDragging) return;
+            const left = e.clientX - dragStartX;
+            const top = e.clientY - dragStartY;
+            dashboardEl.style.left = `${left}px`;
+            dashboardEl.style.top = `${top}px`;
+            dashboardEl.style.right = 'auto'; // Disable bottom/right positioning once dragged
+            dashboardEl.style.bottom = 'auto';
         });
-        gear.addEventListener('click', (e) => {
-            e.stopPropagation();
-            e.preventDefault();
-            e.stopImmediatePropagation();
-            console.log('[YT-Downloader] Gear icon clicked');
-            // Use setTimeout to break out of YouTube's event handling chain
-            setTimeout(() => {
-                try {
-                    showSettings();
-                } catch (err) {
-                    console.error('[YT-Downloader] Settings panel error:', err);
-                    alert('Settings panel error: ' + err.message);
-                }
-            }, 0);
+        document.addEventListener('mouseup', () => {
+            isDragging = false;
+            header.style.cursor = 'grab';
+            document.body.style.userSelect = '';
         });
-        return gear;
+
+        const listContainer = document.createElement('div');
+        listContainer.id = 'yt-dlp-dash-list';
+        listContainer.style.cssText = 'max-height: 300px; overflow-y: auto; padding: 12px;';
+
+        dashboardEl.appendChild(header);
+        dashboardEl.appendChild(listContainer);
+        document.body.appendChild(dashboardEl);
     }
+
+    function updateDashboard(statuses) {
+        if (!dashboardEl) initDashboard();
+
+        const list = document.getElementById('yt-dlp-dash-list');
+        list.innerHTML = '';
+
+        // Check for active downloads
+        let activeCount = 0;
+        const activeJobs = [];
+        for (const [jobId, d] of Object.entries(statuses)) {
+            // Include starting, downloading, processing. Do not show ones finished > 10秒 ago
+            if (['starting', 'downloading', 'processing'].includes(d.status) ||
+                (d.status === 'finished' && (!d.finished_at || Date.now() - (d.finished_at * 1000) < 10000)) ||
+                (d.status === 'error' && (!d.error_at || Date.now() - (d.error_at * 1000) < 10000))) {
+                activeCount++;
+                activeJobs.push({ id: jobId, ...d });
+            }
+        }
+
+        if (activeCount === 0) {
+            dashboardEl.style.display = 'none';
+            return;
+        }
+
+        dashboardEl.style.display = 'block';
+
+        activeJobs.forEach(job => {
+            const item = document.createElement('div');
+            item.style.cssText = 'margin-bottom: 12px; font-size: 13px;';
+
+            const titleRow = document.createElement('div');
+            titleRow.style.cssText = 'white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 4px; font-weight: 500;';
+            titleRow.textContent = job.filename || 'Unknown Title';
+
+            const statusRow = document.createElement('div');
+            statusRow.style.cssText = 'display: flex; justify-content: space-between; font-size: 11px; color: #aaa; margin-bottom: 4px;';
+
+            let statusText = `${job.percent} at ${job.speed}`;
+            if (job.status === 'starting') statusText = 'Starting...';
+            if (job.status === 'processing') statusText = 'Merging Audio & Video...';
+            if (job.status === 'finished') statusText = 'Complete!';
+            if (job.status === 'error') statusText = 'Error!';
+
+            statusRow.innerHTML = `<span>${statusText}</span> <span>${job.status === 'downloading' ? job.eta || '' : ''}</span>`;
+
+            const barBg = document.createElement('div');
+            barBg.style.cssText = 'height: 4px; background: #333; border-radius: 2px; overflow: hidden;';
+
+            const barFill = document.createElement('div');
+            let percentVal = parseFloat(job.percent || 0);
+            if (job.status === 'processing' || job.status === 'finished') percentVal = 100;
+
+            let color = '#2b74e2'; // blue
+            if (job.status === 'processing') color = '#f39c12'; // orange
+            if (job.status === 'finished') color = '#2ecc71'; // green
+            if (job.status === 'error') color = '#e74c3c'; // red
+
+            barFill.style.cssText = `height: 100%; width: ${percentVal}%; background: ${color}; transition: width 0.3s;`;
+            barBg.appendChild(barFill);
+
+            item.appendChild(titleRow);
+            item.appendChild(statusRow);
+            item.appendChild(barBg);
+            list.appendChild(item);
+        });
+    }
+
+    // Global poller
+    setInterval(() => {
+        GM_xmlhttpRequest({
+            method: "GET",
+            url: PROGRESS_URL,
+            onload: function (response) {
+                try {
+                    const statuses = JSON.parse(response.responseText);
+                    updateDashboard(statuses);
+                } catch (e) { }
+            }
+        });
+    }, 1000);
+
+    let lastUrl = '';
+    let prefetchCache = { url: null, status: 'idle', data: null, error: null };
+
+    function prefetchFormats(url) {
+        if (prefetchCache.status === 'fetching' && prefetchCache.url === url) return;
+        prefetchCache = { url: url, status: 'fetching', data: null, error: null };
+
+        GM_xmlhttpRequest({
+            method: "POST",
+            url: 'http://127.0.0.1:5000/get_formats',
+            headers: { "Content-Type": "application/json" },
+            data: JSON.stringify({ url: url }),
+            onload: function (res) {
+                try {
+                    const result = JSON.parse(res.responseText);
+                    if (result.status === 'success') {
+                        prefetchCache.status = 'done';
+                        prefetchCache.data = result;
+                    } else {
+                        prefetchCache.status = 'error';
+                        prefetchCache.error = result.error || 'Unknown server error';
+                    }
+                } catch (e) {
+                    prefetchCache.status = 'error';
+                    prefetchCache.error = 'Failed to parse format JSON.';
+                }
+            },
+            onerror: () => {
+                prefetchCache.status = 'error';
+                prefetchCache.error = 'Server is offline.';
+            }
+        });
+    }
+
+    // Try to safely inject the button repeatedly (YouTube is SPA)
+    setInterval(() => {
+        if (!window.location.href.includes('/watch')) return;
+
+        if (window.location.href !== lastUrl) {
+            lastUrl = window.location.href;
+            prefetchFormats(lastUrl);
+        }
+
+        injectButton();
+    }, 1000);
 
     function injectButton() {
         if (!window.location.href.includes('watch?v=')) return false;
@@ -670,27 +569,19 @@
 
         if (targetContainer) {
             const button = createDownloadButton();
-            const gearBtn = createSettingsGearButton();
-
-            // Wrap both in a flex container for clean alignment
-            const wrapper = document.createElement('div');
-            wrapper.id = 'yt-downloader-wrapper';
-            wrapper.style.cssText = 'display: flex; align-items: center;';
-            wrapper.appendChild(button);
-            wrapper.appendChild(gearBtn);
 
             // Try to put it right after the subscribe button if we are in the owner area
             const subscribeBtn = targetContainer.querySelector('ytd-subscribe-button-renderer, #subscribe-button');
 
             if (subscribeBtn) {
                 console.log("[YT-Downloader] Injecting beside Subscribe button");
-                subscribeBtn.parentElement.insertBefore(wrapper, subscribeBtn.nextSibling);
+                subscribeBtn.parentElement.insertBefore(button, subscribeBtn.nextSibling);
             } else if (injectionMethod === 'prepend') {
                 console.log("[YT-Downloader] Prepending to target container");
-                targetContainer.insertBefore(wrapper, targetContainer.firstChild);
+                targetContainer.insertBefore(button, targetContainer.firstChild);
             } else {
                 console.log("[YT-Downloader] Appending to target container");
-                targetContainer.appendChild(wrapper);
+                targetContainer.appendChild(button);
             }
             return true; // Successfully injected
         }
