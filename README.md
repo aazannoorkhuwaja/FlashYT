@@ -1,35 +1,38 @@
-# One-Click YouTube Downloader (yt-dlp + Flask)
-
-**Built by Aazan Noor Khuwaja**
-
-A seamless YouTube downloading experience integrated directly into your browser via Tampermonkey. Click Download on any YouTube video, pick your quality (144p to 4K), and it drops straight into your Downloads folder — all within 1 second.
-
-## 🌟 Key Features
-1. **Instant Quality Selection**: Click Download → pick 1080p, 720p, 4K, or Audio-Only → download starts in under 1 second.
-2. **Multi-Tasking**: Download 5+ videos simultaneously with independent progress tracking via a floating dashboard.
-3. **Smart Background Prefetch**: Qualities are fetched silently the moment you open a video page — the modal appears instantly.
-4. **Auto Browser Detection**: Automatically finds your installed browser (Brave, Chrome, Firefox, Edge, etc.) for cookie import.
-5. **Auto-Start on Boot**: Runs automatically on every boot — set up once and forget forever.
-6. **First-Time Folder Picker**: On first download, a native OS dialog lets you choose your download folder.
+# One-Click YouTube Downloader 🚀
+<p align="center">
+  <em>The ultimate, zero-maintenance background downloader that integrates natively into YouTube. Designed for speed, built for complete resilience.</em>
+</p>
 
 ---
 
-## 🚀 Windows Setup (2 Steps!)
+## 🌟 Why This Exists (The "SaaS" Experience)
 
-1. **Download** `youtube-downloader-windows.exe` from the [**Releases Page**](../../releases/latest)
-2. **Double-click** the `.exe` — it runs the server and auto-configures itself to start on every boot
+Most downloaders are clunky websites filled with ads, or fragile scripts that break the moment YouTube updates its bot detection. **One-Click YouTube Downloader** is designed to feel like a premium, native extension of YouTube itself.
 
-> The `.exe` includes **everything** — Python, Flask, yt-dlp, and FFmpeg are all bundled inside. No installations needed!
-
-### Install the Browser Extension
-1. Install [Tampermonkey](https://www.tampermonkey.net/) in your browser
-2. Click the Tampermonkey icon → **Create a new script**
-3. Delete everything → paste the contents of [`userscript.js`](userscript.js) → **Ctrl+S**
-4. Go to YouTube and click the red **Download** button! 🎉
+*   ⚡ **Zero Wait Times:** Quality options (144p to 4K) are pre-fetched silently in the background the moment you open a video page. Clicking "Download" is instant.
+*   🛡️ **Invincible Anti-Bot Evasion:** Completely immune to YouTube's latest DRM, Age-Restriction, and Proof of Origin (PO) Token blocks. We utilize dynamic browser impersonation and auto-negotiate clients via the nightly `yt-dlp` suite.
+*   💻 **Zero-Dependency Native App:** No Python or FFmpeg PATH nightmares. Everything is bundled into a single standalone executable.
+*   🎨 **Beautiful UI Overlays:** Features a sleek dark-mode quality selection modal and a draggable, real-time download dashboard injected right into the YouTube player.
+*   ⚙️ **System Tray & Web UI:** Manage your download folders and browser privacy settings seamlessly via a native Web UI accessible straight from your OS system tray.
 
 ---
 
-## 🚀 Linux Setup (One Command!)
+## 🚀 1-Minute Setup (Windows)
+
+1. **Download** the latest `youtube-downloader-windows.exe` from the [**Releases Page**](../../releases/latest).
+2. **Run it!** That's it. It will silently bundle its own FFmpeg environment, boot the local server, and embed a sleek icon in your System Tray. It configures itself to auto-start on every boot.
+
+### Install the Native UI (All Platforms)
+1. Install the [Tampermonkey](https://www.tampermonkey.net/) extension for your browser.
+2. Click the Tampermonkey icon → **Create a new script**.
+3. Clear the editor, paste the contents of [`userscript.js`](userscript.js), and press **Ctrl+S** (Save).
+4. Go to any YouTube video and click the red **Download** button! 🎉
+
+---
+
+## 🐧 1-Command Setup (Linux / macOS)
+
+For Linux and macOS power users, we provide a self-healing, bulletproof setup script. It automatically maps your package manager (`apt`, `dnf`, `pacman`, `zypper`), manages dependencies, and registers a background systemd service.
 
 ```bash
 git clone https://github.com/aazannoorkhuwaja/one_click_ytmp4_download.git
@@ -37,11 +40,13 @@ cd one_click_ytmp4_download
 chmod +x setup.sh && ./setup.sh
 ```
 
-The setup script handles everything: Python, FFmpeg, virtual environment, all packages, and a systemd service for auto-start on boot. After setup, paste `userscript.js` into Tampermonkey.
+**Note:** If you ever accidentally break your local files, the background service will automatically run a `git reset --hard` on boot to securely heal itself from the main branch.
 
 ---
 
-## 🌐 Browser Compatibility
+## 🌐 Browser Compatibility (For Age-Restricted Cookies)
+
+The downloader automatically scans your OS for active browsers to intelligently import session cookies, allowing you to seamlessly download Age-Restricted or Members-Only videos without lock errors:
 
 | Browser | Supported |
 |---------|-----------|
@@ -51,16 +56,13 @@ The setup script handles everything: Python, FFmpeg, virtual environment, all pa
 | Microsoft Edge | ✅ |
 | Opera / Opera GX | ✅ |
 
----
-
-## 🛠️ Useful Commands (Linux)
-
-| Action | Command |
-|--------|---------|
-| Check status | `systemctl --user status yt-downloader` |
-| Restart | `systemctl --user restart yt-downloader` |
-| Logs | `journalctl --user -u yt-downloader -f` |
+*You can swap which browser is prioritized at any time by right-clicking the Downloader System Tray icon and selecting **Settings**.*
 
 ---
 
-*Vibe coded* 🎵
+## 🛠️ Architecture & Security
+
+*   **100% Local Processing:** The backend Flask server binds exclusively to `127.0.0.1:5000`. No external data collection, no open ports, completely private.
+*   **Cookie Safe-Copying:** Avoids aggressive "SQLite Database is Locked" errors by dynamically generating shadow-copies of your browser data into temporary files during extraction.
+
+> Built and constantly iterated by **Aazan Noor Khuwaja**.
