@@ -8,6 +8,9 @@ import shutil
 import time
 import sys
 import http.cookiejar
+import stat
+import urllib.request
+from datetime import datetime
 
 # tkinter is optional — only needed for the folder picker dialog.
 # It may not be available on headless servers or minimal Docker containers.
@@ -107,6 +110,14 @@ def save_config(config):
 app_config = load_config()
 
 # ============== SIMPLE TRAY-FRIENDLY SERVER WRAPPER ==============
+
+# Paths used for yt-dlp standalone binary auto-updates
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+YT_DLP_BINARY_PATH = os.path.join(
+    SCRIPT_DIR,
+    'yt-dlp.exe' if sys.platform == 'win32' else 'yt-dlp'
+)
+YT_DLP_VERSION_FILE = os.path.join(SCRIPT_DIR, '.yt_dlp_version.json')
 
 
 class FlaskServerThread(threading.Thread):
@@ -298,6 +309,202 @@ def extract_cookies_to_file():
         # so get_cookie_opts() never blocks forever
         cookie_ready.set()
 
+
+# ============== yt-dlp STANDALONE BINARY AUTO-UPDATER ==============
+
+
+def _read_local_yt_dlp_version():
+    """
+    Reads the last downloaded yt-dlp release tag from a small JSON file.
+    This lets us avoid re-downloading the same version every startup.
+    """
+    if not os.path.exists(YT_DLP_VERSION_FILE):
+        return None
+    try:
+        with open(YT_DLP_VERSION_FILE, 'r') as f:
+            data = json.load(f)
+        return data.get('tag')
+    except Exception:
+        return None
+
+
+def _write_local_yt_dlp_version(tag):
+    """Persists the current yt-dlp tag to disk so we can compare next time."""
+    try:
+        with open(YT_DLP_VERSION_FILE, 'w') as f:
+            json.dump({'tag': tag}, f)
+    except Exception as e:
+        print(f"[Updater] Failed to write yt-dlp version file: {e}")
+
+
+def download_latest_yt_dlp_binary():
+    """
+    Background helper that checks GitHub for the latest yt-dlp release and,
+    if a newer version is available, downloads the standalone binary next to server.py.
+
+    We keep this logic simple and defensive:
+    - If GitHub is unreachable, we log and silently skip.
+    - If anything fails mid-way, we do not touch the existing binary.
+    """
+    api_url = "https://api.github.com/repos/yt-dlp/yt-dlp/releases/latest"
+    print("[Updater] Checking for yt-dlp updates...")
+
+    try:
+        with urllib.request.urlopen(api_url, timeout=10) as resp:
+            if resp.status != 200:
+                print(f"[Updater] GitHub API returned status {resp.status}. Skipping update.")
+                return
+            release = json.loads(resp.read().decode('utf-8'))
+    except Exception as e:
+        print(f"[Updater] Could not query GitHub for yt-dlp: {e}")
+        return
+
+    latest_tag = release.get('tag_name')
+    if not latest_tag:
+        print("[Updater] Could not determine latest yt-dlp tag. Skipping.")
+        return
+
+    current_tag = _read_local_yt_dlp_version()
+    if current_tag == latest_tag and os.path.exists(YT_DLP_BINARY_PATH):
+        print(f"[Updater] yt-dlp is already up to date ({latest_tag}).")
+        return
+
+    # Decide which asset to download based on platform.
+    wanted_name = 'yt-dlp.exe' if sys.platform == 'win32' else 'yt-dlp'
+    assets = release.get('assets') or []
+    download_url = None
+    for asset in assets:
+        if asset.get('name') == wanted_name:
+            download_url = asset.get('browser_download_url')
+            break
+
+    if not download_url:
+        print(f"[Updater] Could not find asset {wanted_name} in latest release. Skipping.")
+        return
+
+    print(f"[Updater] Downloading {wanted_name} ({latest_tag})...")
+    tmp_path = YT_DLP_BINARY_PATH + ".tmp"
+
+    try:
+        with urllib.request.urlopen(download_url, timeout=60) as resp, open(tmp_path, 'wb') as out_f:
+            shutil.copyfileobj(resp, out_f)
+
+        # Make the file executable on Unix-like systems.
+        if sys.platform != 'win32':
+            st = os.stat(tmp_path)
+            os.chmod(tmp_path, st.st_mode | stat.S_IEXEC)
+
+        # Replace the old binary atomically.
+        os.replace(tmp_path, YT_DLP_BINARY_PATH)
+        _write_local_yt_dlp_version(latest_tag)
+        print(f"[Updater] yt-dlp updated to {latest_tag} at {YT_DLP_BINARY_PATH}")
+    except Exception as e:
+        # Clean up the partially downloaded file if something goes wrong.
+        print(f"[Updater] Failed to update yt-dlp: {e}")
+        try:
+            if os.path.exists(tmp_path):
+                os.remove(tmp_path)
+        except Exception:
+            pass
+
+
+# ============== yt-dlp STANDALONE BINARY AUTO-UPDATER ==============
+
+
+def _read_local_yt_dlp_version():
+    """
+    Reads the last downloaded yt-dlp release tag from a small JSON file.
+    This lets us avoid re-downloading the same version every startup.
+    """
+    if not os.path.exists(YT_DLP_VERSION_FILE):
+        return None
+    try:
+        with open(YT_DLP_VERSION_FILE, 'r') as f:
+            data = json.load(f)
+        return data.get('tag')
+    except Exception:
+        return None
+
+
+def _write_local_yt_dlp_version(tag):
+    """Persists the current yt-dlp tag to disk so we can compare next time."""
+    try:
+        with open(YT_DLP_VERSION_FILE, 'w') as f:
+            json.dump({'tag': tag}, f)
+    except Exception as e:
+        print(f"[Updater] Failed to write yt-dlp version file: {e}")
+
+
+def download_latest_yt_dlp_binary():
+    """
+    Background helper that checks GitHub for the latest yt-dlp release and,
+    if a newer version is available, downloads the standalone binary next to server.py.
+
+    We keep this logic simple and defensive:
+    - If GitHub is unreachable, we log and silently skip.
+    - If anything fails mid-way, we do not touch the existing binary.
+    """
+    api_url = "https://api.github.com/repos/yt-dlp/yt-dlp/releases/latest"
+    print("[Updater] Checking for yt-dlp updates...")
+
+    try:
+        with urllib.request.urlopen(api_url, timeout=10) as resp:
+            if resp.status != 200:
+                print(f"[Updater] GitHub API returned status {resp.status}. Skipping update.")
+                return
+            release = json.loads(resp.read().decode('utf-8'))
+    except Exception as e:
+        print(f"[Updater] Could not query GitHub for yt-dlp: {e}")
+        return
+
+    latest_tag = release.get('tag_name')
+    if not latest_tag:
+        print("[Updater] Could not determine latest yt-dlp tag. Skipping.")
+        return
+
+    current_tag = _read_local_yt_dlp_version()
+    if current_tag == latest_tag and os.path.exists(YT_DLP_BINARY_PATH):
+        print(f"[Updater] yt-dlp is already up to date ({latest_tag}).")
+        return
+
+    # Decide which asset to download based on platform.
+    wanted_name = 'yt-dlp.exe' if sys.platform == 'win32' else 'yt-dlp'
+    assets = release.get('assets') or []
+    download_url = None
+    for asset in assets:
+        if asset.get('name') == wanted_name:
+            download_url = asset.get('browser_download_url')
+            break
+
+    if not download_url:
+        print(f"[Updater] Could not find asset {wanted_name} in latest release. Skipping.")
+        return
+
+    print(f"[Updater] Downloading {wanted_name} ({latest_tag})...")
+    tmp_path = YT_DLP_BINARY_PATH + ".tmp"
+
+    try:
+        with urllib.request.urlopen(download_url, timeout=60) as resp, open(tmp_path, 'wb') as out_f:
+            shutil.copyfileobj(resp, out_f)
+
+        # Make the file executable on Unix-like systems.
+        if sys.platform != 'win32':
+            st = os.stat(tmp_path)
+            os.chmod(tmp_path, st.st_mode | stat.S_IEXEC)
+
+        # Replace the old binary atomically.
+        os.replace(tmp_path, YT_DLP_BINARY_PATH)
+        _write_local_yt_dlp_version(latest_tag)
+        print(f"[Updater] yt-dlp updated to {latest_tag} at {YT_DLP_BINARY_PATH}")
+    except Exception as e:
+        # Clean up the partially downloaded file if something goes wrong.
+        print(f"[Updater] Failed to update yt-dlp: {e}")
+        try:
+            if os.path.exists(tmp_path):
+                os.remove(tmp_path)
+        except Exception:
+            pass
+
 def get_cookie_opts():
     """
     Returns the yt-dlp cookie options.
@@ -396,9 +603,6 @@ def run_download_thread(url, selected_format, job_id, cached_info=None):
         'quiet': False,
         'no_warnings': False,
         'socket_timeout': 30,
-        
-        # Allow yt-dlp to download the JS Challenge Solver (Linux only — requires deno)
-        **(({'remote_components': ['ejs:github']} if sys.platform != 'win32' else {})),
 
         # Network Resilience & Retry Logic
         'retries': float('inf'),
@@ -411,9 +615,9 @@ def run_download_thread(url, selected_format, job_id, cached_info=None):
         'sleep_interval': 0,
         'sleep_interval_requests': 0,
 
-        # Force TV client only — avoids the failing ios/android API calls
-        # that waste 8+ seconds in retries. TV client returns ALL formats (144p-4K).
-        'extractor_args': {'youtube': {'player_client': ['tv']}},
+        # Let yt-dlp choose the best client automatically.
+        # DO NOT force 'tv' — YouTube now applies DRM to all TV client formats.
+        # See: https://github.com/yt-dlp/yt-dlp/issues/12563
 
         # Bundled FFmpeg Support
         'ffmpeg_location': get_ffmpeg_path(),
@@ -532,8 +736,13 @@ def get_formats():
         'quiet': True,
         'no_warnings': True,
         'noplaylist': True,
-        # Force TV client only — avoids the failing ios/android API calls
-        'extractor_args': {'youtube': {'player_client': ['tv']}},
+        'socket_timeout': 30,
+
+        # Network Resilience & Retry Logic
+        'retries': float('inf'),
+        'fragment_retries': float('inf'),
+        'file_access_retries': float('inf'),
+        'retry_sleep_functions': {'http': lambda n: 5},
     }
 
     # Add optional cookies
@@ -888,9 +1097,13 @@ if __name__ == '__main__':
     else:
         print("[Server] No browser detected — cookies disabled")
 
-    # Pre-extract cookies in background so the server starts INSTANTLY
-    # (cookie extraction can take 5-10 seconds on fresh installs)
+    # Pre-extract cookies in background so the server starts INSTANTLY.
+    # Cookie extraction can take a few seconds on fresh installs, so we run it once.
     threading.Thread(target=extract_cookies_to_file, daemon=True).start()
+
+    # Check for and download the latest yt-dlp standalone binary in the background.
+    # This keeps the bundled tool fresh without blocking startup.
+    threading.Thread(target=download_latest_yt_dlp_binary, daemon=True).start()
 
     # Start Flask on a background thread so the main thread can own the tray.
     server_thread = FlaskServerThread(app, host='127.0.0.1', port=5000)
