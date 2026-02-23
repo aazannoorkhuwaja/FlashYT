@@ -824,7 +824,7 @@ def get_formats():
                 
                 if is_better:
                     video_resolutions[height] = {
-                        'format_id': f"{f.get('format_id')}+{best_audio.get('format_id')}" if best_audio else f.get('format_id'),
+                        'format_id': f"video_{height}",
                         'resolution': f"{height}p",
                         'height': height,
                         'ext': ext,
@@ -839,8 +839,8 @@ def get_formats():
                 "title": info.get('title'),
                 "formats": sorted_vids,
                 "audio_only": {
-                    "format_id": best_audio.get('format_id') if best_audio else "bestaudio",
-                    "ext": best_audio.get('ext') if best_audio else "m4a",
+                    "format_id": "audio_only",
+                    "ext": "mp3",
                     "size_bytes": audio_filesize
                 } if best_audio else None
             }), 200
