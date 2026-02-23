@@ -153,12 +153,10 @@ def get_cookie_opts():
 
     if os.path.exists(COOKIE_FILE):
         return {'cookiefile': COOKIE_FILE}
-    else:
-        # Fallback: extract live (slow but works)
-        browser = get_active_browser()
-        if browser:
-            return {'cookiesfrombrowser': (browser,)}
-        return {}
+    
+    # If the file hasn't been created yet (or failed), we DO NOT fall back to live extraction.
+    # Live extraction breaks the download completely if the browser's cookie DB is missing or locked.
+    return {}
 
 
 # ============== DOWNLOAD LOGIC ==============
@@ -263,13 +261,20 @@ def run_download_thread(url, selected_format, job_id):
         print("[Server] No cookies available. Proceeding without cookies.")
 
     if "MP4" in selected_format:
-        # 1. Best video between 720p-1080p preferring smaller modern codecs (avc/hevc/vp9) + best audio
-        # 2. Fallback to any best video <= 1080p + best audio
-        # 3. Fallback to absolutely any video + audio or pre-merged file
+        # Safest fallback chain to avoid "Requested format is not available" errors:
+        # 1. Best mp4 video <= 1080p + best m4a audio
+        # 2. Best video <= 1080p + best audio (any formats)
+        # 3. Best video + best audio (any resolution)
+        # 4. Best pre-merged format (usually 720p/360p)
+        # 5. Best video only (silent video fallback)
+        # 6. Best audio only (audio-only fallback)
         ydl_opts['format'] = (
-            'bestvideo[height<=1080][height>=720][vcodec~="^((he|a)vc|vp9)"]+bestaudio/best/'
-            'bestvideo[height<=1080]+bestaudio/best/'
-            'bestvideo+bestaudio/best'
+            'bestvideo[ext=mp4][height<=1080]+bestaudio[ext=m4a]/'
+            'bestvideo[height<=1080]+bestaudio/'
+            'bestvideo+bestaudio/'
+            'best/'
+            'bestvideo/'
+            'bestaudio'
         )
         ydl_opts['merge_output_format'] = 'mp4'
         ydl_opts['writesubtitles'] = True
