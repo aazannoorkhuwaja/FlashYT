@@ -85,6 +85,38 @@ if [ ${#MISSING_DEPS[@]} -gt 0 ]; then
         if [ ${#FEDORA_DEPS[@]} -gt 0 ]; then
             sudo dnf install -y "${FEDORA_DEPS[@]}"
         fi
+    elif command -v pacman &>/dev/null; then
+        # Map Debian/Ubuntu package names to Arch Linux package names
+        ARCH_DEPS=()
+        for dep in "${MISSING_DEPS[@]}"; do
+            if [ "$dep" = "python3" ]; then
+                ARCH_DEPS+=("python")
+            elif [ "$dep" = "python3-pip" ]; then
+                ARCH_DEPS+=("python-pip")
+            elif [ "$dep" = "python3-venv" ]; then
+                continue # Included in python on Arch
+            elif [ "$dep" = "python3-tk" ]; then
+                ARCH_DEPS+=("tk")
+            else
+                ARCH_DEPS+=("$dep")
+            fi
+        done
+        if [ ${#ARCH_DEPS[@]} -gt 0 ]; then
+            sudo pacman -S --noconfirm "${ARCH_DEPS[@]}"
+        fi
+    elif command -v zypper &>/dev/null; then
+        # Map Debian/Ubuntu package names to openSUSE package names
+        SUSE_DEPS=()
+        for dep in "${MISSING_DEPS[@]}"; do
+            if [ "$dep" = "python3-venv" ]; then
+                continue # Included in python3 on openSUSE
+            else
+                SUSE_DEPS+=("$dep")
+            fi
+        done
+        if [ ${#SUSE_DEPS[@]} -gt 0 ]; then
+            sudo zypper install -y "${SUSE_DEPS[@]}"
+        fi
     else
         echo -e "${RED}   Unsupported package manager. Please install manually:${NC} ${MISSING_DEPS[*]}"
         exit 1
