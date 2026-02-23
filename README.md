@@ -9,25 +9,27 @@ A seamless YouTube downloading experience integrated directly into your browser 
 2. **Multi-Tasking**: Download 5+ videos simultaneously with independent progress tracking via a floating dashboard.
 3. **Smart Background Prefetch**: Qualities are fetched silently the moment you open a video page — the modal appears instantly.
 4. **Auto Browser Detection**: Automatically finds your installed browser (Brave, Chrome, Firefox, Edge, etc.) for cookie import.
-5. **Auto-Start on Boot**: Run setup once and the server starts automatically on every boot — zero maintenance forever.
+5. **Auto-Start on Boot**: Runs automatically on every boot — set up once and forget forever.
 6. **First-Time Folder Picker**: On first download, a native OS dialog lets you choose your download folder.
 
 ---
 
-## 🌐 Browser Compatibility
+## 🚀 Windows Setup (2 Steps!)
 
-| Browser | Supported | Notes |
-|---------|-----------|-------|
-| Google Chrome | ✅ | Full support |
-| Brave | ✅ | Full support |
-| Mozilla Firefox | ✅ | Full support via Tampermonkey/Greasemonkey |
-| Microsoft Edge | ✅ | Full support |
-| Opera / Opera GX | ✅ | Full support |
-| Safari | ⚠️ | Requires Userscripts app from App Store |
+1. **Download** `youtube-downloader-windows.exe` from the [**Releases Page**](../../releases/latest)
+2. **Double-click** the `.exe` — it runs the server and auto-configures itself to start on every boot
+
+> The `.exe` includes **everything** — Python, Flask, yt-dlp, and FFmpeg are all bundled inside. No installations needed!
+
+### Install the Browser Extension
+1. Install [Tampermonkey](https://www.tampermonkey.net/) in your browser
+2. Click the Tampermonkey icon → **Create a new script**
+3. Delete everything → paste the contents of [`userscript.js`](userscript.js) → **Ctrl+S**
+4. Go to YouTube and click the red **Download** button! 🎉
 
 ---
 
-## 🚀 Setup — Linux (One Command!)
+## 🚀 Linux Setup (One Command!)
 
 ```bash
 git clone https://github.com/aazannoorkhuwaja/one_click_ytmp4_download.git
@@ -35,43 +37,29 @@ cd one_click_ytmp4_download
 chmod +x setup.sh && ./setup.sh
 ```
 
-## 🚀 Setup — Windows (One Command!)
-
-```
-git clone https://github.com/aazannoorkhuwaja/one_click_ytmp4_download.git
-cd one_click_ytmp4_download
-setup.bat
-```
-
-> **Don't have Git?** Just download the ZIP from the green **Code** button above, extract it, and double-click `setup.bat`.
-
-### What the Setup Does (Both Platforms)
-- ✅ Installs Python, FFmpeg, and all dependencies automatically
-- ✅ Creates a Python virtual environment with all packages
-- ✅ Sets up auto-start on every boot (systemd on Linux, Startup folder on Windows)
-- ✅ Auto-updates yt-dlp on every restart to keep up with YouTube changes
-- ✅ Verifies everything is working
-
-### After Setup — Install the Browser Extension
-1. Install [Tampermonkey](https://www.tampermonkey.net/) in your browser
-2. Click the Tampermonkey icon → **Create a new script**
-3. Delete everything → paste the contents of `userscript.js` → **Ctrl+S** to save
-4. Go to YouTube, play any video, and click the red **Download** button! 🎉
+The setup script handles everything: Python, FFmpeg, virtual environment, all packages, and a systemd service for auto-start on boot. After setup, paste `userscript.js` into Tampermonkey.
 
 ---
 
-## 🛠️ Useful Commands
+## 🌐 Browser Compatibility
 
-### Linux
+| Browser | Supported |
+|---------|-----------|
+| Google Chrome | ✅ |
+| Brave | ✅ |
+| Mozilla Firefox | ✅ |
+| Microsoft Edge | ✅ |
+| Opera / Opera GX | ✅ |
+
+---
+
+## 🛠️ Useful Commands (Linux)
+
 | Action | Command |
 |--------|---------|
-| Check if server is running | `systemctl --user status yt-downloader` |
-| Restart the server | `systemctl --user restart yt-downloader` |
-| Stop the server | `systemctl --user stop yt-downloader` |
-| View live logs | `journalctl --user -u yt-downloader -f` |
-
-### Windows
-The server runs silently in the background (no terminal window). To stop it, open Task Manager and end `pythonw.exe`.
+| Check status | `systemctl --user status yt-downloader` |
+| Restart | `systemctl --user restart yt-downloader` |
+| Logs | `journalctl --user -u yt-downloader -f` |
 
 ---
 

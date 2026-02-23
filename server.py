@@ -679,6 +679,27 @@ def refresh_cookies():
 
 
 if __name__ == '__main__':
+    # On Windows with a bundled .exe, auto-register for startup on boot
+    if getattr(sys, 'frozen', False) and sys.platform == 'win32':
+        import platform
+        try:
+            exe_path = sys.executable
+            startup_dir = os.path.join(os.environ.get('APPDATA', ''), 
+                                        'Microsoft', 'Windows', 'Start Menu', 
+                                        'Programs', 'Startup')
+            vbs_path = os.path.join(startup_dir, 'YouTubeDownloader.vbs')
+            if not os.path.exists(vbs_path):
+                # Create a VBS script that launches the .exe silently (no terminal window)
+                vbs_content = f'Set WshShell = CreateObject("WScript.Shell")\n'
+                vbs_content += f'WshShell.Run Chr(34) & "{exe_path}" & Chr(34), 0, False\n'
+                with open(vbs_path, 'w') as f:
+                    f.write(vbs_content)
+                print(f"[Server] ✓ Auto-start configured! This app will now launch silently on every boot.")
+            else:
+                print(f"[Server] ✓ Auto-start already configured.")
+        except Exception as e:
+            print(f"[Server] Could not set up auto-start: {e}")
+
     print(f"[Server] Download folder: {os.path.expanduser(app_config.get('download_dir', '~/Downloads'))}")
     print(f"[Server] Browser for cookies: {app_config.get('browser', 'auto')}")
     browser_name = get_active_browser()
@@ -691,3 +712,4 @@ if __name__ == '__main__':
     extract_cookies_to_file()
 
     app.run(host='127.0.0.1', port=5000, debug=False)
+
