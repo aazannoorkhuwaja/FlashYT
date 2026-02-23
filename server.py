@@ -727,19 +727,15 @@ def run_download_thread(url, selected_format, job_id, cached_info=None):
             else:
                 ydl.download([url])
     except Exception as first_error:
-        # If the specific format ID failed, retry with a safe generic format
+        # If the specific format selection failed, make one last attempt using
+        # yt-dlp's own default "best" logic with *no* custom -f filter at all.
         error_str = str(first_error).lower()
-        if 'format' in error_str or 'not available' in error_str or 'requested' in error_str:
-            print(f"[Server] Format '{ydl_opts.get('format')}' failed. Retrying with generic format...")
-            ydl_opts['format'] = (
-                'bestvideo[ext=mp4][height<=1080]+bestaudio[ext=m4a]/'
-                'bestvideo[height<=1080]+bestaudio/'
-                'bestvideo+bestaudio/'
-                'best/'
-                'bestvideo/'
-                'bestaudio'
-            )
-            ydl_opts['merge_output_format'] = 'mp4'
+        if 'requested format is not available' in error_str or 'use --list-formats' in error_str:
+            print(f"[Server] Format '{ydl_opts.get('format')}' failed with "
+                  f"'{first_error}'. Retrying once without any custom format selector...")
+            # Remove any explicit format / merge hints and let yt-dlp decide.
+            ydl_opts.pop('format', None)
+            ydl_opts.pop('merge_output_format', None)
             try:
                 with yt_dlp.YoutubeDL(ydl_opts) as ydl2:
                     ydl2.download([url])
@@ -751,6 +747,7 @@ def run_download_thread(url, selected_format, job_id, cached_info=None):
                 })
                 return
         else:
+            # Non-format-related error, just surface it.
             set_status(job_id, {
                 "status": "error",
                 "error": str(first_error),
