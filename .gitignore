@@ -5,3 +5,8 @@ __pycache__/
 .env
 config.json
 .cached_cookies.txt
+ffmpeg.exe
+*.zip
+dist/
+build/
+*.spec

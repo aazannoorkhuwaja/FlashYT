@@ -29,7 +29,11 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install pyinstaller yt-dlp flask flask-cors secretstorage
+        pip install pyinstaller yt-dlp flask flask-cors
+
+    - name: Install Linux-only dependencies
+      if: matrix.name == 'linux'
+      run: pip install secretstorage
 
     - name: Build with PyInstaller (Linux)
       if: matrix.name == 'linux'
@@ -72,7 +76,7 @@ jobs:
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: "v1.0.${{ github.run_number }}"
+          tag_name: "v2.1.${{ github.run_number }}"
           name: "Latest Auto-Build"
           files: |
             youtube-downloader-windows.exe

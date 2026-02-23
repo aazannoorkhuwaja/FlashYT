@@ -27,21 +27,29 @@ A seamless YouTube downloading experience integrated directly into your browser 
 
 ---
 
-## 🚀 Setup for Your Brother (One Command!)
+## 🚀 Setup — Linux (One Command!)
 
 ```bash
-# Clone and run setup — that's it!
 git clone https://github.com/aazannoorkhuwaja/one_click_ytmp4_download.git
 cd one_click_ytmp4_download
-chmod +x setup.sh
-./setup.sh
+chmod +x setup.sh && ./setup.sh
 ```
 
-The setup script handles **EVERYTHING** automatically:
-- ✅ Installs `python3`, `ffmpeg`, `tkinter`, and all dependencies
+## 🚀 Setup — Windows (One Command!)
+
+```
+git clone https://github.com/aazannoorkhuwaja/one_click_ytmp4_download.git
+cd one_click_ytmp4_download
+setup.bat
+```
+
+> **Don't have Git?** Just download the ZIP from the green **Code** button above, extract it, and double-click `setup.bat`.
+
+### What the Setup Does (Both Platforms)
+- ✅ Installs Python, FFmpeg, and all dependencies automatically
 - ✅ Creates a Python virtual environment with all packages
-- ✅ Sets up a background service that **auto-starts on every boot**
-- ✅ Auto-updates yt-dlp and the code on every restart
+- ✅ Sets up auto-start on every boot (systemd on Linux, Startup folder on Windows)
+- ✅ Auto-updates yt-dlp on every restart to keep up with YouTube changes
 - ✅ Verifies everything is working
 
 ### After Setup — Install the Browser Extension
@@ -54,12 +62,16 @@ The setup script handles **EVERYTHING** automatically:
 
 ## 🛠️ Useful Commands
 
+### Linux
 | Action | Command |
 |--------|---------|
 | Check if server is running | `systemctl --user status yt-downloader` |
 | Restart the server | `systemctl --user restart yt-downloader` |
 | Stop the server | `systemctl --user stop yt-downloader` |
 | View live logs | `journalctl --user -u yt-downloader -f` |
+
+### Windows
+The server runs silently in the background (no terminal window). To stop it, open Task Manager and end `pythonw.exe`.
 
 ---
 
