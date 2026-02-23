@@ -129,7 +129,7 @@ echo -e "   ${GREEN}✓ Server will now auto-start on every boot${NC}"
 # ---- Step 5: Verify ----
 echo -e "${YELLOW}[5/5]${NC} Verifying everything works..."
 
-sleep 2
+sleep 5
 
 if systemctl --user is-active --quiet "$SERVICE_NAME"; then
     echo -e "   ${GREEN}✓ Server is running!${NC}"

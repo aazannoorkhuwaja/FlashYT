@@ -740,8 +740,9 @@ if __name__ == '__main__':
     else:
         print("[Server] No browser detected — cookies disabled")
 
-    # Pre-extract cookies at startup so first download is instant
-    extract_cookies_to_file()
+    # Pre-extract cookies in background so the server starts INSTANTLY
+    # (cookie extraction can take 5-10 seconds on fresh installs)
+    threading.Thread(target=extract_cookies_to_file, daemon=True).start()
 
     app.run(host='127.0.0.1', port=5000, debug=False)
 
