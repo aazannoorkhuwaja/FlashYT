@@ -69,7 +69,7 @@ REM ---- Step 3: Install Python packages ----
 echo [3/5] Installing Python packages...
 
 "%VENV_DIR%\Scripts\python.exe" -m pip install --quiet --upgrade pip 2>nul
-"%VENV_DIR%\Scripts\python.exe" -m pip install --quiet yt-dlp flask flask-cors 2>nul
+"%VENV_DIR%\Scripts\python.exe" -m pip install --quiet -U --pre "yt-dlp[default]" flask flask-cors 2>nul
 echo    [OK] All Python packages installed
 
 REM ---- Step 4: Check for FFmpeg ----

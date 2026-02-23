@@ -65,6 +65,7 @@ CORS(app)
 # Global dictionary to store the status of downloads
 # Key = job_id, Value = status dictionary
 download_statuses = {}
+download_status_lock = threading.Lock()
 yt_info_cache = {} # Cache for fast download starts: {url: (timestamp, info_dict)}
 
 # Pre-compile the ANSI escape code regex
@@ -276,6 +277,9 @@ def extract_cookies_to_file():
             ydl_opts = {
                 'quiet': True,
                 'skip_download': True,
+                # End users can have a global yt-dlp config that forces a bad format (-f ...).
+                # We ignore all external configs so behavior is consistent across machines.
+                'ignoreconfig': True,
             }
             
             # Copy SQLite DB to avoid lock errors
@@ -531,65 +535,77 @@ def run_download_thread(url, selected_format, job_id, cached_info=None):
     # Track how many streams have finished downloading (video=1, audio=2)
     stream_finish_count = {"count": 0, "expected": 2 if "MP4" in selected_format else 1}
 
+    def set_status(job_id, payload):
+        """
+        Small helper so all status writes go through one place.
+        This keeps things thread-safe when many downloads run in parallel.
+        """
+        with download_status_lock:
+            current = download_statuses.get(job_id, {})
+            current.update(payload)
+            download_statuses[job_id] = current
+
     def update_progress(d):
         """Hook function called by yt_dlp during the download process."""
-        if job_id not in download_statuses:
-            return
-
         if d['status'] == 'downloading':
             percent_str = d.get('_percent_str', '0%')
             speed_str = d.get('_speed_str', '0MiB/s')
+            eta_str = d.get('_eta_str', '')
 
             # Clean up ANSI escape codes
             percent_str = ansi_escape.sub('', percent_str).strip()
             speed_str = ansi_escape.sub('', speed_str).strip()
+            eta_str = ansi_escape.sub('', eta_str).strip()
 
-            download_statuses[job_id] = {
+            set_status(job_id, {
                 "status": "downloading",
                 "percent": percent_str,
                 "speed": speed_str,
+                "eta": eta_str,
                 "filename": os.path.basename(d.get('filename', ''))
-            }
+            })
         elif d['status'] == 'finished':
             stream_finish_count["count"] += 1
 
             if stream_finish_count["count"] >= stream_finish_count["expected"]:
                 # All streams downloaded, FFmpeg will merge
-                download_statuses[job_id] = {
+                set_status(job_id, {
                     "status": "processing",
                     "percent": "100%",
                     "speed": "-",
                     "filename": os.path.basename(d.get('filename', ''))
-                }
+                })
             else:
-                download_statuses[job_id] = {
+                set_status(job_id, {
                     "status": "downloading",
                     "percent": "50%",
                     "speed": "fetching audio...",
                     "filename": os.path.basename(d.get('filename', ''))
-                }
+                })
         elif d['status'] == 'error':
-            download_statuses[job_id] = {
+            set_status(job_id, {
                 "status": "error",
-                "error": "yt-dlp encountered an error during download."
-            }
+                "error": "yt-dlp encountered an error during download.",
+                "error_at": time.time(),
+            })
 
     def postprocessor_hook(d):
         """Hook called by yt-dlp when a postprocessor starts/finishes."""
         if d['status'] == 'started':
-            download_statuses[job_id] = {
+            set_status(job_id, {
                 "status": "processing",
                 "percent": "100%",
                 "speed": "merging...",
                 "filename": ""
-            }
+            })
         elif d['status'] == 'finished':
-            download_statuses[job_id] = {
+            set_status(job_id, {
                 "status": "finished",
                 "percent": "100%",
                 "speed": "-",
-                "filename": os.path.basename(d.get('filename', ''))
-            }
+                "filename": os.path.basename(d.get('filename', '')),
+                "finished_at": time.time(),
+            })
 
     # Use download dir from live config
     download_dir = app_config.get('download_dir', '') or get_default_download_dir()
@@ -603,6 +619,8 @@ def run_download_thread(url, selected_format, job_id, cached_info=None):
         'quiet': False,
         'no_warnings': False,
         'socket_timeout': 30,
+        # Do not allow any global yt-dlp config to affect downloads.
+        'ignoreconfig': True,
 
         # Network Resilience & Retry Logic
         'retries': float('inf'),
@@ -614,6 +632,14 @@ def run_download_thread(url, selected_format, job_id, cached_info=None):
         # Speed: skip YouTube's mandatory 4-second throttle sleep
         'sleep_interval': 0,
         'sleep_interval_requests': 0,
+
+        # Anti-Bot Evasion: Impersonate a real browser requesting the web client
+        'http_headers': {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+            'Accept-Language': 'en-US,en;q=0.5',
+            'Sec-Fetch-Mode': 'navigate',
+        },
 
         # Let yt-dlp choose the best client automatically.
         # DO NOT force 'tv' — YouTube now applies DRM to all TV client formats.
@@ -717,26 +743,31 @@ def run_download_thread(url, selected_format, job_id, cached_info=None):
                 with yt_dlp.YoutubeDL(ydl_opts) as ydl2:
                     ydl2.download([url])
             except Exception as retry_error:
-                download_statuses[job_id] = {
+                set_status(job_id, {
                     "status": "error",
-                    "error": str(retry_error)
-                }
+                    "error": str(retry_error),
+                    "error_at": time.time(),
+                })
                 return
         else:
-            download_statuses[job_id] = {
+            set_status(job_id, {
                 "status": "error",
-                "error": str(first_error)
-            }
+                "error": str(first_error),
+                "error_at": time.time(),
+            })
             return
 
     # Fallback if hooks don't fire for the final step
-    if download_statuses.get(job_id, {}).get("status") != "finished":
-        download_statuses[job_id] = {
+    with download_status_lock:
+        status = download_statuses.get(job_id, {})
+    if status.get("status") != "finished":
+        set_status(job_id, {
             "status": "finished",
             "percent": "100%",
             "speed": "-",
-            "filename": ""
-        }
+            "filename": status.get("filename", ""),
+            "finished_at": time.time(),
+        })
 
 
 @app.route('/get_formats', methods=['POST'])
@@ -761,12 +792,24 @@ def get_formats():
         'no_warnings': True,
         'noplaylist': True,
         'socket_timeout': 30,
+        # CRITICAL: ignore user/global yt-dlp config files (often contain -f ...).
+        # If we don't, /get_formats can fail on some machines with:
+        # "Requested format is not available. Use --list-formats..."
+        'ignoreconfig': True,
 
         # Network Resilience & Retry Logic
         'retries': float('inf'),
         'fragment_retries': float('inf'),
         'file_access_retries': float('inf'),
         'retry_sleep_functions': {'http': lambda n: 5},
+        
+        # Anti-Bot Evasion (matches download config)
+        'http_headers': {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+            'Accept-Language': 'en-US,en;q=0.5',
+            'Sec-Fetch-Mode': 'navigate',
+        },
     }
 
     # Add optional cookies
@@ -872,11 +915,13 @@ def download_video():
     job_id = str(uuid.uuid4())
 
     # Initialize the status
-    download_statuses[job_id] = {
-        "status": "starting",
-        "percent": "0%",
-        "speed": "0MiB/s"
-    }
+    with download_status_lock:
+        download_statuses[job_id] = {
+            "status": "starting",
+            "percent": "0%",
+            "speed": "0MiB/s",
+            "eta": "",
+        }
 
     # Ensure download directory exists
     download_dir = app_config.get('download_dir', '') or get_default_download_dir()
@@ -907,9 +952,11 @@ def get_status(job_id):
 @app.route('/progress', methods=['GET'])
 def get_all_progress():
     """Returns all active download statuses for the global dashboard."""
-    # Filter out idle/error/finished jobs older than a certain time if we wanted to
-    # For now, return all of them
-    return jsonify(download_statuses), 200
+    # In practice the dashboard filters what it shows by finished/error timestamps
+    # on the client side. Here we simply snapshot the current dict.
+    with download_status_lock:
+        snapshot = dict(download_statuses)
+    return jsonify(snapshot), 200
 
 
 @app.route('/config', methods=['GET'])

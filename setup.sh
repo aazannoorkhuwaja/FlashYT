@@ -142,7 +142,8 @@ fi
 echo -e "${YELLOW}[3/5]${NC} Installing Python packages..."
 
 "$VENV_DIR/bin/pip" install --quiet --upgrade pip
-"$VENV_DIR/bin/pip" install --quiet yt-dlp flask flask-cors secretstorage
+# Install yt-dlp with the [default] flag to grab required crypto/web packages for PO Token generation
+"$VENV_DIR/bin/pip" install --quiet -U --pre "yt-dlp[default]" flask flask-cors secretstorage
 echo -e "   ${GREEN}✓ All Python packages installed${NC}"
 
 # ---- Step 4: Create systemd service for auto-start ----
