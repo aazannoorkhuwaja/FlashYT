@@ -21,15 +21,23 @@ except ImportError:
 def get_ffmpeg_path():
     """
     Returns the path to the ffmpeg executable.
-    If running as a compiled PyInstaller executable, returns the bundled ffmpeg from _MEIPASS.
-    Otherwise, assumes 'ffmpeg' is in the system PATH.
+    Checks: PyInstaller bundle → project directory → system PATH.
     """
+    # 1. Check if running as a compiled PyInstaller executable
     if getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS'):
         import platform
         base_path = sys._MEIPASS
         if platform.system() == "Windows":
             return os.path.join(base_path, "ffmpeg.exe")
         return os.path.join(base_path, "ffmpeg")
+    
+    # 2. Check if ffmpeg.exe is in the same directory as server.py (portable install)
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    local_ffmpeg = os.path.join(script_dir, 'ffmpeg.exe' if sys.platform == 'win32' else 'ffmpeg')
+    if os.path.exists(local_ffmpeg):
+        return local_ffmpeg
+    
+    # 3. Check system PATH
     return shutil.which("ffmpeg") or "ffmpeg"
 
 from flask import Flask, request, jsonify, render_template
@@ -342,8 +350,8 @@ def run_download_thread(url, selected_format, job_id, cached_info=None):
         'no_warnings': False,
         'socket_timeout': 30,
         
-        # Allow yt-dlp to download the JS Challenge Solver
-        'remote_components': ['ejs:github'],
+        # Allow yt-dlp to download the JS Challenge Solver (Linux only — requires deno)
+        **(({'remote_components': ['ejs:github']} if sys.platform != 'win32' else {})),
 
         # Network Resilience & Retry Logic
         'retries': float('inf'),
