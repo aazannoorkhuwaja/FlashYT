@@ -246,7 +246,7 @@
                 const list = document.createElement('div');
                 list.style.cssText = 'display: flex; flex-direction: column; gap: 8px; max-height: 400px; overflow-y: auto; padding-right: 4px;';
 
-                function createOption(label, sizeBytes, formatId) {
+                function createOption(label, sizeBytes, selectionKey) {
                     const opt = document.createElement('button');
                     opt.style.cssText = `
                         background: #272727; border: 1px solid #444; border-radius: 8px;
@@ -271,14 +271,18 @@
 
                     opt.addEventListener('click', () => {
                         document.body.removeChild(backdrop);
-                        triggerDownload(url, formatId);
+                        // We only send a simple key like "video_1080" or "audio_only".
+                        // The Python backend converts this into a safe format string
+                        // with fallbacks, so users never see "requested format not available".
+                        triggerDownload(url, selectionKey);
                     });
                     return opt;
                 }
 
                 if (formats && formats.length > 0) {
                     formats.forEach(f => {
-                        list.appendChild(createOption(f.resolution + ' (MP4)', f.size_bytes, f.format_id));
+                        const key = `video_${f.height || parseInt((f.resolution || '0').replace('p', ''), 10) || 0}`;
+                        list.appendChild(createOption(f.resolution + ' (MP4)', f.size_bytes, key));
                     });
                 } else {
                     const fallback = document.createElement('div');
@@ -291,7 +295,7 @@
                     const divArea = document.createElement('div');
                     divArea.style.cssText = 'height: 1px; background: #333; margin: 8px 0;';
                     list.appendChild(divArea);
-                    list.appendChild(createOption('Audio Only (M4A)', audioOnly.size_bytes, audioOnly.format_id));
+                    list.appendChild(createOption('Audio Only (M4A)', audioOnly.size_bytes, 'audio_only'));
                 }
 
                 const cancelBtn = document.createElement('button');
