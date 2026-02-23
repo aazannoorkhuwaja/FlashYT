@@ -236,12 +236,6 @@ def get_cookie_opts():
     Returns the yt-dlp cookie options.
     Uses cached cookie file if available (fast), otherwise falls back to live extraction (slow).
     """
-    # Check if cookies need refreshing
-    if time.time() - last_cookie_refresh > COOKIE_REFRESH_INTERVAL:
-        with cookie_lock:
-            if time.time() - last_cookie_refresh > COOKIE_REFRESH_INTERVAL:
-                threading.Thread(target=extract_cookies_to_file, daemon=True).start()
-
     if os.path.exists(COOKIE_FILE):
         return {'cookiefile': COOKIE_FILE}
     
@@ -406,19 +400,43 @@ def run_download_thread(url, selected_format, job_id, cached_info=None):
                     ydl.download([url])
             else:
                 ydl.download([url])
-
-        # Fallback if hooks don't fire for the final step
-        if download_statuses.get(job_id, {}).get("status") != "finished":
+    except Exception as first_error:
+        # If the specific format ID failed, retry with a safe generic format
+        error_str = str(first_error).lower()
+        if 'format' in error_str or 'not available' in error_str or 'requested' in error_str:
+            print(f"[Server] Format '{ydl_opts.get('format')}' failed. Retrying with generic format...")
+            ydl_opts['format'] = (
+                'bestvideo[ext=mp4][height<=1080]+bestaudio[ext=m4a]/'
+                'bestvideo[height<=1080]+bestaudio/'
+                'bestvideo+bestaudio/'
+                'best/'
+                'bestvideo/'
+                'bestaudio'
+            )
+            ydl_opts['merge_output_format'] = 'mp4'
+            try:
+                with yt_dlp.YoutubeDL(ydl_opts) as ydl2:
+                    ydl2.download([url])
+            except Exception as retry_error:
+                download_statuses[job_id] = {
+                    "status": "error",
+                    "error": str(retry_error)
+                }
+                return
+        else:
             download_statuses[job_id] = {
-                "status": "finished",
-                "percent": "100%",
-                "speed": "-",
-                "filename": ""
+                "status": "error",
+                "error": str(first_error)
             }
-    except Exception as e:
+            return
+
+    # Fallback if hooks don't fire for the final step
+    if download_statuses.get(job_id, {}).get("status") != "finished":
         download_statuses[job_id] = {
-            "status": "error",
-            "error": str(e)
+            "status": "finished",
+            "percent": "100%",
+            "speed": "-",
+            "filename": ""
         }
 
 
