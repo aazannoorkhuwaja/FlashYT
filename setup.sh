@@ -26,6 +26,19 @@ VENV_DIR="$SCRIPT_DIR/venv"
 SERVICE_NAME="yt-downloader"
 SERVICE_FILE="$HOME/.config/systemd/user/${SERVICE_NAME}.service"
 
+# ---- Step 0: Auto-Update (Pull latest fixes from GitHub) ----
+echo -e "${YELLOW}[0/5]${NC} Checking for updates from GitHub..."
+cd "$SCRIPT_DIR"
+if git rev-parse --is-inside-work-tree &>/dev/null; then
+    # Stash any accidental local changes so pull doesn't fail
+    git stash -q || true
+    git pull origin main --quiet || true
+    echo -e "   ${GREEN}✓ Updated to latest version${NC}"
+else
+    echo -e "   ${BLUE}ℹ Not a git repository, skipping auto-update${NC}"
+fi
+echo ""
+
 # ---- Step 1: Check system dependencies ----
 echo -e "${YELLOW}[1/5]${NC} Checking system dependencies..."
 
@@ -87,6 +100,10 @@ After=network.target
 [Service]
 Type=simple
 WorkingDirectory=$SCRIPT_DIR
+# Silently auto-update the code on every boot/restart (ignores errors if offline)
+ExecStartPre=-/usr/bin/git -C "$SCRIPT_DIR" pull origin main --quiet
+# Silently auto-upgrade yt-dlp on every boot/restart to fix YouTube changes
+ExecStartPre=-"$VENV_DIR/bin/pip" install --quiet --upgrade yt-dlp
 ExecStart=/bin/bash -c '"$VENV_DIR/bin/python" "$SCRIPT_DIR/server.py"'
 Restart=on-failure
 RestartSec=5

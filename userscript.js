@@ -1,12 +1,14 @@
 // ==UserScript==
 // @name         One-Click YouTube Downloader
 // @namespace    http://tampermonkey.net/
-// @version      2.0
+// @version      2.1
 // @description  Adds a download button to YouTube videos that communicates with a local Flask server to trigger downloads.
 // @author       Aazan Noor Khuwaja
 // @match        *://*.youtube.com/*
 // @grant        GM_xmlhttpRequest
 // @connect      127.0.0.1
+// @updateURL    https://raw.githubusercontent.com/aazannoorkhuwaja/one_click_ytmp4_download/main/userscript.js
+// @downloadURL  https://raw.githubusercontent.com/aazannoorkhuwaja/one_click_ytmp4_download/main/userscript.js
 // ==/UserScript==
 
 (function () {
