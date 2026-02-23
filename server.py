@@ -10,6 +10,7 @@ import sys
 import http.cookiejar
 import stat
 import urllib.request
+import webbrowser
 from datetime import datetime
 
 # tkinter is optional — only needed for the folder picker dialog.
@@ -1037,6 +1038,188 @@ def refresh_cookies():
         return jsonify({"error": "Could not extract cookies. Check server logs."}), 500
 
 
+@app.route('/settings', methods=['GET'])
+def settings_page():
+    """
+    Very small HTML settings UI.
+    This is intentionally simple so non-technical users can change
+    the download folder and browser choice without touching files.
+    """
+    # We inline the HTML here to keep things self-contained.
+    # For a larger app, using templates would be better.
+    allowed_browsers = ['auto', 'none'] + BROWSER_PRIORITY
+    # Escape values minimally since these are controlled options.
+    current_dir = app_config.get('download_dir', '') or get_default_download_dir()
+    current_browser = app_config.get('browser', 'auto')
+
+    options_html = "".join(
+        f'<option value="{b}"{" selected" if b == current_browser else ""}>{b}</option>'
+        for b in allowed_browsers
+    )
+
+    html = f"""
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>One-Click YouTube Downloader – Settings</title>
+  <style>
+    body {{
+      background: #121212;
+      color: #ffffff;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      margin: 0;
+      padding: 24px;
+    }}
+    .card {{
+      max-width: 640px;
+      margin: 0 auto;
+      padding: 24px 28px;
+      background: #1e1e1e;
+      border-radius: 16px;
+      border: 1px solid #333;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.7);
+    }}
+    h1 {{
+      margin-top: 0;
+      font-size: 22px;
+    }}
+    label {{
+      display: block;
+      font-size: 13px;
+      color: #aaa;
+      margin-bottom: 4px;
+    }}
+    input[type="text"], select {{
+      width: 100%;
+      padding: 8px 10px;
+      border-radius: 8px;
+      border: 1px solid #444;
+      background: #181818;
+      color: #fff;
+      font-size: 14px;
+      box-sizing: border-box;
+    }}
+    .row {{
+      margin-bottom: 16px;
+    }}
+    button {{
+      cursor: pointer;
+      border-radius: 999px;
+      border: none;
+      padding: 8px 16px;
+      font-size: 14px;
+    }}
+    .primary {{
+      background: #cc0000;
+      color: #fff;
+      margin-right: 8px;
+    }}
+    .secondary {{
+      background: #333;
+      color: #eee;
+    }}
+    .status {{
+      font-size: 13px;
+      color: #8bc34a;
+      margin-top: 8px;
+      min-height: 18px;
+    }}
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>One-Click YouTube Downloader – Settings</h1>
+
+    <div class="row">
+      <label for="download_dir">Download folder</label>
+      <input id="download_dir" type="text" value="{current_dir}">
+      <div style="margin-top: 8px;">
+        <button class="secondary" id="choose_folder_btn">Choose with dialog…</button>
+      </div>
+    </div>
+
+    <div class="row">
+      <label for="browser">Browser for cookies (age-restricted videos)</label>
+      <select id="browser">
+        {options_html}
+      </select>
+    </div>
+
+    <div class="row">
+      <button class="primary" id="save_btn">Save</button>
+      <button class="secondary" id="refresh_cookies_btn">Refresh cookies now</button>
+      <div class="status" id="status_msg"></div>
+    </div>
+  </div>
+
+  <script>
+    const statusEl = document.getElementById('status_msg');
+
+    function setStatus(msg, isError) {{
+      statusEl.textContent = msg || '';
+      statusEl.style.color = isError ? '#f44336' : '#8bc34a';
+    }}
+
+    document.getElementById('choose_folder_btn').onclick = function () {{
+      setStatus('Opening folder picker…', false);
+      fetch('/choose_folder', {{ method: 'POST' }})
+        .then(r => r.json())
+        .then(j => {{
+          if (j.status === 'success') {{
+            document.getElementById('download_dir').value = j.path;
+            setStatus('Folder updated.', false);
+          }} else if (j.status === 'cancelled') {{
+            setStatus('Cancelled.', true);
+          }} else {{
+            setStatus(j.error || 'Failed to choose folder.', true);
+          }}
+        }})
+        .catch(err => setStatus('Error: ' + err, true));
+    }};
+
+    document.getElementById('save_btn').onclick = function () {{
+      const payload = {{
+        download_dir: document.getElementById('download_dir').value,
+        browser: document.getElementById('browser').value
+      }};
+      setStatus('Saving…', false);
+      fetch('/config', {{
+        method: 'POST',
+        headers: {{ 'Content-Type': 'application/json' }},
+        body: JSON.stringify(payload)
+      }})
+        .then(r => r.json().then(j => [r.status, j]))
+        .then(([status, j]) => {{
+          if (status === 200) {{
+            setStatus('Settings saved.', false);
+          }} else {{
+            setStatus(j.error || 'Failed to save settings.', true);
+          }}
+        }})
+        .catch(err => setStatus('Error: ' + err, true));
+    }};
+
+    document.getElementById('refresh_cookies_btn').onclick = function () {{
+      setStatus('Refreshing cookies…', false);
+      fetch('/refresh-cookies', {{ method: 'POST' }})
+        .then(r => r.json().then(j => [r.status, j]))
+        .then(([status, j]) => {{
+          if (status === 200) {{
+            setStatus(j.message || 'Cookies refreshed.', false);
+          }} else {{
+            setStatus(j.error || 'Failed to refresh cookies.', true);
+          }}
+        }})
+        .catch(err => setStatus('Error: ' + err, true));
+    }};
+  </script>
+</body>
+</html>
+"""
+    return html
+
+
 def open_config_folder():
     """
     Opens the folder that contains config.json in the native file manager.
@@ -1112,8 +1295,12 @@ def run_tray(server_thread):
         icon.stop()
 
     def on_open_settings(icon, item):
-        # User wants to view the config folder.
-        open_config_folder()
+        # Prefer opening the friendly web settings page in the default browser.
+        try:
+            webbrowser.open('http://127.0.0.1:5000/settings', new=2)
+        except Exception:
+            # If the browser fails to open, fall back to the config folder.
+            open_config_folder()
 
     # Static label to show basic server status
     status_item = pystray.MenuItem('Server Status: Running', lambda icon, item: None, enabled=False)
