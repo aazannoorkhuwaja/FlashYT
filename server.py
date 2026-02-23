@@ -18,6 +18,15 @@ try:
 except ImportError:
     HAS_TKINTER = False
 
+# pystray + Pillow are used for the system tray icon.
+# If they are missing, we fail fast with a clear error so the user knows what to install.
+try:
+    import pystray
+    from PIL import Image, ImageDraw
+    HAS_TRAY_DEPS = True
+except ImportError:
+    HAS_TRAY_DEPS = False
+
 def get_ffmpeg_path():
     """
     Returns the path to the ffmpeg executable.
@@ -43,6 +52,8 @@ def get_ffmpeg_path():
 from flask import Flask, request, jsonify, render_template
 from flask_cors import CORS
 import yt_dlp
+
+from werkzeug.serving import make_server
 
 app = Flask(__name__)
 # Enable CORS for the Tampermonkey script
@@ -95,6 +106,33 @@ def save_config(config):
 # Load config at startup
 app_config = load_config()
 
+# ============== SIMPLE TRAY-FRIENDLY SERVER WRAPPER ==============
+
+
+class FlaskServerThread(threading.Thread):
+    """
+    Runs the Flask app on a background thread using werkzeug's make_server.
+    This gives us a simple way to start/stop the HTTP server from the tray.
+    """
+
+    def __init__(self, flask_app, host='127.0.0.1', port=5000):
+        super().__init__(daemon=True)
+        self.flask_app = flask_app
+        self.host = host
+        self.port = port
+        self._server = None
+
+    def run(self):
+        # We create the WSGI server here so it lives for the thread's lifetime.
+        self._server = make_server(self.host, self.port, self.flask_app)
+        self._server.serve_forever()
+
+    def shutdown(self):
+        # Called from the tray when the user clicks Quit.
+        if self._server is not None:
+            self._server.shutdown()
+
+
 # ============== BROWSER AUTO-DETECTION ==============
 
 # Priority order: most common browsers first
@@ -142,6 +180,7 @@ def get_active_browser():
 
 COOKIE_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), '.cached_cookies.txt')
 cookie_lock = threading.Lock()
+cookie_ready = threading.Event()  # Signals when initial cookie extraction is done
 last_cookie_refresh = 0
 COOKIE_REFRESH_INTERVAL = 1800  # 30 minutes
 
@@ -214,56 +253,64 @@ def extract_cookies_to_file():
     This avoids the 3-5 second decryption on every single download.
     """
     global last_cookie_refresh
-    browser = get_active_browser()
-    if not browser:
-        print("[Server] No browser configured — skipping cookie extraction.")
-        return False
-
-    temp_dir = tempfile.mkdtemp()
     try:
-        print(f"[Server] Extracting cookies from {browser} (one-time)...")
-        ydl_opts = {
-            'quiet': True,
-            'skip_download': True,
-        }
-        
-        # Copy SQLite DB to avoid lock errors
-        profile_dir = copy_browser_cookies(browser, temp_dir)
-        if profile_dir:
-            ydl_opts['cookiesfrombrowser'] = (browser, profile_dir)
-            print(f"[Server] Copied SQLite cookie DB to temp file to prevent lock errors.")
-        else:
-            ydl_opts['cookiesfrombrowser'] = (browser,)
+        browser = get_active_browser()
+        if not browser:
+            print("[Server] No browser configured — skipping cookie extraction.")
+            return False
+
+        temp_dir = tempfile.mkdtemp()
+        try:
+            print(f"[Server] Extracting cookies from {browser} (one-time)...")
+            ydl_opts = {
+                'quiet': True,
+                'skip_download': True,
+            }
             
-        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            # yt-dlp loads cookies into its cookie jar — we save them to a file
-            cookie_jar = ydl.cookiejar
-            if cookie_jar:
-                cookie_jar.save(COOKIE_FILE, ignore_discard=True, ignore_expires=True)
-                last_cookie_refresh = time.time()
-                count = len(list(cookie_jar))
-                print(f"[Server] ✓ Cached {count} cookies to file. Downloads will be instant now!")
-                return True
+            # Copy SQLite DB to avoid lock errors
+            profile_dir = copy_browser_cookies(browser, temp_dir)
+            if profile_dir:
+                ydl_opts['cookiesfrombrowser'] = (browser, profile_dir)
+                print(f"[Server] Copied SQLite cookie DB to temp file to prevent lock errors.")
             else:
-                print("[Server] No cookies found in browser.")
-                return False
-    except Exception as e:
-        print(f"[Server] Cookie extraction failed: {e}")
-        print("[Server] Downloads will still work but may be slower.")
-        return False
+                ydl_opts['cookiesfrombrowser'] = (browser,)
+                
+            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                # yt-dlp loads cookies into its cookie jar — we save them to a file
+                cookie_jar = ydl.cookiejar
+                if cookie_jar:
+                    cookie_jar.save(COOKIE_FILE, ignore_discard=True, ignore_expires=True)
+                    last_cookie_refresh = time.time()
+                    count = len(list(cookie_jar))
+                    print(f"[Server] ✓ Cached {count} cookies to file. Downloads will be instant now!")
+                    return True
+                else:
+                    print("[Server] No cookies found in browser.")
+                    return False
+        except Exception as e:
+            print(f"[Server] Cookie extraction failed: {e}")
+            print("[Server] Downloads will still work but may be slower.")
+            return False
+        finally:
+            shutil.rmtree(temp_dir, ignore_errors=True)
     finally:
-        shutil.rmtree(temp_dir, ignore_errors=True)
+        # ALWAYS signal that cookie extraction is done (success or failure)
+        # so get_cookie_opts() never blocks forever
+        cookie_ready.set()
 
 def get_cookie_opts():
     """
     Returns the yt-dlp cookie options.
-    Uses cached cookie file if available (fast), otherwise falls back to live extraction (slow).
+    On first call, waits up to 15 seconds for background cookie extraction to finish.
     """
+    # Wait for the initial cookie extraction to complete (max 15 seconds)
+    if not cookie_ready.is_set():
+        print("[Server] Waiting for cookie extraction to finish...")
+        cookie_ready.wait(timeout=15)
+    
     if os.path.exists(COOKIE_FILE):
         return {'cookiefile': COOKIE_FILE}
     
-    # If the file hasn't been created yet (or failed), we DO NOT fall back to live extraction.
-    # Live extraction breaks the download completely if the browser's cookie DB is missing or locked.
     return {}
 
 
@@ -710,24 +757,125 @@ def refresh_cookies():
         return jsonify({"error": "Could not extract cookies. Check server logs."}), 500
 
 
+def open_config_folder():
+    """
+    Opens the folder that contains config.json in the native file manager.
+    This lets non-technical users find logs/config without touching the CLI.
+    """
+    folder = os.path.dirname(CONFIG_FILE)
+    os.makedirs(folder, exist_ok=True)
+
+    try:
+        if sys.platform == 'win32':
+            # Use explorer on Windows
+            subprocess.Popen(['explorer', folder])
+        elif sys.platform == 'darwin':
+            # Use open on macOS
+            subprocess.Popen(['open', folder])
+        else:
+            # Use xdg-open on Linux / other Unix
+            subprocess.Popen(['xdg-open', folder])
+    except Exception as e:
+        print(f"[Server] Failed to open config folder: {e}")
+
+
+def create_tray_image():
+    """
+    Creates a simple in-memory tray icon image.
+    Keeping it generated avoids dealing with external asset files.
+    """
+    size = 64
+    image = Image.new('RGBA', (size, size), (30, 30, 30, 255))
+    draw = ImageDraw.Draw(image)
+
+    # Draw a red rounded rectangle background
+    margin = 8
+    draw.rounded_rectangle(
+        [(margin, margin), (size - margin, size - margin)],
+        radius=12,
+        fill=(204, 0, 0, 255)
+    )
+
+    # Draw a white "play" triangle in the center
+    triangle = [
+        (size * 0.40, size * 0.32),
+        (size * 0.40, size * 0.68),
+        (size * 0.70, size * 0.50),
+    ]
+    draw.polygon(triangle, fill=(255, 255, 255, 255))
+
+    return image
+
+
+def run_tray(server_thread):
+    """
+    Starts the system tray icon on the main thread and blocks until the user quits.
+    The Flask server runs in server_thread in the background.
+    """
+    if not HAS_TRAY_DEPS:
+        # We keep this simple: fail loudly so the user knows what to install.
+        print("[Server] pystray and Pillow are required for the system tray.")
+        print("[Server] Install them with: pip install pystray pillow")
+        # If there is no tray, at least keep the process alive with the server running.
+        try:
+            while True:
+                time.sleep(1)
+        except KeyboardInterrupt:
+            server_thread.shutdown()
+            return
+
+    def on_quit(icon, item):
+        # User chose Quit from the tray menu: stop HTTP server then tray icon.
+        print("[Tray] Quit selected. Shutting down server...")
+        server_thread.shutdown()
+        icon.visible = False
+        icon.stop()
+
+    def on_open_settings(icon, item):
+        # User wants to view the config folder.
+        open_config_folder()
+
+    # Static label to show basic server status
+    status_item = pystray.MenuItem('Server Status: Running', lambda icon, item: None, enabled=False)
+
+    menu = pystray.Menu(
+        status_item,
+        pystray.MenuItem('Settings', on_open_settings),
+        pystray.MenuItem('Quit', on_quit)
+    )
+
+    icon = pystray.Icon(
+        name='One-Click YouTube Downloader',
+        title='One-Click YouTube Downloader',
+        icon=create_tray_image(),
+        menu=menu
+    )
+
+    print("[Tray] System tray running. Right-click the icon for options.")
+    icon.run()
+
+
 if __name__ == '__main__':
     # On Windows with a bundled .exe, auto-register for startup on boot
     if getattr(sys, 'frozen', False) and sys.platform == 'win32':
         try:
             exe_path = sys.executable
-            startup_dir = os.path.join(os.environ.get('APPDATA', ''), 
-                                        'Microsoft', 'Windows', 'Start Menu', 
-                                        'Programs', 'Startup')
+            startup_dir = os.path.join(
+                os.environ.get('APPDATA', ''),
+                'Microsoft', 'Windows', 'Start Menu',
+                'Programs', 'Startup'
+            )
             vbs_path = os.path.join(startup_dir, 'YouTubeDownloader.vbs')
             if not os.path.exists(vbs_path):
                 # Create a VBS script that launches the .exe silently (no terminal window)
-                vbs_content = f'Set WshShell = CreateObject("WScript.Shell")\n'
+                vbs_content = 'Set WshShell = CreateObject("WScript.Shell")\n'
                 vbs_content += f'WshShell.Run Chr(34) & "{exe_path}" & Chr(34), 0, False\n'
+                os.makedirs(startup_dir, exist_ok=True)
                 with open(vbs_path, 'w') as f:
                     f.write(vbs_content)
-                print(f"[Server] ✓ Auto-start configured! This app will now launch silently on every boot.")
+                print("[Server] ✓ Auto-start configured! This app will now launch silently on every boot.")
             else:
-                print(f"[Server] ✓ Auto-start already configured.")
+                print("[Server] ✓ Auto-start already configured.")
         except Exception as e:
             print(f"[Server] Could not set up auto-start: {e}")
 
@@ -744,5 +892,10 @@ if __name__ == '__main__':
     # (cookie extraction can take 5-10 seconds on fresh installs)
     threading.Thread(target=extract_cookies_to_file, daemon=True).start()
 
-    app.run(host='127.0.0.1', port=5000, debug=False)
+    # Start Flask on a background thread so the main thread can own the tray.
+    server_thread = FlaskServerThread(app, host='127.0.0.1', port=5000)
+    server_thread.start()
+
+    # Run the system tray icon on the main thread.
+    run_tray(server_thread)
 
