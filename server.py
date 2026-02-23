@@ -8,7 +8,15 @@ import shutil
 import time
 import sys
 import http.cookiejar
-import tkinter as tk
+
+# tkinter is optional — only needed for the folder picker dialog.
+# It may not be available on headless servers or minimal Docker containers.
+try:
+    import tkinter as tk
+    from tkinter import filedialog
+    HAS_TKINTER = True
+except ImportError:
+    HAS_TKINTER = False
 
 def get_ffmpeg_path():
     """
@@ -23,7 +31,7 @@ def get_ffmpeg_path():
             return os.path.join(base_path, "ffmpeg.exe")
         return os.path.join(base_path, "ffmpeg")
     return shutil.which("ffmpeg") or "ffmpeg"
-from tkinter import filedialog
+
 from flask import Flask, request, jsonify, render_template
 from flask_cors import CORS
 import yt_dlp
@@ -48,6 +56,13 @@ DEFAULT_CONFIG = {
     "download_dir": "",
     "browser": "auto"
 }
+
+def get_default_download_dir():
+    """Returns a sensible default download directory for any platform."""
+    if sys.platform == 'win32':
+        # Windows: use the user's Downloads folder
+        return os.path.join(os.path.expanduser('~'), 'Downloads')
+    return os.path.expanduser('~/Downloads')
 
 def load_config():
     """Load config from config.json, creating it with defaults if it doesn't exist."""
@@ -315,7 +330,8 @@ def run_download_thread(url, selected_format, job_id, cached_info=None):
             }
 
     # Use download dir from live config
-    download_dir = os.path.expanduser(app_config.get('download_dir', '~/Downloads'))
+    download_dir = app_config.get('download_dir', '') or get_default_download_dir()
+    download_dir = os.path.expanduser(download_dir)
     outtmpl = os.path.join(download_dir, '%(title)s.%(ext)s')
 
     ydl_opts = {
@@ -575,7 +591,8 @@ def download_video():
     }
 
     # Ensure download directory exists
-    download_dir = os.path.expanduser(app_config.get('download_dir', '~/Downloads'))
+    download_dir = app_config.get('download_dir', '') or get_default_download_dir()
+    download_dir = os.path.expanduser(download_dir)
     os.makedirs(download_dir, exist_ok=True)
 
     # Fetch cached info if it exists and is less than 15 minutes old
@@ -615,6 +632,13 @@ def get_config():
 @app.route('/choose_folder', methods=['POST'])
 def choose_folder():
     """Opens a native OS folder selection dialog."""
+    if not HAS_TKINTER:
+        # On headless/minimal systems, use the default Downloads folder
+        default_dir = get_default_download_dir()
+        os.makedirs(default_dir, exist_ok=True)
+        app_config['download_dir'] = default_dir
+        save_config(app_config)
+        return jsonify({"status": "success", "path": default_dir}), 200
     try:
         # Hide the main tkinter window
         root = tk.Tk()
@@ -681,7 +705,6 @@ def refresh_cookies():
 if __name__ == '__main__':
     # On Windows with a bundled .exe, auto-register for startup on boot
     if getattr(sys, 'frozen', False) and sys.platform == 'win32':
-        import platform
         try:
             exe_path = sys.executable
             startup_dir = os.path.join(os.environ.get('APPDATA', ''), 
@@ -700,7 +723,8 @@ if __name__ == '__main__':
         except Exception as e:
             print(f"[Server] Could not set up auto-start: {e}")
 
-    print(f"[Server] Download folder: {os.path.expanduser(app_config.get('download_dir', '~/Downloads'))}")
+    download_dir = app_config.get('download_dir', '') or get_default_download_dir()
+    print(f"[Server] Download folder: {os.path.expanduser(download_dir)}")
     print(f"[Server] Browser for cookies: {app_config.get('browser', 'auto')}")
     browser_name = get_active_browser()
     if browser_name:
