@@ -72,17 +72,10 @@ def prefetch_qualities(url, cookies_browser=None):
         "--no-playlist",
         "--dump-json",
         "--ignore-config",
+        "--no-warnings",
+        url
     ]
     
-    # Add optional profile_dir from cookie dict
-    cookie_dict = get_best_available_cookies()
-    if cookie_dict:
-        if "profile_dir" in cookie_dict:
-            cmd.extend(["--cookies-from-browser", f"{cookie_dict['browser']}:{cookie_dict['profile_dir']}"])
-        else:
-            cmd.extend(["--cookies-from-browser", cookie_dict['browser']])
-
-    cmd.append(url)
     log.debug(f"[Downloader] prefetch_qualities running: {' '.join(cmd)}")
     
     try:
@@ -94,9 +87,6 @@ def prefetch_qualities(url, cookies_browser=None):
             encoding='utf-8',
             errors='replace'
         )
-        
-        # Cleanup temp cookie DB if created
-        cleanup_cookie_dir(cookie_dict)
         
         if result.returncode != 0:
             err = result.stderr.strip()

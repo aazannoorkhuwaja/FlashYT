@@ -51,50 +51,41 @@ def read_message():
         log.error(f"[Host] Error reading msg: {e}")
         return None
 
-def message_worker(download_queue):
+def handle_task(msg):
     from downloader import prefetch_qualities, download_video
     downloads_dir = os.path.join(os.path.expanduser('~'), 'Downloads')
+    action = msg.get("type")
     
-    while True:
-        msg = download_queue.get()
-        if msg is None:
-            break
-            
-        action = msg.get("type")
-        
-        try:
-            if action == "prefetch":
-                url = msg.get("url")
-                if not url:
-                    send_message({"type": "error", "message": "No URL provided for prefetch."})
-                    continue
-                    
-                result = prefetch_qualities(url)
-                send_message(result)
-                    
-            elif action == "download":
-                url = msg.get("url")
-                itag = msg.get("itag")
-                title = msg.get("title", "YouTube Video")
+    try:
+        if action == "prefetch":
+            url = msg.get("url")
+            if not url:
+                send_message({"type": "error", "message": "No URL provided for prefetch."})
+                return
                 
-                if not url or not itag:
-                    send_message({"type": "error", "message": "Missing URL or format itag for download."})
-                    continue
-                    
-                def progress_callback(update_dict):
-                    send_message(update_dict)
-                    
-                log.info(f"[Host] Beginning download: {title}")
-                result = download_video(url, itag, downloads_dir, progress_callback)
-                send_message(result)
-                    
-        except Exception as e:
-            err_msg = traceback.format_exc()
-            log.error(f"[Host] Unexpected worker error:\n{err_msg}")
-            send_message({"type": "error", "message": "Internal error. Check host.log"})
+            result = prefetch_qualities(url)
+            send_message(result)
+                
+        elif action == "download":
+            url = msg.get("url")
+            itag = msg.get("itag")
+            title = msg.get("title", "YouTube Video")
             
-        finally:
-            download_queue.task_done()
+            if not url or not itag:
+                send_message({"type": "error", "message": "Missing URL or format itag for download."})
+                return
+                
+            def progress_callback(update_dict):
+                send_message(update_dict)
+                
+            log.info(f"[Host] Beginning parallel download: {title}")
+            result = download_video(url, itag, downloads_dir, progress_callback)
+            send_message(result)
+            
+    except Exception as e:
+        err_msg = traceback.format_exc()
+        log.error(f"[Host] Unexpected worker error:\n{err_msg}")
+        send_message({"type": "error", "message": "Internal error. Check host.log"})
 
 def main():
     log.info("=" * 40)
@@ -106,10 +97,10 @@ def main():
         start_tray_icon()
     except Exception as e:
         log.warning(f"[Tray] System tray disabled (missing Linux bindings): {e}")
-    
-    download_queue = queue.Queue()
-    worker_thread = threading.Thread(target=message_worker, args=(download_queue,), daemon=True)
-    worker_thread.start()
+
+    # No longer using a blocking queue for downloads. 
+    # Everything spawns directly into its own concurrent thread.
+    active_threads = []
 
     try:
         while True:
@@ -119,6 +110,8 @@ def main():
                 break
                 
             action = msg.get("type")
+            if not action:
+                continue
             
             if action == "ping":
                 send_message({"type": "pong", "version": "1.0.0"})
@@ -141,7 +134,13 @@ def main():
                     send_message({"type": "error", "message": f"Failed to open folder: {e}"})
                     
             elif action in ["prefetch", "download"]:
-                download_queue.put(msg)
+                # Spawn concurrent download/prefetch thread instantly!
+                t = threading.Thread(target=handle_task, args=(msg,), daemon=True)
+                t.start()
+                active_threads.append(t)
+                
+                # Cleanup dead threads from tracking list
+                active_threads = [thread for thread in active_threads if thread.is_alive()]
                 
             else:
                 log.warning(f"[Host] Raw unhandled message type: {action}")
@@ -153,8 +152,10 @@ def main():
         err_msg = traceback.format_exc()
         log.error(f"[Host] Fatal main loop error:\n{err_msg}")
     finally:
-        # Before shutting down, ensure all gracefully queued test downloads finish
-        download_queue.join()
+        log.info(f"[Host] Waiting for {len(active_threads)} active download threads to finish...")
+        for t in active_threads:
+            if t.is_alive():
+                t.join(timeout=2.0)
         sys.exit(0)
 
 if __name__ == '__main__':

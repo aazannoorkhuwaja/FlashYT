@@ -3,6 +3,9 @@ let nativePort = null;
 let hostConnected = false;
 let hostNotConnectedFlag = false;
 
+// Cache for active downloads tracking
+let activeDownloads = {};
+
 function connectToHost() {
     if (nativePort) return;
 
@@ -17,6 +20,16 @@ function connectToHost() {
             console.log("Native host connected successfully.");
         }
         else if (response.type === "progress" || response.type === "done" || response.type === "error") {
+            // Track active download progress
+            if (response.type === "progress" && response.filename) {
+                activeDownloads[response.filename] = response;
+            }
+            if (response.type === "done" || response.type === "error") {
+                if (response.filename && activeDownloads[response.filename]) {
+                    delete activeDownloads[response.filename];
+                }
+            }
+
             // Relays passive streaming events back to all active YouTube tabs
             chrome.tabs.query({ url: "*://*.youtube.com/*" }, (tabs) => {
                 tabs.forEach(tab => {
@@ -58,6 +71,7 @@ function connectToHost() {
         nativePort = null;
         hostConnected = false;
         hostNotConnectedFlag = true;
+        activeDownloads = {}; // Clear queue heavily
     });
 
     // Test the connection immediately
@@ -97,6 +111,15 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     }
 
     if (message.type === "DOWNLOAD") {
+        let dummyFileName = `Downloading ${message.title}...`;
+        activeDownloads[dummyFileName] = {
+            type: "progress",
+            filename: dummyFileName,
+            percent: "0%",
+            eta: "Starting...",
+            speed: "0 KiB/s"
+        };
+
         nativePort.postMessage({
             type: "download",
             url: message.url,
@@ -117,6 +140,11 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         chrome.storage.local.get({ history: [] }, (data) => {
             sendResponse({ history: data.history });
         });
+        return true;
+    }
+
+    if (message.type === "GET_QUEUE") {
+        sendResponse({ queue: Object.values(activeDownloads) });
         return true;
     }
 });
@@ -146,7 +174,14 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
             return;
         }
 
-        // Context menu triggers an automatic 1080p download (fallback generic)
+        activeDownloads[`Quick Context Download`] = {
+            type: "progress",
+            filename: `Quick Context Download`,
+            percent: "0%",
+            eta: "Starting...",
+            speed: "0 KiB/s"
+        };
+
         nativePort.postMessage({
             type: "download",
             url: url,
