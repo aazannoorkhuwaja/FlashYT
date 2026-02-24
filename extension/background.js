@@ -122,7 +122,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                 try {
                     sendResponse(response);
                 } catch (e) {
-                    // Ignore context invalidated if the user navigated away before prefetch finished
+                    console.warn("[YT-Native] Failed to sendResponse to prefetch. Tab may have closed.", e);
                 }
             }
         };
@@ -133,7 +133,11 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
     if (message.type === MSG.EXT_DOWNLOAD) {
         let videoId = "placeholder";
-        try { videoId = new URL(message.url).searchParams.get("v") || "placeholder"; } catch (e) { }
+        try {
+            videoId = new URL(message.url).searchParams.get("v") || "placeholder";
+        } catch (e) {
+            console.warn("[YT-Native] Failed to parse YouTube video ID from URL:", message.url, e);
+        }
         let thumb = videoId !== "placeholder" ? `https://i.ytimg.com/vi/${videoId}/mqdefault.jpg` : "icons/icon48.png";
 
         activeDownloads[message.title] = {

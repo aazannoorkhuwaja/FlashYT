@@ -317,8 +317,13 @@ def download_video(url, itag, output_dir, progress_callback, cookies_browser=Non
         errors='replace'
     )
     
-    # yt-dlp Output parser regex: [download] 100% of 23.41MiB in 00:03 at 7.64MiB/s or ETA
-    progress_regex = re.compile(r'\[download\]\s+(.*?%)\s+of\s+.*?(?:at\s+(.*?/s))?\s+(?:ETA\s+(.*?))?(?:\s+in\s+.*?)?$')
+    # Ultra-permissive extraction logic to prevent UI process stalls
+    # Matches: "[download]  14.5% of   20.10MiB at    3.45MiB/s ETA 00:04"
+    # Even if "of", "at" or "ETA" is translated/missing, it forcefully grabs the %
+    progress_regex = re.compile(r'\[download\][^\d]*([\d.]+)%')
+    speed_regex = re.compile(r'at\s+([~]?[\d.]+[A-Za-z]+/s)')
+    eta_regex = re.compile(r'ETA\s+([\d:]+)')
+    
     destination_regex = re.compile(r'\[(?:download|Merger|ExtractAudio)\]\s+Destination:\s+(.*)')
     already_downloaded_regex = re.compile(r'\[download\]\s+(.*)\s+has already been downloaded')
     
@@ -346,11 +351,14 @@ def download_video(url, itag, output_dir, progress_callback, cookies_browser=Non
                 })
                 continue
                 
-            prog_match = progress_regex.search(clean_line)
-            if prog_match:
-                percent = prog_match.group(1).strip()
-                speed = (prog_match.group(2) or "").strip()
-                eta = (prog_match.group(3) or "").strip()
+            if '[download]' in clean_line and '%' in clean_line:
+                prog_match = progress_regex.search(clean_line)
+                speed_match = speed_regex.search(clean_line)
+                eta_match = eta_regex.search(clean_line)
+                
+                percent = f"{prog_match.group(1)}%" if prog_match else "Downloading..."
+                speed = speed_match.group(1) if speed_match else ""
+                eta = eta_match.group(1) if eta_match else ""
                 
                 progress_callback({
                     "type": "progress",

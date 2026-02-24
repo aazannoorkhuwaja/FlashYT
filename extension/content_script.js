@@ -2,6 +2,7 @@ const defaultBtnHtml = '⬇ Download';
 let isWaitingForMenu = false;
 let currentQualities = null;
 let currentTitle = null;
+let currentUrl = null;
 
 function showToast(message, isError = false) {
     const toast = document.createElement('div');
@@ -132,8 +133,8 @@ function injectButton() {
 
             menu.style.display = 'block';
 
-            if (currentQualities) {
-                buildMenu(currentQualities, currentTitle);
+            if (currentQualities && currentUrl === window.location.href) {
+                buildMenu(currentQualities, currentTitle, currentUrl);
             } else {
                 menu.innerHTML = '<div style="padding: 10px 16px; font-size: 14px; color: #aaa; text-align: center;">Fetching qualities...</div>';
                 triggerPrefetch(window.location.href);
@@ -157,13 +158,14 @@ function injectButton() {
     triggerPrefetch(window.location.href);
 }
 
-function buildMenu(qualities, title) {
+function buildMenu(qualities, title, urlToDownload) {
     const menu = document.getElementById('ytdl-native-menu');
     const btn = document.getElementById('ytdl-native-btn');
     if (!menu || !btn) return;
 
     currentQualities = qualities;
     currentTitle = title || "YouTube Video";
+    currentUrl = urlToDownload;
     menu.innerHTML = '';
 
     qualities.forEach(q => {
@@ -191,7 +193,7 @@ function buildMenu(qualities, title) {
 
             chrome.runtime.sendMessage({
                 type: MSG.EXT_DOWNLOAD,
-                url: window.location.href,
+                url: urlToDownload,
                 itag: q.itag,
                 title: currentTitle
             }, (res) => {
@@ -222,11 +224,16 @@ function triggerPrefetch(url) {
         }
 
         if (response.type === MSG.HOST_PREFETCH_RESULT) {
-            currentQualities = response.qualities;
-            currentTitle = response.title;
-            const menu = document.getElementById('ytdl-native-menu');
-            if (menu && menu.style.display === 'block') {
-                buildMenu(currentQualities, currentTitle);
+            // Only update the global cache if the user is STILL on the exact same video they requested.
+            // This strictly prevents fast-click SPA navigation ghost downloads.
+            if (window.location.href === url) {
+                currentQualities = response.qualities;
+                currentTitle = response.title;
+                currentUrl = url;
+                const menu = document.getElementById('ytdl-native-menu');
+                if (menu && menu.style.display === 'block') {
+                    buildMenu(currentQualities, currentTitle, currentUrl);
+                }
             }
         } else if (response.type === MSG.HOST_ERROR) {
             const menu = document.getElementById('ytdl-native-menu');
