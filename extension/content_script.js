@@ -118,7 +118,7 @@ function injectButton() {
         e.stopPropagation();
 
         // Ensure host is actually connected BEFORE opening the menu
-        chrome.runtime.sendMessage({ type: "CHECK_STATUS" }, (response) => {
+        chrome.runtime.sendMessage({ type: MSG.EXT_CHECK_STATUS }, (response) => {
             if (response && response.status === "disconnected") {
                 errorMsg.style.display = 'block';
                 setTimeout(() => errorMsg.style.display = 'none', 5000);
@@ -190,7 +190,7 @@ function buildMenu(qualities, title) {
             setTimeout(() => { btn.innerHTML = defaultBtnHtml; btn.style.backgroundColor = 'rgb(204, 0, 0)'; }, 3000);
 
             chrome.runtime.sendMessage({
-                type: 'DOWNLOAD',
+                type: MSG.EXT_DOWNLOAD,
                 url: window.location.href,
                 itag: q.itag,
                 title: currentTitle
@@ -211,24 +211,24 @@ function buildMenu(qualities, title) {
 function triggerPrefetch(url) {
     currentQualities = null;
 
-    chrome.runtime.sendMessage({ type: "PREFETCH", url: url }, (response) => {
+    chrome.runtime.sendMessage({ type: MSG.EXT_PREFETCH, url: url }, (response) => {
         if (!response) {
             console.error("No response from extension background context.");
             return;
         }
 
-        if (response.error === "HOST_NOT_CONNECTED") {
+        if (response.error === MSG.ERR_NOT_CONNECTED) {
             return;
         }
 
-        if (response.type === "prefetch_result") {
+        if (response.type === MSG.HOST_PREFETCH_RESULT) {
             currentQualities = response.qualities;
             currentTitle = response.title;
             const menu = document.getElementById('ytdl-native-menu');
             if (menu && menu.style.display === 'block') {
                 buildMenu(currentQualities, currentTitle);
             }
-        } else if (response.type === "error") {
+        } else if (response.type === MSG.HOST_ERROR) {
             const menu = document.getElementById('ytdl-native-menu');
             if (menu && menu.style.display === 'block') {
                 menu.innerHTML = `<div style="padding: 10px 16px; font-size: 14px; color: #e74c3c; text-align: center;">⚠ Error: ${response.message}</div>`;
@@ -241,9 +241,9 @@ function triggerPrefetch(url) {
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     const btn = document.getElementById('ytdl-native-btn');
 
-    if (message.type === 'done') {
+    if (message.type === MSG.HOST_DONE) {
         showToast(`Video saved: ${message.filename} `);
-    } else if (message.type === 'error') {
+    } else if (message.type === MSG.HOST_ERROR) {
         if (btn) {
             btn.textContent = '⚠ Error';
             btn.style.backgroundColor = '#e74c3c';

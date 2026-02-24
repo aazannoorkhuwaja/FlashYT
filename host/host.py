@@ -82,6 +82,14 @@ def handle_task(msg):
             result = download_video(url, itag, downloads_dir, progress_callback)
             send_message(result)
             
+        elif action == "update_engine":
+            from downloader import update_ytdlp
+            def progress_callback(update_dict):
+                send_message(update_dict)
+            log.info("[Host] Initiating manual yt-dlp core auto-update sequence.")
+            result = update_ytdlp(progress_callback)
+            send_message(result)
+            
     except Exception as e:
         err_msg = traceback.format_exc()
         log.error(f"[Host] Unexpected worker error:\n{err_msg}")
@@ -133,7 +141,7 @@ def main():
                 except Exception as e:
                     send_message({"type": "error", "message": f"Failed to open folder: {e}"})
                     
-            elif action in ["prefetch", "download"]:
+            elif action in ["prefetch", "download", "update_engine"]:
                 # Spawn concurrent download/prefetch thread instantly!
                 t = threading.Thread(target=handle_task, args=(msg,), daemon=True)
                 t.start()

@@ -14,12 +14,21 @@ ansi_escape = re.compile(r'\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])')
 def get_ytdlp_path():
     """
     Returns absolute path to bundled yt-dlp.exe
-    Checks: same directory as host.exe (PyInstaller bundle)
-            or relative path ../vendor/yt-dlp.exe (script)
+    Checks:
+        1. Persistent auto-update AppData directory (OVERRIDES BUNDLE)
+        2. Same directory as host.exe (PyInstaller bundle)
+        3. Relative path ../vendor/yt-dlp.exe (script)
     Raises FileNotFoundError with clear message if not found.
     """
     executable_name = 'yt-dlp.exe' if platform.system() == 'Windows' else 'yt-dlp'
     
+    # 0. Check persistent update directory first (Overrides strictly packed versions)
+    appdata = os.environ.get('APPDATA', '') or os.path.expanduser('~')
+    ext_dir = os.path.join(appdata, 'YouTubeNativeExt')
+    updated_path = os.path.join(ext_dir, executable_name)
+    if os.path.exists(updated_path):
+        return updated_path
+        
     # 1. Check if running as compiled PyInstaller executable
     if getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS'):
         bundle_path = os.path.join(sys._MEIPASS, executable_name)
@@ -61,6 +70,59 @@ def get_ffmpeg_path():
         return system_path
         
     raise FileNotFoundError("ffmpeg not found. Please reinstall the downloader.")
+
+def update_ytdlp(progress_callback):
+    """
+    Cross-platform transparent Core Updater for the `yt-dlp` executable engine.
+    Solves the '1-month bundle expiration' issue by dynamically overriding binary paths.
+    """
+    try:
+        is_frozen = getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS')
+        
+        if is_frozen and platform.system() == 'Windows':
+            import urllib.request
+            appdata = os.environ.get('APPDATA', '') or os.path.expanduser('~')
+            ext_dir = os.path.join(appdata, 'YouTubeNativeExt')
+            os.makedirs(ext_dir, exist_ok=True)
+            new_ytdlp_path = os.path.join(ext_dir, 'yt-dlp.exe')
+            
+            progress_callback({
+                "type": "progress",
+                "percent": "50%",
+                "speed": "Downloading engine...",
+                "eta": "00:05",
+                "title": "yt-dlp Core Updater"
+            })
+            
+            urllib.request.urlretrieve("https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.exe", new_ytdlp_path)
+        else:
+            # Mac/Linux Native Python distribution
+            progress_callback({
+                "type": "progress",
+                "percent": "50%",
+                "speed": "Upgrading via PIP...",
+                "eta": "00:05",
+                "title": "yt-dlp Core Updater"
+            })
+            subprocess.run([sys.executable, "-m", "pip", "install", "-U", "yt-dlp"], check=True)
+            
+        progress_callback({
+            "type": "done",
+            "filename": "yt-dlp Core Updater",
+            "size_mb": 0,
+            "title": "yt-dlp Core Updater"
+        })
+        log.info("[Downloader] yt-dlp Core Update Success.")
+        return {"type": "done", "message": "Core updated successfully."}
+        
+    except Exception as e:
+        log.error(f"[Updater] Failed to update yt-dlp: {e}")
+        progress_callback({
+            "type": "error",
+            "message": f"Update failed: {e}",
+            "title": "yt-dlp Core Updater"
+        })
+        return {"type": "error", "message": str(e)}
 
 def prefetch_qualities(url, cookies_browser=None):
     """

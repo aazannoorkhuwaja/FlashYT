@@ -1,3 +1,5 @@
+importScripts("constants.js");
+
 const HOST_NAME = "com.youtube.native.ext";
 let nativePort = null;
 let hostConnected = false;
@@ -14,21 +16,21 @@ function connectToHost() {
     nativePort.onMessage.addListener((response) => {
         if (!response) return;
 
-        if (response.type === "pong") {
+        if (response.type === MSG.HOST_PONG) {
             hostConnected = true;
             hostNotConnectedFlag = false;
             console.log("Native host connected successfully.");
         }
-        else if (response.type === "progress" || response.type === "done" || response.type === "error") {
+        else if (response.type === MSG.HOST_PROGRESS || response.type === MSG.HOST_DONE || response.type === MSG.HOST_ERROR) {
             // Track active download progress keyed by title
-            if (response.type === "progress" && response.title) {
+            if (response.type === MSG.HOST_PROGRESS && response.title) {
                 if (activeDownloads[response.title]) {
                     activeDownloads[response.title].percent = response.percent;
                     activeDownloads[response.title].speed = response.speed;
                     activeDownloads[response.title].eta = response.eta;
                 }
             }
-            if (response.type === "done" || response.type === "error") {
+            if (response.type === MSG.HOST_DONE || response.type === MSG.HOST_ERROR) {
                 if (response.title && activeDownloads[response.title]) {
                     delete activeDownloads[response.title];
                 }
@@ -46,7 +48,7 @@ function connectToHost() {
             });
 
             // Log history or notify
-            if (response.type === "done") {
+            if (response.type === MSG.HOST_DONE) {
                 chrome.notifications.create({
                     type: "basic",
                     iconUrl: "icons/icon128.png",
@@ -86,7 +88,7 @@ function connectToHost() {
     });
 
     // Test the connection immediately
-    nativePort.postMessage({ type: "ping" });
+    nativePort.postMessage({ type: MSG.HOST_PING });
 }
 
 // Initial connection
@@ -98,20 +100,24 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         connectToHost();
     }
 
-    if (message.type === "CHECK_STATUS") {
+    if (message.type === MSG.EXT_CHECK_STATUS) {
+        if (!hostConnected && !nativePort) {
+            connectToHost();
+            // We return "disconnected" quickly, but the background spin-up is already happening now
+        }
         sendResponse({ status: hostConnected ? "connected" : "disconnected" });
         return true;
     }
 
     if (hostNotConnectedFlag || !nativePort) {
-        sendResponse({ error: "HOST_NOT_CONNECTED" });
+        sendResponse({ error: MSG.ERR_NOT_CONNECTED });
         return true;
     }
 
-    if (message.type === "PREFETCH") {
+    if (message.type === MSG.EXT_PREFETCH) {
         // Forward PREFETCH call and wait for immediate response
         const listener = (response) => {
-            if (response.type === "prefetch_result" || response.type === "error") {
+            if (response.type === MSG.HOST_PREFETCH_RESULT || response.type === MSG.HOST_ERROR) {
                 nativePort.onMessage.removeListener(listener);
                 try {
                     sendResponse(response);
@@ -121,17 +127,17 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             }
         };
         nativePort.onMessage.addListener(listener);
-        nativePort.postMessage({ type: "prefetch", url: message.url });
+        nativePort.postMessage({ type: MSG.HOST_PREFETCH, url: message.url });
         return true; // Keeps the sendResponse channel open asynchronously
     }
 
-    if (message.type === "DOWNLOAD") {
+    if (message.type === MSG.EXT_DOWNLOAD) {
         let videoId = "placeholder";
         try { videoId = new URL(message.url).searchParams.get("v") || "placeholder"; } catch (e) { }
         let thumb = videoId !== "placeholder" ? `https://i.ytimg.com/vi/${videoId}/mqdefault.jpg` : "icons/icon48.png";
 
         activeDownloads[message.title] = {
-            type: "progress",
+            type: MSG.HOST_PROGRESS,
             filename: message.title,
             percent: "0%",
             eta: "Starting...",
@@ -140,7 +146,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         };
 
         nativePort.postMessage({
-            type: "download",
+            type: MSG.HOST_DOWNLOAD,
             url: message.url,
             itag: message.itag,
             title: message.title,
@@ -150,20 +156,34 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         return true;
     }
 
-    if (message.type === "OPEN_FOLDER") {
-        nativePort.postMessage({ type: "open_folder", path: message.path || "" });
+    if (message.type === MSG.EXT_OPEN_FOLDER) {
+        nativePort.postMessage({ type: MSG.HOST_OPEN_FOLDER, path: message.path || "" });
         sendResponse({ status: "ok" });
         return true;
     }
 
-    if (message.type === "GET_HISTORY") {
+    if (message.type === MSG.EXT_UPDATE_ENGINE) {
+        activeDownloads["Core Updater"] = {
+            type: MSG.HOST_PROGRESS,
+            filename: `yt-dlp Core Updater`,
+            percent: "0%",
+            eta: "Starting...",
+            speed: "0 KiB/s",
+            thumbnail: "icons/icon48.png"
+        };
+        nativePort.postMessage({ type: MSG.HOST_UPDATE_ENGINE });
+        sendResponse({ status: "ok" });
+        return true;
+    }
+
+    if (message.type === MSG.EXT_GET_HISTORY) {
         chrome.storage.local.get({ history: [] }, (data) => {
             sendResponse({ history: data.history });
         });
         return true;
     }
 
-    if (message.type === "GET_QUEUE") {
+    if (message.type === MSG.EXT_GET_QUEUE) {
         sendResponse({ queue: Object.values(activeDownloads) });
         return true;
     }
@@ -199,7 +219,7 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
         let thumb = videoId !== "placeholder" ? `https://i.ytimg.com/vi/${videoId}/mqdefault.jpg` : "icons/icon48.png";
 
         activeDownloads[`Quick Context Download`] = {
-            type: "progress",
+            type: MSG.HOST_PROGRESS,
             filename: `Quick Context Download`,
             percent: "0%",
             eta: "Starting...",
@@ -208,7 +228,7 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
         };
 
         nativePort.postMessage({
-            type: "download",
+            type: MSG.HOST_DOWNLOAD,
             url: url,
             itag: 1080,
             title: "Quick Download",

@@ -16,15 +16,28 @@
   "background": {
     "service_worker": "background.js"
   },
-  "content_scripts": [{
-    "matches": ["https://www.youtube.com/watch*"],
-    "js": ["content_script.js"],
-    "run_at": "document_idle"
-  }],
+  "content_scripts": [
+    {
+      "matches": [
+        "https://www.youtube.com/watch*"
+      ],
+      "js": [
+        "constants.js",
+        "content_script.js"
+      ],
+      "run_at": "document_idle"
+    }
+  ],
   "action": {
     "default_title": "YouTube Native Downloader",
     "default_popup": "popup.html",
-    "default_icon": { "16": "icons/icon16.png", "48": "icons/icon48.png" }
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png"
+    }
   },
-  "icons": { "48": "icons/icon48.png", "128": "icons/icon128.png" }
+  "icons": {
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  }
 }

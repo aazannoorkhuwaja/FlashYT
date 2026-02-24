@@ -17,7 +17,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const connStatus = document.getElementById('conn-status');
     const connText = connStatus.querySelector('.text');
 
-    chrome.runtime.sendMessage({ type: "CHECK_STATUS" }, (response) => {
+    chrome.runtime.sendMessage({ type: MSG.EXT_CHECK_STATUS }, (response) => {
         if (!response || response.error || response.status === "disconnected") {
             connStatus.className = 'status-indicator disconnected';
             connText.textContent = 'Not Running';
@@ -30,7 +30,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // 3. Load download history from local storage
     const downloadsList = document.getElementById('downloads-list');
-    chrome.runtime.sendMessage({ type: "GET_HISTORY" }, (response) => {
+    chrome.runtime.sendMessage({ type: MSG.EXT_GET_HISTORY }, (response) => {
         if (response && response.history && response.history.length > 0) {
             downloadsList.innerHTML = ''; // clear empty state
 
@@ -54,7 +54,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 `;
 
                 div.addEventListener('click', () => {
-                    chrome.runtime.sendMessage({ type: "OPEN_FOLDER" });
+                    chrome.runtime.sendMessage({ type: MSG.EXT_OPEN_FOLDER });
                     window.close();
                 });
 
@@ -66,7 +66,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // 4. Load Active Queue dynamically
     const queueList = document.getElementById('pane-queue');
     function refreshQueue() {
-        chrome.runtime.sendMessage({ type: "GET_QUEUE" }, (response) => {
+        chrome.runtime.sendMessage({ type: MSG.EXT_GET_QUEUE }, (response) => {
             if (response && response.queue) {
                 if (response.queue.length === 0) {
                     queueList.innerHTML = '<div style="padding: 24px; text-align: center; color: #aaaaaa;">No active downloads.</div>';
@@ -97,14 +97,19 @@ document.addEventListener('DOMContentLoaded', () => {
     refreshQueue();
     setInterval(refreshQueue, 1000);
 
-    // 5. Button bindings
     document.getElementById('btn-open-folder').addEventListener('click', () => {
-        chrome.runtime.sendMessage({ type: "OPEN_FOLDER" });
+        chrome.runtime.sendMessage({ type: MSG.EXT_OPEN_FOLDER });
         window.close();
     });
 
-    document.getElementById('btn-check-updates').addEventListener('click', () => {
-        chrome.tabs.create({ url: "https://github.com/aazannoorkhuwaja/youtube-native-ext/releases" });
+    const updateBtn = document.getElementById('btn-check-updates');
+    updateBtn.innerText = "Update Core Engine";
+    updateBtn.addEventListener('click', () => {
+        updateBtn.innerText = "Updating... (Check Queue)";
+        chrome.runtime.sendMessage({ type: MSG.EXT_UPDATE_ENGINE });
+
+        // Let it show updating status, then close
+        setTimeout(() => window.close(), 2000);
     });
 
     document.getElementById('btn-report-bug').addEventListener('click', () => {
@@ -112,6 +117,6 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     document.getElementById('btn-view-log').addEventListener('click', () => {
-        chrome.runtime.sendMessage({ type: "OPEN_FOLDER", path: "%APPDATA%\\YouTubeNativeExt" });
+        chrome.runtime.sendMessage({ type: MSG.EXT_OPEN_FOLDER, path: "%APPDATA%\\YouTubeNativeExt" });
     });
 });
