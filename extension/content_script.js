@@ -132,7 +132,7 @@ function injectButton() {
                 btn.style.cursor = 'wait';
                 isWaitingForMenu = true;
 
-                // If it failed silently initially, try one more time securely
+                // Fire prefetch; when it finishes, it checks isWaitingForMenu and opens the menu automatically
                 if (!currentQualities) triggerPrefetch(window.location.href);
             }
         });
@@ -181,9 +181,9 @@ function buildMenu(qualities, title) {
             e.stopPropagation();
             menu.style.display = 'none';
 
-            btn.textContent = 'Starting... (0%)';
+            btn.textContent = 'Check Queue!';
             btn.style.backgroundColor = '#3498db';
-            btn.style.cursor = 'progress';
+            setTimeout(() => { btn.innerHTML = defaultBtnHtml; btn.style.backgroundColor = 'rgb(204, 0, 0)'; }, 3000);
 
             chrome.runtime.sendMessage({
                 type: 'DOWNLOAD',
@@ -252,23 +252,7 @@ function triggerPrefetch(url) {
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     const btn = document.getElementById('ytdl-native-btn');
 
-    if (message.type === 'progress') {
-        if (btn) {
-            let speedStr = message.speed ? `(${message.speed})` : '';
-            btn.textContent = `${message.percent} ${speedStr}`;
-            btn.style.backgroundColor = '#3498db';
-            btn.style.cursor = 'progress';
-        }
-    } else if (message.type === 'done') {
-        if (btn) {
-            btn.textContent = '✓ Saved';
-            btn.style.backgroundColor = '#2ecc71';
-            btn.style.cursor = 'pointer';
-            setTimeout(() => {
-                btn.innerHTML = defaultBtnHtml;
-                btn.style.backgroundColor = 'rgb(204, 0, 0)';
-            }, 3000);
-        }
+    if (message.type === 'done') {
         showToast(`Video saved: ${message.filename}`);
     } else if (message.type === 'error') {
         if (btn) {

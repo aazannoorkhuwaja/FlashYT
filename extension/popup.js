@@ -42,11 +42,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
                 });
 
-                // Extract video ID from youtube filename if possible, else use a placeholder
-                // This is a naive heuristic since we don't store the raw URL in history currently
-                // But the instructions said to add a thumbnail
                 div.innerHTML = `
-                    <img class="vid-thumbnail" src="https://i.ytimg.com/vi/placeholder/mqdefault.jpg" alt="thumbnail" onerror="this.src='icons/icon48.png'">
+                    <img class="vid-thumbnail" src="${item.thumbnail || 'icons/icon48.png'}" alt="thumbnail" onerror="this.src='icons/icon48.png'">
                     <div class="vid-info">
                         <div class="vid-title" title="${item.title}">${item.title}</div>
                         <div class="vid-meta">
@@ -82,7 +79,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     div.className = 'history-item';
 
                     div.innerHTML = `
-                        <div class="vid-info" style="margin-left: 0; width: 100%;">
+                        <img class="vid-thumbnail" src="${item.thumbnail || 'icons/icon48.png'}" alt="thumbnail" onerror="this.src='icons/icon48.png'">
+                        <div class="vid-info">
                             <div class="vid-title" title="${item.filename}" style="font-weight: 500;">${item.filename}</div>
                             <div class="vid-meta" style="margin-top: 8px; color: #3ea6ff; font-weight: 500;">
                                 <span>${item.percent}</span> &bull; <span>${item.speed}</span> &bull; <span>ETA: ${item.eta}</span>

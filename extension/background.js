@@ -20,13 +20,17 @@ function connectToHost() {
             console.log("Native host connected successfully.");
         }
         else if (response.type === "progress" || response.type === "done" || response.type === "error") {
-            // Track active download progress
-            if (response.type === "progress" && response.filename) {
-                activeDownloads[response.filename] = response;
+            // Track active download progress keyed by title
+            if (response.type === "progress" && response.title) {
+                if (activeDownloads[response.title]) {
+                    activeDownloads[response.title].percent = response.percent;
+                    activeDownloads[response.title].speed = response.speed;
+                    activeDownloads[response.title].eta = response.eta;
+                }
             }
             if (response.type === "done" || response.type === "error") {
-                if (response.filename && activeDownloads[response.filename]) {
-                    delete activeDownloads[response.filename];
+                if (response.title && activeDownloads[response.title]) {
+                    delete activeDownloads[response.title];
                 }
             }
 
@@ -46,13 +50,16 @@ function connectToHost() {
                     message: response.filename || "Video saved to Downloads folder."
                 });
 
-                // Add to history
+                // Grab thumbnail from cache before we delete it (or if it was just deleted, maybe pass it, wait, we deleted it above)
+                // Let's rely on the fact that if it's missing we just use a placeholder
+
                 chrome.storage.local.get({ history: [] }, (data) => {
                     let history = data.history;
                     history.unshift({
-                        title: response.filename,
+                        title: response.title || response.filename,
                         filename: response.filename,
                         size_mb: response.size_mb,
+                        thumbnail: response.thumbnail || "icons/icon48.png",
                         time: Date.now()
                     });
                     if (history.length > 50) history.pop();
@@ -111,20 +118,25 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     }
 
     if (message.type === "DOWNLOAD") {
-        let dummyFileName = `Downloading ${message.title}...`;
-        activeDownloads[dummyFileName] = {
+        let videoId = "placeholder";
+        try { videoId = new URL(message.url).searchParams.get("v") || "placeholder"; } catch (e) { }
+        let thumb = videoId !== "placeholder" ? `https://i.ytimg.com/vi/${videoId}/mqdefault.jpg` : "icons/icon48.png";
+
+        activeDownloads[message.title] = {
             type: "progress",
-            filename: dummyFileName,
+            filename: message.title,
             percent: "0%",
             eta: "Starting...",
-            speed: "0 KiB/s"
+            speed: "0 KiB/s",
+            thumbnail: thumb
         };
 
         nativePort.postMessage({
             type: "download",
             url: message.url,
             itag: message.itag,
-            title: message.title
+            title: message.title,
+            thumbnail: thumb
         });
         sendResponse({ status: "started" });
         return true;
@@ -174,19 +186,25 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
             return;
         }
 
+        let videoId = "placeholder";
+        try { videoId = new URL(url).searchParams.get("v") || "placeholder"; } catch (e) { }
+        let thumb = videoId !== "placeholder" ? `https://i.ytimg.com/vi/${videoId}/mqdefault.jpg` : "icons/icon48.png";
+
         activeDownloads[`Quick Context Download`] = {
             type: "progress",
             filename: `Quick Context Download`,
             percent: "0%",
             eta: "Starting...",
-            speed: "0 KiB/s"
+            speed: "0 KiB/s",
+            thumbnail: thumb
         };
 
         nativePort.postMessage({
             type: "download",
             url: url,
             itag: 1080,
-            title: "Quick Download"
+            title: "Quick Download",
+            thumbnail: thumb
         });
     }
 });
