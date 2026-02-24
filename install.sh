@@ -68,7 +68,7 @@ fi
 # 6. Extract Extension ID dynamically
 echo ""
 echo "[*] Attempting to auto-detect Chrome Extension ID..."
-EXT_ID=$(python3 "$DEST_DIR/../scripts/detect_extension_id.py" 2>/dev/null || echo "")
+EXT_ID=$(python3 "scripts/detect_extension_id.py" 2>/dev/null || echo "")
 
 if [[ -z "$EXT_ID" || ${#EXT_ID} -ne 32 ]]; then
     echo "[!] Could not auto-detect the Extension ID."
