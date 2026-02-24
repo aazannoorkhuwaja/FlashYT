@@ -38,6 +38,8 @@ function injectButton() {
 
     let targetContainer = document.querySelector('#owner.ytd-watch-metadata') ||
         document.querySelector('#top-row.ytd-watch-metadata') ||
+        document.querySelector('ytd-menu-renderer.ytd-watch-metadata') ||
+        document.querySelector('#flexible-item-buttons') ||
         document.querySelector('#menu-container');
 
     if (!targetContainer) return;
