@@ -1,6 +1,7 @@
 const defaultBtnHtml = '⬇ Download';
 let isWaitingForMenu = false;
 let currentQualities = null;
+let currentTitle = null;
 
 function showToast(message, isError = false) {
     const toast = document.createElement('div');
