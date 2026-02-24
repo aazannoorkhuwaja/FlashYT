@@ -219,13 +219,8 @@ def download_video(url, itag, output_dir, progress_callback, cookies_browser=Non
         "-o", os.path.join(output_dir, "%(title)s.%(ext)s"),
     ]
     
-    # Process Cookie Injection
-    cookie_dict = get_best_available_cookies()
-    if cookie_dict:
-        if "profile_dir" in cookie_dict:
-            cmd.extend(["--cookies-from-browser", f"{cookie_dict['browser']}:{cookie_dict['profile_dir']}"])
-        else:
-            cmd.extend(["--cookies-from-browser", cookie_dict['browser']])
+    # Process Cookie Injection disabled by default to prevent 10-second SQLite copy sweeps.
+    cookie_dict = None
         
     # Analyze format to build selector sequence
     if itag == "audio":
@@ -304,8 +299,6 @@ def download_video(url, itag, output_dir, progress_callback, cookies_browser=Non
         
         process.stdout.close()
         process.wait()
-        
-        cleanup_cookie_dir(cookie_dict)
         
         if process.returncode != 0:
             stderr_out = process.stderr.read()

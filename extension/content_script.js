@@ -124,16 +124,18 @@ function injectButton() {
                 return;
             }
 
-            if (menu.hasChildNodes() && currentQualities) {
-                menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
-            } else {
-                btn.innerHTML = 'Fetching qualities...';
-                btn.style.backgroundColor = '#999999';
-                btn.style.cursor = 'wait';
-                isWaitingForMenu = true;
+            if (menu.style.display === 'block') {
+                menu.style.display = 'none';
+                return;
+            }
 
-                // Fire prefetch; when it finishes, it checks isWaitingForMenu and opens the menu automatically
-                if (!currentQualities) triggerPrefetch(window.location.href, true);
+            menu.style.display = 'block';
+
+            if (currentQualities) {
+                buildMenu(currentQualities, currentTitle);
+            } else {
+                menu.innerHTML = '<div style="padding: 10px 16px; font-size: 14px; color: #aaa; text-align: center;">Fetching qualities...</div>';
+                triggerPrefetch(window.location.href);
             }
         });
     };
@@ -151,7 +153,7 @@ function injectButton() {
     targetContainer.appendChild(container);
 
     // Explicitly ask for qualities as soon as the DOM generates the button so it is cached
-    triggerPrefetch(window.location.href, false);
+    triggerPrefetch(window.location.href);
 }
 
 function buildMenu(qualities, title) {
@@ -160,6 +162,7 @@ function buildMenu(qualities, title) {
     if (!menu || !btn) return;
 
     currentQualities = qualities;
+    currentTitle = title || "YouTube Video";
     menu.innerHTML = '';
 
     qualities.forEach(q => {
@@ -189,7 +192,7 @@ function buildMenu(qualities, title) {
                 type: 'DOWNLOAD',
                 url: window.location.href,
                 itag: q.itag,
-                title: title
+                title: currentTitle
             }, (res) => {
                 if (res && res.error) {
                     btn.textContent = 'Error!';
@@ -202,31 +205,10 @@ function buildMenu(qualities, title) {
         };
         menu.appendChild(item);
     });
-
-    if (btn.innerHTML.includes('Fetching')) {
-        btn.innerHTML = defaultBtnHtml;
-        btn.style.backgroundColor = 'rgb(204, 0, 0)';
-        btn.style.cursor = 'pointer';
-    }
-
-    if (isWaitingForMenu) {
-        menu.style.display = 'block';
-        isWaitingForMenu = false;
-    }
 }
 
-function triggerPrefetch(url, isUserInitiated = false) {
+function triggerPrefetch(url) {
     currentQualities = null;
-
-    if (!isUserInitiated) {
-        isWaitingForMenu = false;
-    }
-    const btn = document.getElementById('ytdl-native-btn');
-    if (btn && btn.innerHTML !== 'Fetching qualities...') {
-        btn.innerHTML = defaultBtnHtml;
-        btn.style.backgroundColor = 'rgb(204, 0, 0)';
-        btn.style.cursor = 'pointer';
-    }
 
     chrome.runtime.sendMessage({ type: "PREFETCH", url: url }, (response) => {
         if (!response) {
@@ -235,17 +217,20 @@ function triggerPrefetch(url, isUserInitiated = false) {
         }
 
         if (response.error === "HOST_NOT_CONNECTED") {
-            // Silently fail prefetch, the click handler generates the inline warning
             return;
         }
 
         if (response.type === "prefetch_result") {
-            buildMenu(response.qualities, response.title);
+            currentQualities = response.qualities;
+            currentTitle = response.title;
+            const menu = document.getElementById('ytdl-native-menu');
+            if (menu && menu.style.display === 'block') {
+                buildMenu(currentQualities, currentTitle);
+            }
         } else if (response.type === "error") {
-            if (btn && isWaitingForMenu) {
-                btn.innerHTML = '⚠ Error';
-                btn.style.backgroundColor = '#e74c3c';
-                setTimeout(() => { btn.innerHTML = defaultBtnHtml; btn.style.backgroundColor = 'rgb(204, 0, 0)'; }, 3000);
+            const menu = document.getElementById('ytdl-native-menu');
+            if (menu && menu.style.display === 'block') {
+                menu.innerHTML = `<div style="padding: 10px 16px; font-size: 14px; color: #e74c3c; text-align: center;">⚠ Error: ${response.message}</div>`;
             }
             console.error("Prefetch failed:", response.message);
         }
@@ -256,7 +241,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     const btn = document.getElementById('ytdl-native-btn');
 
     if (message.type === 'done') {
-        showToast(`Video saved: ${message.filename}`);
+        showToast(`Video saved: ${message.filename} `);
     } else if (message.type === 'error') {
         if (btn) {
             btn.textContent = '⚠ Error';
