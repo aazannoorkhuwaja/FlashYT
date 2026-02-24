@@ -109,9 +109,6 @@ begin
 end;
 
 function GetExtensionID(Param: String): String;
-var
-  InputID: String;
-  Valid: Boolean;
 begin
   if not ExtensionDetectionFailed and (Length(UserExtensionID) = 32) then
   begin
@@ -119,37 +116,10 @@ begin
     Exit;
   end;
 
-  Valid := False;
-  InputID := '';
-  
-  while not Valid do
-  begin
-    if InputQuery('Extension Missing', 
-                  'We could not auto-detect the Chrome extension.'#13#10 + 
-                  'Please install the extension via chrome://extensions Developer Mode first.'#13#10#13#10 + 
-                  'Paste the 32-character Extension ID below:', 
-                  InputID) then
-    begin
-      InputID := Trim(InputID);
-      if Length(InputID) = 32 then
-      begin
-        Valid := True;
-        UserExtensionID := InputID;
-      end
-      else
-      begin
-        MsgBox('The Extension ID must be exactly 32 lowercase alphabetical characters.', mbError, MB_OK);
-      end;
-    end
-    else
-    begin
-      { User cancelled prompt, fail install cleanly }
-      MsgBox('Installation cannot proceed without an Extension ID.', mbError, MB_OK);
-      Abort();
-    end;
-  end;
-  
-  Result := UserExtensionID;
+  MsgBox('We could not auto-detect the Chrome extension.'#13#10 + 
+         'Please install the Extension via chrome://extensions Developer Mode FIRST, then run this installer again.', mbError, MB_OK);
+  Abort();
+  Result := '';
 end;
 
 procedure CurStepChanged(CurStep: TSetupStep);
