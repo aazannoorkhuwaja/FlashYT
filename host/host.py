@@ -6,6 +6,7 @@ import struct
 import traceback
 import queue
 import threading
+import subprocess
 
 from logger import log
 
@@ -100,8 +101,11 @@ def main():
     log.info("One-Click YT Downloader Host Started")
     log.info("=" * 40)
     
-    from tray import start_tray_icon
-    start_tray_icon()
+    try:
+        from tray import start_tray_icon
+        start_tray_icon()
+    except Exception as e:
+        log.warning(f"[Tray] System tray disabled (missing Linux bindings): {e}")
     
     download_queue = queue.Queue()
     worker_thread = threading.Thread(target=message_worker, args=(download_queue,), daemon=True)
