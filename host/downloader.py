@@ -189,10 +189,16 @@ def prefetch_qualities(url, cookies_browser=None):
 
 def _build_video_format_string(max_height):
     h = max_height
+    # Add an explicit fallback ladder so yt-dlp doesn't throw "Requested format is not available"
+    # if the exact resolution requested doesn't exist for the specific video.
     return (
         f"bestvideo[ext=mp4][height<={h}]+bestaudio[ext=m4a]/"
         f"bestvideo[height<={h}]+bestaudio/"
         f"best[height<={h}]/"
+        "bestvideo[ext=mp4][height<=1080]+bestaudio[ext=m4a]/"
+        "bestvideo[height<=1080]+bestaudio/"
+        "bestvideo[ext=mp4][height<=720]+bestaudio[ext=m4a]/"
+        "bestvideo[height<=720]+bestaudio/"
         "bestvideo+bestaudio/"
         "best/"
         "bestvideo/"

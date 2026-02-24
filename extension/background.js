@@ -37,7 +37,11 @@ function connectToHost() {
             // Relays passive streaming events back to all active YouTube tabs
             chrome.tabs.query({ url: "*://*.youtube.com/*" }, (tabs) => {
                 tabs.forEach(tab => {
-                    chrome.tabs.sendMessage(tab.id, response).catch(() => { });
+                    try {
+                        chrome.tabs.sendMessage(tab.id, response).catch(() => { });
+                    } catch (e) {
+                        // Ignore context invalidated errors if the tab was closed/reloaded mid-stream
+                    }
                 });
             });
 
@@ -109,7 +113,11 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         const listener = (response) => {
             if (response.type === "prefetch_result" || response.type === "error") {
                 nativePort.onMessage.removeListener(listener);
-                sendResponse(response);
+                try {
+                    sendResponse(response);
+                } catch (e) {
+                    // Ignore context invalidated if the user navigated away before prefetch finished
+                }
             }
         };
         nativePort.onMessage.addListener(listener);
