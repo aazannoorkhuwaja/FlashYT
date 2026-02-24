@@ -114,7 +114,7 @@ function injectButton() {
         overflow: hidden;
     `;
 
-    btn.onclick = (e) => {
+    btn.addEventListener('click', (e) => {
         e.stopPropagation();
 
         // Ensure host is actually connected BEFORE opening the menu
@@ -139,7 +139,7 @@ function injectButton() {
                 triggerPrefetch(window.location.href);
             }
         });
-    };
+    });
 
     document.addEventListener('click', (e) => {
         if (!container.contains(e.target)) {
@@ -272,6 +272,7 @@ const observer = new MutationObserver(() => {
                 injectButton();
                 if (document.getElementById('ytdl-native-btn-container')) {
                     clearInterval(tryInject);
+                    return;
                 }
                 retryCount++;
                 if (retryCount > 10) clearInterval(tryInject);
