@@ -94,9 +94,11 @@ fi
 MANIFEST_TEMPLATE="$DEST_DIR/com.youtube.native.ext.json"
 HOST_PATH="$DEST_DIR/host.py"
 
-# Make sure the host path points directly to our python runner script
+chmod +x "$DEST_DIR/host.py"
+
+# Make sure the host path points exactly to the executable python runner script
 cat "$MANIFEST_TEMPLATE" | \
-    sed "s|\"path\": \".*\"|\"path\": \"$(which python3) $HOST_PATH\"|" | \
+    sed "s|\"path\": \".*\"|\"path\": \"$HOST_PATH\"|" | \
     sed "s|EXTENSION_ID_PLACEHOLDER|$EXT_ID|" > "$DEST_DIR/manifest_generated.json"
 
 echo ""
