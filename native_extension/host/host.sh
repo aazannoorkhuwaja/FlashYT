@@ -1,0 +1,2 @@
+#!/bin/bash
+"/home/aazan-noor-khuwaja/Aazan_ Data/yt_videos_downloader_project/native_extension/host/../../venv/bin/python" "/home/aazan-noor-khuwaja/Aazan_ Data/yt_videos_downloader_project/native_extension/host/host.py" "$@"

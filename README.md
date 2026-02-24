@@ -1,68 +1,38 @@
 # One-Click YouTube Downloader 🚀
-<p align="center">
-  <em>The ultimate, zero-maintenance background downloader that integrates natively into YouTube. Designed for speed, built for complete resilience.</em>
-</p>
+
+## 🛠️ Installation Guide
+
+Follow these simple steps to install the extension and backend on your machine.
+
+### Step 1: Install the Browser Extension
+1. Download the newest `One-Click-Youtube-Downloader-Native.zip` from the [Releases](https://github.com/aazannoorkhuwaja/one_click_ytmp4_download/releases) page and extract it.
+2. Open Chrome or Brave and navigate to `chrome://extensions`.
+3. Toggle **Developer mode** ON (top right corner).
+4. Click **Load unpacked** and select the extracted `extension` folder.
+5. The extension will appear. **Copy its 32-character ID string** (e.g., `aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa`). You need this for Step 2.
+
+### Step 2: Install the Native Backend
+The browser extension needs permission to talk to the Python download motor (`yt-dlp`). You only need to do this once.
+
+1. Open the extracted folder and go inside the `host` directory.
+2. Run the automatic setup script for your OS:
+   *   **Windows:** Double-click `setup_windows.bat`
+   *   **Mac / Linux:** Open terminal and run `./setup_mac_linux.sh`
+3. The script will open a terminal window automatically creating a virtual environment and installing `yt-dlp`. 
+4. When prompted, **paste the 32-character Extension ID** you copied from the browser in Step 1.
+
+### Step 3: Download!
+That's it! 
+1. Open any YouTube video.
+2. A red **Download** button will appear securely next to the channel owner's name.
+3. Click it to instantly reveal quality sizes (e.g., 1080p - 45.2MB).
+4. Select a quality. Your video will immediately begin downloading straight to your system's `Downloads` folder!
 
 ---
 
-## 🌟 Why This Exists (The "SaaS" Experience)
-
-Most downloaders are clunky websites filled with ads, or fragile scripts that break the moment YouTube updates its bot detection. **One-Click YouTube Downloader** is designed to feel like a premium, native extension of YouTube itself.
-
-*   ⚡ **Zero Wait Times:** Quality options (144p to 4K) are pre-fetched silently in the background the moment you open a video page. Clicking "Download" is instant.
-*   🛡️ **Invincible Anti-Bot Evasion:** Completely immune to YouTube's latest DRM, Age-Restriction, and Proof of Origin (PO) Token blocks. We utilize dynamic browser impersonation and auto-negotiate clients via the nightly `yt-dlp` suite.
-*   💻 **Zero-Dependency Native App:** No Python or FFmpeg PATH nightmares. Everything is bundled into a single standalone executable.
-*   🎨 **Beautiful UI Overlays:** Features a sleek dark-mode quality selection modal and a draggable, real-time download dashboard injected right into the YouTube player.
-*   ⚙️ **System Tray & Web UI:** Manage your download folders and browser privacy settings seamlessly via a native Web UI accessible straight from your OS system tray.
-
----
-
-## 🚀 1-Minute Setup (Windows)
-
-1. **Download** the latest `youtube-downloader-windows.exe` from the [**Releases Page**](../../releases/latest).
-2. **Run it!** That's it. It will silently bundle its own FFmpeg environment, boot the local server, and embed a sleek icon in your System Tray. It configures itself to auto-start on every boot.
-
-### Install the Native UI (All Platforms)
-1. Install the [Tampermonkey](https://www.tampermonkey.net/) extension for your browser.
-2. Click the Tampermonkey icon → **Create a new script**.
-3. Clear the editor, paste the contents of [`userscript.js`](userscript.js), and press **Ctrl+S** (Save).
-4. Go to any YouTube video and click the red **Download** button! 🎉
-
----
-
-## 🐧 1-Command Setup (Linux / macOS)
-
-For Linux and macOS power users, we provide a self-healing, bulletproof setup script. It automatically maps your package manager (`apt`, `dnf`, `pacman`, `zypper`), manages dependencies, and registers a background systemd service.
-
-```bash
-git clone https://github.com/aazannoorkhuwaja/one_click_ytmp4_download.git
-cd one_click_ytmp4_download
-chmod +x setup.sh && ./setup.sh
-```
-
-**Note:** If you ever accidentally break your local files, the background service will automatically run a `git reset --hard` on boot to securely heal itself from the main branch.
-
----
-
-## 🌐 Browser Compatibility (For Age-Restricted Cookies)
-
-The downloader automatically scans your OS for active browsers to intelligently import session cookies, allowing you to seamlessly download Age-Restricted or Members-Only videos without lock errors:
-
-| Browser | Supported |
-|---------|-----------|
-| Google Chrome | ✅ |
-| Brave | ✅ |
-| Mozilla Firefox | ✅ |
-| Microsoft Edge | ✅ |
-| Opera / Opera GX | ✅ |
-
-*You can swap which browser is prioritized at any time by right-clicking the Downloader System Tray icon and selecting **Settings**.*
-
----
-
-## 🛠️ Architecture & Security
-
-*   **100% Local Processing:** The backend Flask server binds exclusively to `127.0.0.1:5000`. No external data collection, no open ports, completely private.
-*   **Cookie Safe-Copying:** Avoids aggressive "SQLite Database is Locked" errors by dynamically generating shadow-copies of your browser data into temporary files during extraction.
+## 💻 Tech Stack
+*   **Frontend**: Vanilla JavaScript Chrome/Brave Extension (Manifest V3)
+*   **Backend**: Python 3 Native Messaging Host
+*   **Extraction Engine**: `yt-dlp`
 
 > Built and constantly iterated by **Aazan Noor Khuwaja**.
