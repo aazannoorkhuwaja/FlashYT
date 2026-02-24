@@ -271,11 +271,22 @@ const observer = new MutationObserver(() => {
         if (location.href.includes('/watch')) {
             // Clean up old injection if navigating between videos in the SPA
             const oldContainer = document.getElementById('ytdl-native-btn-container');
-            if (oldContainer) oldContainer.remove();
+            if (oldContainer) {
+                oldContainer.remove();
+                console.log("[YT-Native] Cleaned up previous video's UI container.");
+            }
 
             // Wait for target container to re-render using a cheap looping poll
             let retryCount = 0;
             const tryInject = setInterval(() => {
+                const existingNodes = document.querySelectorAll('#ytdl-native-btn-container');
+                console.assert(existingNodes.length <= 1, "[YT-Native] MEMORY LEAK WARNING: Multiple download buttons detected in DOM!");
+
+                if (existingNodes.length > 1) {
+                    console.warn("[YT-Native] Forcing cleanup of ghost DOM nodes.");
+                    for (let i = 1; i < existingNodes.length; i++) existingNodes[i].remove();
+                }
+
                 injectButton();
                 if (document.getElementById('ytdl-native-btn-container')) {
                     clearInterval(tryInject);
