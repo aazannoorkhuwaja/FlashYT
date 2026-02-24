@@ -1,3 +1,4 @@
 pystray
 Pillow
 secretstorage
+yt-dlp
