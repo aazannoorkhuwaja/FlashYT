@@ -133,7 +133,7 @@ function injectButton() {
                 isWaitingForMenu = true;
 
                 // Fire prefetch; when it finishes, it checks isWaitingForMenu and opens the menu automatically
-                if (!currentQualities) triggerPrefetch(window.location.href);
+                if (!currentQualities) triggerPrefetch(window.location.href, true);
             }
         });
     };
@@ -151,7 +151,7 @@ function injectButton() {
     targetContainer.appendChild(container);
 
     // Explicitly ask for qualities as soon as the DOM generates the button so it is cached
-    triggerPrefetch(window.location.href);
+    triggerPrefetch(window.location.href, false);
 }
 
 function buildMenu(qualities, title) {
@@ -215,9 +215,12 @@ function buildMenu(qualities, title) {
     }
 }
 
-function triggerPrefetch(url) {
+function triggerPrefetch(url, isUserInitiated = false) {
     currentQualities = null;
-    isWaitingForMenu = false;
+
+    if (!isUserInitiated) {
+        isWaitingForMenu = false;
+    }
     const btn = document.getElementById('ytdl-native-btn');
     if (btn && btn.innerHTML !== 'Fetching qualities...') {
         btn.innerHTML = defaultBtnHtml;
