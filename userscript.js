@@ -6,7 +6,9 @@
 // @author       Aazan Noor Khuwaja
 // @match        *://*.youtube.com/*
 // @grant        GM_xmlhttpRequest
+// @grant        GM.xmlHttpRequest
 // @connect      127.0.0.1
+// @connect      localhost
 // @updateURL    https://raw.githubusercontent.com/aazannoorkhuwaja/one_click_ytmp4_download/main/userscript.js
 // @downloadURL  https://raw.githubusercontent.com/aazannoorkhuwaja/one_click_ytmp4_download/main/userscript.js
 // ==/UserScript==
@@ -32,6 +34,8 @@
             GM_xmlhttpRequest({
                 method: "GET",
                 url: `${STATUS_URL}/${jobId}`,
+                anonymous: true,
+                nocache: true,
                 onload: function (response) {
                     try {
                         const res = JSON.parse(response.responseText);
@@ -159,6 +163,7 @@
             GM_xmlhttpRequest({
                 method: "GET",
                 url: CONFIG_URL,
+                anonymous: true,
                 onload: function (response) {
                     try {
                         const config = JSON.parse(response.responseText);
@@ -167,6 +172,7 @@
                             GM_xmlhttpRequest({
                                 method: "POST",
                                 url: 'http://127.0.0.1:5000/choose_folder',
+                                anonymous: true,
                                 onload: function (res2) {
                                     const result2 = JSON.parse(res2.responseText);
                                     if (result2.status === 'success') {
@@ -200,6 +206,7 @@
                 GM_xmlhttpRequest({
                     method: "POST",
                     url: 'http://127.0.0.1:5000/get_formats',
+                    anonymous: true,
                     headers: { "Content-Type": "application/json" },
                     data: JSON.stringify({ url: url }),
                     onload: function (res) {
@@ -335,6 +342,7 @@
                 GM_xmlhttpRequest({
                     method: "POST",
                     url: SERVER_URL,
+                    anonymous: true,
                     headers: { "Content-Type": "application/json" },
                     data: JSON.stringify({ url: url, format: formatId }),
                     onload: function (response) {
@@ -488,6 +496,8 @@
         GM_xmlhttpRequest({
             method: "GET",
             url: PROGRESS_URL,
+            anonymous: true,
+            nocache: true,
             onload: function (response) {
                 try {
                     const statuses = JSON.parse(response.responseText);
@@ -507,6 +517,7 @@
         GM_xmlhttpRequest({
             method: "POST",
             url: 'http://127.0.0.1:5000/get_formats',
+            anonymous: true,
             headers: { "Content-Type": "application/json" },
             data: JSON.stringify({ url: url }),
             onload: function (res) {

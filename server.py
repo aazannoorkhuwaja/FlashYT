@@ -60,8 +60,12 @@ import yt_dlp
 from werkzeug.serving import make_server
 
 app = Flask(__name__)
-# Enable CORS for the Tampermonkey script
-CORS(app)
+# Enable strict CORS for the Tampermonkey script to bypass browser Mixed Content blocks
+CORS(app, resources={r"/*": {
+    "origins": ["https://www.youtube.com", "https://youtube.com"],
+    "methods": ["GET", "POST", "OPTIONS"],
+    "allow_headers": ["Content-Type", "Authorization", "X-Requested-With"]
+}})
 
 # Global dictionary to store the status of downloads
 # Key = job_id, Value = status dictionary
