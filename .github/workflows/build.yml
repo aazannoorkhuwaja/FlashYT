@@ -36,6 +36,7 @@ jobs:
           del ffmpeg.zip
 
       - name: Build Executable Binaries (PyInstaller)
+        shell: cmd
         run: call scripts\build_windows.bat
         
       - name: Upload Windows Installer Payload
