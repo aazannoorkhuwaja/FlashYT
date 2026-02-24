@@ -237,12 +237,15 @@ def copy_browser_cookies(browser, target_dir):
             paths.append(os.path.join(home, ".config/google-chrome/Default/Cookies"))
         elif browser == 'chromium':
             paths.append(os.path.join(home, ".config/chromium/Default/Cookies"))
+            paths.append(os.path.join(home, "snap/chromium/common/chromium/Default/Cookies"))
         elif browser == 'brave':
             paths.append(os.path.join(home, ".config/BraveSoftware/Brave-Browser/Default/Cookies"))
+            paths.append(os.path.join(home, "snap/brave/current/.config/BraveSoftware/Brave-Browser/Default/Cookies"))
         elif browser == 'edge':
             paths.append(os.path.join(home, ".config/microsoft-edge/Default/Cookies"))
         elif browser == 'firefox':
             paths.extend(glob.glob(os.path.join(home, ".mozilla/firefox/*/cookies.sqlite")))
+            paths.extend(glob.glob(os.path.join(home, "snap/firefox/common/.mozilla/firefox/*/cookies.sqlite")))
 
     for db_path in paths:
         if os.path.exists(db_path):
@@ -528,7 +531,7 @@ def get_cookie_opts():
 
 # ============== DOWNLOAD LOGIC ==============
 
-def run_download_thread(url, selected_format, job_id, cached_info=None):
+def run_download_thread(url, selected_format, job_id):
     """
     Runs yt-dlp in a separate background thread.
     Hooks are defined inside to capture the job_id closure.
@@ -634,13 +637,12 @@ def run_download_thread(url, selected_format, job_id, cached_info=None):
         'sleep_interval': 0,
         'sleep_interval_requests': 0,
 
-        # Anti-Bot Evasion: Impersonate a real browser requesting the web client
-        'http_headers': {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-            'Accept-Language': 'en-US,en;q=0.5',
-            'Sec-Fetch-Mode': 'navigate',
-        },
+        # Anti-Bot Evasion:
+        # We NO LONGER pass custom User-Agents or Accept headers here.
+        # yt-dlp's internal PO Token generator needs to perfectly match the headers
+        # it used to generate the token, otherwise YouTube rejects the download with
+        # "Requested format is not available" (403 Forbidden). We let yt-dlp spoof
+        # the client natively.
 
         # Let yt-dlp choose the best client automatically.
         # DO NOT force 'tv' — YouTube now applies DRM to all TV client formats.
@@ -717,15 +719,11 @@ def run_download_thread(url, selected_format, job_id, cached_info=None):
 
     try:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            if cached_info:
-                try:
-                    print(f"[Server] Attempting instant 1-second download from cache...")
-                    ydl.process_ie_result(cached_info, download=True)
-                except Exception as e:
-                    print(f"[Server] Cache failed ({e}). Falling back to fresh extraction...")
-                    ydl.download([url])
-            else:
-                ydl.download([url])
+            # We explicitly do NOT use cached_info or ydl.process_ie_result.
+            # Applying complex format filters to stale cached JSON extraction data
+            # often causes yt-dlp to crash or fail to generate fresh PO Tokens.
+            # We always perform a fresh extraction for the actual download.
+            ydl.download([url])
     except Exception as first_error:
         # If the specific format selection failed, make one last attempt using
         # yt-dlp's own default "best" logic with *no* custom -f filter at all.
@@ -801,13 +799,8 @@ def get_formats():
         'file_access_retries': float('inf'),
         'retry_sleep_functions': {'http': lambda n: 5},
         
-        # Anti-Bot Evasion (matches download config)
-        'http_headers': {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-            'Accept-Language': 'en-US,en;q=0.5',
-            'Sec-Fetch-Mode': 'navigate',
-        },
+        # Anti-Bot Evasion: Note that we let yt-dlp native logic handle headers
+        # to preserve PO Token validity.
     }
 
     # Add optional cookies
@@ -926,16 +919,7 @@ def download_video():
     download_dir = os.path.expanduser(download_dir)
     os.makedirs(download_dir, exist_ok=True)
 
-    # Fetch cached info if it exists and is less than 15 minutes old
-    cached_info = None
-    if url in yt_info_cache:
-        timestamp, info = yt_info_cache[url]
-        if time.time() - timestamp < 900: # 15 minutes
-            cached_info = info
-        else:
-            del yt_info_cache[url]
-
-    thread = threading.Thread(target=run_download_thread, args=(url, selected_format, job_id, cached_info))
+    thread = threading.Thread(target=run_download_thread, args=(url, selected_format, job_id))
     thread.daemon = True
     thread.start()
 
