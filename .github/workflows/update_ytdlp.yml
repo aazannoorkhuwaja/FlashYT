@@ -1,0 +1,52 @@
+name: Weekly yt-dlp Update Checker
+
+on:
+  schedule:
+    - cron: '0 0 * * 1' # Every Monday at 00:00 UTC
+  workflow_dispatch: # Allow manual trigger
+
+jobs:
+  check-ytdlp-update:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        
+      - name: Fetch Latest yt-dlp Version
+        id: get_ytdlp_version
+        run: |
+          LATEST_TAG=$(curl -s https://api.github.com/repos/yt-dlp/yt-dlp/releases/latest | grep '"tag_name":' | head -n 1 | awk -F '"' '{print $4}')
+          echo "latest_version=$LATEST_TAG" >> $GITHUB_OUTPUT
+          
+      - name: Read Local Version
+        id: read_local_version
+        run: |
+          if [ -f .yt_dlp_version.json ]; then
+            LOCAL_VERSION=$(cat .yt_dlp_version.json | jq -r '.version')
+          else
+            LOCAL_VERSION="0.0.0"
+          fi
+          echo "local_version=$LOCAL_VERSION" >> $GITHUB_OUTPUT
+          
+      - name: Compare Versions and Update
+        if: steps.get_ytdlp_version.outputs.latest_version != steps.read_local_version.outputs.local_version
+        run: |
+          echo "{\"version\": \"${{ steps.get_ytdlp_version.outputs.latest_version }}\"}" > .yt_dlp_version.json
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add .yt_dlp_version.json
+          git commit -m "chore: bump yt-dlp to ${{ steps.get_ytdlp_version.outputs.latest_version }}"
+          
+      - name: Create Pull Request
+        if: steps.get_ytdlp_version.outputs.latest_version != steps.read_local_version.outputs.local_version
+        uses: peter-evans/create-pull-request@v6
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: "chore: bump yt-dlp to ${{ steps.get_ytdlp_version.outputs.latest_version }}"
+          title: "chore: bump yt-dlp to ${{ steps.get_ytdlp_version.outputs.latest_version }}"
+          body: |
+            Automatically generated PR to bump `yt-dlp` to version `${{ steps.get_ytdlp_version.outputs.latest_version }}`.
+            
+            This is critical to maintain compatibility with YouTube's rolling cipher updates.
+          branch: update-ytdlp-${{ steps.get_ytdlp_version.outputs.latest_version }}
+          base: main

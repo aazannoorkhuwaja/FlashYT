@@ -1,85 +1,94 @@
-name: Build 1-Click Executables
+name: Build and Release YouTube Native Downloader
 
 on:
   push:
-    branches: [ "main" ]
+    branches:
+      - main
   workflow_dispatch:
 
 jobs:
-  build:
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        include:
-          - os: ubuntu-latest
-            name: linux
-            executable: youtube-downloader-linux
-          - os: windows-latest
-            name: windows
-            executable: youtube-downloader-windows.exe
-            
+  build-windows:
+    runs-on: windows-latest
     steps:
-    - uses: actions/checkout@v4
+      - name: Checkout Code
+        uses: actions/checkout@v4
 
-    - name: Set up Python
-      uses: actions/setup-python@v5
-      with:
-        python-version: '3.10'
-
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install pyinstaller -U --pre "yt-dlp[default]" flask flask-cors
-
-    - name: Install Linux-only dependencies
-      if: matrix.name == 'linux'
-      run: pip install secretstorage
-
-    - name: Build with PyInstaller (Linux)
-      if: matrix.name == 'linux'
-      run: |
-        wget https://github.com/yt-dlp/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-linux64-gpl.tar.xz
-        tar -xf ffmpeg-master-latest-linux64-gpl.tar.xz
-        cp ffmpeg-master-latest-linux64-gpl/bin/ffmpeg .
-        pyinstaller --onefile --add-binary "ffmpeg:." --name ${{ matrix.executable }} server.py
-
-    - name: Build with PyInstaller (Windows)
-      if: matrix.name == 'windows'
-      run: |
-        curl -L -o ffmpeg.zip https://github.com/yt-dlp/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-win64-gpl.zip
-        unzip -j ffmpeg.zip "ffmpeg-master-latest-win64-gpl/bin/ffmpeg.exe" -d .
-        pyinstaller --onefile --add-binary "ffmpeg.exe:." --name ${{ matrix.executable }} server.py
-
-    - name: Upload Artifact
-      uses: actions/upload-artifact@v4
-      with:
-        name: ${{ matrix.executable }}
-        path: dist/${{ matrix.executable }}
-
-  release:
-    needs: build
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    if: github.event_name == 'push'
-    steps:
-      - name: Download Windows Build
-        uses: actions/download-artifact@v4
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
         with:
-          name: youtube-downloader-windows.exe
+          python-version: '3.11'
           
-      - name: Download Linux Build
+      - name: Install Python Tools
+        run: pip install pyinstaller pystray Pillow setuptools
+
+      - name: Download yt-dlp.exe
+        run: |
+          mkdir vendor
+          curl -L "https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.exe" -o vendor\yt-dlp.exe
+
+      - name: Download ffmpeg.exe
+        run: |
+          curl -L "https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-win64-gpl.zip" -o ffmpeg.zip
+          7z e ffmpeg.zip -ovendor ffmpeg-master-latest-win64-gpl/bin/ffmpeg.exe -r
+          del ffmpeg.zip
+
+      - name: Build Executable Binaries (PyInstaller)
+        run: call scripts\build_windows.bat
+        
+      - name: Upload Windows Installer Payload
+        uses: actions/upload-artifact@v4
+        with:
+          name: youtube-native-downloader-setup
+          path: dist/youtube-native-downloader-setup.exe
+
+  build-mac-linux:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        
+      - name: Make install.sh executable
+        run: chmod +x install.sh
+
+      - name: Upload Bash Installer Payload
+        uses: actions/upload-artifact@v4
+        with:
+          name: native-downloader-install-sh
+          path: |
+            install.sh
+            host/
+            scripts/
+          
+  release:
+    needs: [build-windows, build-mac-linux]
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download Windows Artifact
         uses: actions/download-artifact@v4
         with:
-          name: youtube-downloader-linux
-
-      - name: Create Release
+          name: youtube-native-downloader-setup
+          
+      - name: Download Mac/Linux Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: native-downloader-install-sh
+          path: mac_linux_bundle
+          
+      - name: Zip Mac/Linux Resources
+        run: |
+          cd mac_linux_bundle
+          zip -r ../youtube-native-ext-linux-mac.zip .
+          cd ..
+          
+      - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: "v2.1.${{ github.run_number }}"
-          name: "Latest Auto-Build"
           files: |
-            youtube-downloader-windows.exe
-            youtube-downloader-linux
+            youtube-native-downloader-setup.exe
+            youtube-native-ext-linux-mac.zip
+          fail_on_unmatched_files: true
+          draft: false
+          prerelease: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>YouTube Native Downloader</title>
+    <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+
+    <div class="header">
+        <div class="title-row">
+            <span class="logo">🔴</span>
+            <h2>YT Downloader</h2>
+        </div>
+        <div class="status-indicator" id="conn-status">
+            <span class="dot"></span>
+            <span class="text">Checking...</span>
+        </div>
+    </div>
+
+    <div class="tabs">
+        <div class="tab active" data-target="tab-downloads">Downloads</div>
+        <div class="tab" data-target="tab-queue">Queue</div>
+        <div class="tab" data-target="tab-about">About</div>
+    </div>
+
+    <div class="content">
+        <!-- DOWNLOADS TAB -->
+        <div id="tab-downloads" class="tab-pane active">
+            <div id="downloads-list">
+                <div class="empty-state">Your downloaded videos will appear here.</div>
+            </div>
+            <button id="btn-open-folder" class="secondary-btn" style="margin-top:12px; display:none;">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:8px;"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
+                Open Downloads Folder
+            </button>
+        </div>
+
+        <!-- QUEUE TAB -->
+        <div id="tab-queue" class="tab-pane">
+            <div id="queue-list">
+                <div class="empty-state">No active downloads in progress.</div>
+            </div>
+        </div>
+
+        <!-- ABOUT TAB -->
+        <div id="tab-about" class="tab-pane">
+            <div class="about-card">
+                <h3>One-Click YT Downloader</h3>
+                <p class="version">Version 1.0.0</p>
+                <p class="desc">A strictly local, ultra-fast native messaging client wrapping yt-dlp. No external servers.</p>
+                
+                <div class="action-links">
+                    <button id="btn-check-updates" class="text-btn">Check for Updates</button>
+                    <button id="btn-view-log" class="text-btn">View Debug Log</button>
+                    <button id="btn-report-bug" class="text-btn">Report a Bug</button>
+                </div>
+            </div>
+            <div class="credits">
+                <a href="https://github.com/aazannoorkhuwaja" target="_blank">Created by Aazan Noor Khuwaja</a>
+            </div>
+        </div>
+    </div>
+
+    <script src="popup.js"></script>
+</body>
+</html>

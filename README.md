@@ -1,38 +1,46 @@
-# One-Click YouTube Downloader 🚀
+# YouTube Native Downloader
 
-## 🛠️ Installation Guide
+A strictly local, blazing-fast native Chrome extension to download any YouTube video in one click. No web services, no SaaS accounts, and absolutely no privacy-invading metrics.
 
-Follow these simple steps to install the extension and backend on your machine.
+![YouTube Native Downloader](extension/icons/icon128.png)
 
-### Step 1: Install the Browser Extension
-1. Download the newest `One-Click-Youtube-Downloader-Native.zip` from the [Releases](https://github.com/aazannoorkhuwaja/one_click_ytmp4_download/releases) page and extract it.
-2. Open Chrome or Brave and navigate to `chrome://extensions`.
-3. Toggle **Developer mode** ON (top right corner).
-4. Click **Load unpacked** and select the extracted `extension` folder.
-5. The extension will appear. **Copy its 32-character ID string** (e.g., `aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa`). You need this for Step 2.
+## Download & Install
 
-### Step 2: Install the Native Backend
-The browser extension needs permission to talk to the Python download motor (`yt-dlp`). You only need to do this once.
+### Windows
+1. Download the installer below:
+   [**Download for Windows (.exe)**](https://github.com/aazannoorkhuwaja/youtube-native-ext/releases/latest)
+2. Run it (double-click the downloaded `.exe` file).
+3. Install the browser extension [from the Chrome Web Store (not published yet)].
+   *(If installing from source, enable Developer Mode in `chrome://extensions` and load the unpacked `extension` directory).*
 
-1. Open the extracted folder and go inside the `host` directory.
-2. Run the automatic setup script for your OS:
-   *   **Windows:** Double-click `setup_windows.bat`
-   *   **Mac / Linux:** Open terminal and run `./setup_mac_linux.sh`
-3. The script will open a terminal window automatically creating a virtual environment and installing `yt-dlp`. 
-4. When prompted, **paste the 32-character Extension ID** you copied from the browser in Step 1.
+Done!
 
-### Step 3: Download!
-That's it! 
-1. Open any YouTube video.
-2. A red **Download** button will appear securely next to the channel owner's name.
-3. Click it to instantly reveal quality sizes (e.g., 1080p - 45.2MB).
-4. Select a quality. Your video will immediately begin downloading straight to your system's `Downloads` folder!
+### Mac / Linux
+Open your terminal and paste this command:
+```bash
+curl -fsSL https://raw.githubusercontent.com/aazannoorkhuwaja/youtube-native-ext/main/install.sh | bash
+```
+Then install the browser extension [from the Chrome Web Store (not published yet)].
 
----
+## How It Works
+Unlike traditional web downloaders or buggy Tampermonkey scripts, this product creates a secure Native Messaging pipe between your Google Chrome browser and a local `yt-dlp` micro-host running directly on your computer. Your downloads never touch our servers. It uses your IP address, completely bypassing YouTube's bot-detection algorithms that break cloud-hosted websites.
 
-## 💻 Tech Stack
-*   **Frontend**: Vanilla JavaScript Chrome/Brave Extension (Manifest V3)
-*   **Backend**: Python 3 Native Messaging Host
-*   **Extraction Engine**: `yt-dlp`
+## Why It Works When Others Don't
+Because there is no external server, there are no CORS (Cross-Origin Resource Sharing) security violations. You click "Download", your browser silently pings the local host on your machine, and the host streams the bytes directly into your native Downloads folder. It is perfectly private by design. 
 
-> Built and constantly iterated by **Aazan Noor Khuwaja**.
+## Troubleshooting
+
+**Q: The Download button doesn't appear**
+A: Make sure the desktop app natively installed successfully. If you change browsers (e.g., from Chrome to Brave), you may need to re-run the installer script so it can bind to the new Browser's registry.
+
+**Q: "Desktop app not running" or "Host not connected" error**
+A: Reinstall the desktop app. Ensure that you haven't moved the installation directory after installing. If the problem persists, open an issue targeting the `host.log` file.
+
+**Q: Download stuck or failed**
+A: Check the log file. You can automatically open it by clicking the extension icon in your browser toolbar, navigating to the "About" tab, and clicking **View Debug Log**.
+
+## Contributing
+Contributions are always welcome. Please make sure to test the Native Messaging protocol using standard Python `stdin/stdout` pipes before submitting PRs altering `host.py`.
+
+## License
+MIT

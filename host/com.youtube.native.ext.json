@@ -1,0 +1,9 @@
+{
+    "name": "com.youtube.native.ext",
+    "description": "YouTube Native Downloader host",
+    "path": "C:\\path\\to\\host.exe",
+    "type": "stdio",
+    "allowed_origins": [
+        "chrome-extension://EXTENSION_ID_PLACEHOLDER/"
+    ]
+}
