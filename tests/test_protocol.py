@@ -126,5 +126,33 @@ class TestChromeNativeMessagingProtocol(unittest.TestCase):
             self.assertEqual(result, fake_appdata_path)
 
 
-if __name__ == '__main__':
-    unittest.main()
+    # ------------------------------------------------------------------
+    # Issue 9: URL Validation tests
+    # ------------------------------------------------------------------
+
+    def test_valid_youtube_url_passes_validation(self):
+        """Asserts a standard youtube.com URL is accepted by handle_task"""
+        sent = []
+        with patch.object(host, 'send_message', side_effect=lambda m: sent.append(m)), \
+             patch.object(host, 'prefetch_qualities', return_value={"type": "prefetch_result", "qualities": []}), \
+             patch.object(host, 'downloads_dir', '/tmp', create=True):
+            host.handle_task({"type": "prefetch", "url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ"})
+        # Should NOT have sent an error
+        self.assertFalse(any(m.get("message") == "Invalid YouTube URL." for m in sent))
+
+    def test_youtu_be_short_url_passes_validation(self):
+        """Asserts a youtu.be short URL is accepted by handle_task"""
+        sent = []
+        with patch.object(host, 'send_message', side_effect=lambda m: sent.append(m)), \
+             patch.object(host, 'prefetch_qualities', return_value={"type": "prefetch_result", "qualities": []}), \
+             patch.object(host, 'downloads_dir', '/tmp', create=True):
+            host.handle_task({"type": "prefetch", "url": "https://youtu.be/dQw4w9WgXcQ"})
+        self.assertFalse(any(m.get("message") == "Invalid YouTube URL." for m in sent))
+
+    def test_non_youtube_url_is_rejected(self):
+        """Asserts a non-YouTube URL is rejected with a clear error message"""
+        sent = []
+        with patch.object(host, 'send_message', side_effect=lambda m: sent.append(m)):
+            host.handle_task({"type": "prefetch", "url": "https://vimeo.com/123456"})
+        self.assertTrue(any(m.get("message") == "Invalid YouTube URL." for m in sent))
+
