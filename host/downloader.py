@@ -12,7 +12,16 @@ from urllib.parse import urlparse
 from logger import log
 from cookies import get_best_available_cookies, cleanup_cookie_dir
 
-ansi_escape = re.compile(r'\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])')
+# CQ-6: Single source of truth for external URLs used in multiple places
+YTDLP_UPDATE_URL = "https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.exe"
+
+# CQ-2: Module-level compiled regexes — re.compile() runs on every download line if defined inside the function
+ansi_escape           = re.compile(r'\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])')
+PROGRESS_RE           = re.compile(r'\[download\][^\d]*([\d.]+)%')
+SPEED_RE              = re.compile(r'at\s+([~]?[\d.]+[A-Za-z]+/s)')
+ETA_RE                = re.compile(r'ETA\s+([\d:]+)')
+DESTINATION_RE        = re.compile(r'\[(?:download|Merger|ExtractAudio)\]\s+Destination:\s+(.*)')
+ALREADY_DOWNLOADED_RE = re.compile(r'\[download\]\s+(.*)\s+has already been downloaded')
 
 @functools.lru_cache(maxsize=None)
 def _find_executable(name):
@@ -82,7 +91,7 @@ def update_ytdlp(progress_callback):
                 "title": "yt-dlp Core Updater"
             })
 
-            url = "https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.exe"
+            url = YTDLP_UPDATE_URL
             # urlopen with explicit timeout instead of urlretrieve (which has none)
             # Prevents the update thread from hanging forever on a stalled connection.
             with urllib.request.urlopen(url, timeout=30) as response, \
@@ -320,16 +329,7 @@ def download_video(url, max_height, output_dir, progress_callback, cookies_brows
         errors='replace'
     )
     
-    # Ultra-permissive extraction logic to prevent UI process stalls
-    # Matches: "[download]  14.5% of   20.10MiB at    3.45MiB/s ETA 00:04"
-    # Even if "of", "at" or "ETA" is translated/missing, it forcefully grabs the %
-    progress_regex = re.compile(r'\[download\][^\d]*([\d.]+)%')
-    speed_regex = re.compile(r'at\s+([~]?[\d.]+[A-Za-z]+/s)')
-    eta_regex = re.compile(r'ETA\s+([\d:]+)')
-    
-    destination_regex = re.compile(r'\[(?:download|Merger|ExtractAudio)\]\s+Destination:\s+(.*)')
-    already_downloaded_regex = re.compile(r'\[download\]\s+(.*)\s+has already been downloaded')
-    
+    # CQ-2: Use module-level pre-compiled regexes (not re-compiled per download call)
     last_filename = ""
     
     # Stall watchdog: if yt-dlp produces no stdout for 60 seconds it is hung.
@@ -352,12 +352,12 @@ def download_video(url, max_height, output_dir, progress_callback, cookies_brows
             if not clean_line:
                 continue
                 
-            dest_match = destination_regex.search(clean_line)
+            dest_match = DESTINATION_RE.search(clean_line)
             if dest_match:
                 last_filename = os.path.basename(dest_match.group(1))
                 continue
                 
-            already_match = already_downloaded_regex.search(clean_line)
+            already_match = ALREADY_DOWNLOADED_RE.search(clean_line)
             if already_match:
                 last_filename = os.path.basename(already_match.group(1))
                 progress_callback({
@@ -369,9 +369,9 @@ def download_video(url, max_height, output_dir, progress_callback, cookies_brows
                 continue
                 
             if '[download]' in clean_line and '%' in clean_line:
-                prog_match = progress_regex.search(clean_line)
-                speed_match = speed_regex.search(clean_line)
-                eta_match = eta_regex.search(clean_line)
+                prog_match  = PROGRESS_RE.search(clean_line)
+                speed_match = SPEED_RE.search(clean_line)
+                eta_match   = ETA_RE.search(clean_line)
                 
                 percent = f"{prog_match.group(1)}%" if prog_match else "Downloading..."
                 speed = speed_match.group(1) if speed_match else ""

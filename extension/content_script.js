@@ -292,7 +292,12 @@ function attachButtonObserver() {
         }
     });
 
-    const rootTarget = document.querySelector('ytd-app') || document.body;
+    // PERF-2: Scope observer to #primary (video content column) instead of ytd-app (entire page).
+    // This reduces observer callback frequency dramatically on YouTube's busy DOM.
+    const rootTarget = document.querySelector('#primary') ||
+        document.querySelector('#columns') ||
+        document.querySelector('ytd-app') ||
+        document.body;
     window.ytdlBtnObserver.observe(rootTarget, { childList: true, subtree: true });
 }
 

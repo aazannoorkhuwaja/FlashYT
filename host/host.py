@@ -127,7 +127,8 @@ def handle_task(msg):
     except Exception as e:
         err_msg = traceback.format_exc()
         log.error(f"[Host] Unexpected worker error:\n{err_msg}")
-        send_message({"type": "error", "message": "Internal error. Check host.log"})
+        # CQ-8: Send the actual exception type so users get actionable info
+        send_message({"type": "error", "message": f"Host error: {type(e).__name__}: {e}"})
 
 def main():
     global _host_alive

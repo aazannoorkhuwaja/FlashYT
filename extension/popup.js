@@ -81,6 +81,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const queueList = document.getElementById('pane-queue');
     function refreshQueue() {
         chrome.runtime.sendMessage({ type: MSG.EXT_GET_QUEUE }, (response) => {
+            if (!queueList) return; // CQ-7: guard if pane element missing
             if (response && response.queue) {
                 if (response.queue.length === 0) {
                     queueList.innerHTML = '<div style="padding: 24px; text-align: center; color: #aaaaaa;">No active downloads.</div>';
