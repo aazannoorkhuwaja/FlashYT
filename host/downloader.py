@@ -5,12 +5,15 @@ import subprocess
 import sys
 import platform
 import shutil
+import threading
+import functools
 
 from logger import log
 from cookies import get_best_available_cookies, cleanup_cookie_dir
 
 ansi_escape = re.compile(r'\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])')
 
+@functools.lru_cache(maxsize=None)
 def _find_executable(name):
     """
     Shared executable resolver. Lookup order:
@@ -94,7 +97,11 @@ def update_ytdlp(progress_callback):
                 "eta": "00:05",
                 "title": "yt-dlp Core Updater"
             })
-            subprocess.run([sys.executable, "-m", "pip", "install", "-U", "yt-dlp"], check=True)
+            subprocess.run(
+                [sys.executable, "-m", "pip", "install", "-U", "yt-dlp"],
+                check=True,
+                timeout=120  # 2 minutes — generous but prevents indefinite thread blockage
+            )
             
         progress_callback({
             "type": "done",
@@ -324,8 +331,22 @@ def download_video(url, max_height, output_dir, progress_callback, cookies_brows
     
     last_filename = ""
     
+    # Stall watchdog: if yt-dlp produces no stdout for 60 seconds it is hung.
+    # Cross-platform (select doesn't work on Windows pipes, so use threading.Timer).
+    STALL_TIMEOUT_SECS = 60
+    stall_timer = [None]
+
+    def reset_stall_timer():
+        if stall_timer[0]:
+            stall_timer[0].cancel()
+        stall_timer[0] = threading.Timer(STALL_TIMEOUT_SECS, lambda: process.kill())
+        stall_timer[0].daemon = True
+        stall_timer[0].start()
+
     try:
+        reset_stall_timer()  # start the initial stall watchdog
         for line in iter(process.stdout.readline, ''):
+            reset_stall_timer()  # reset on every line received
             clean_line = ansi_escape.sub('', line).strip()
             if not clean_line:
                 continue
@@ -362,6 +383,8 @@ def download_video(url, max_height, output_dir, progress_callback, cookies_brows
                     "eta": eta
                 })
         
+        if stall_timer[0]:
+            stall_timer[0].cancel()  # always cancel watchdog on clean exit
         process.stdout.close()
         process.wait()
         

@@ -8,6 +8,18 @@ let hostNotConnectedFlag = false;
 // Cache for active downloads tracking
 let activeDownloads = {};
 
+// Quality metadata cache keyed by videoId — caches labels/max_height only (not stream URLs)
+// 10-minute TTL: quality options are stable within a session, stream URLs are not cached here
+const PREFETCH_CACHE_TTL_MS = 10 * 60 * 1000;
+const prefetchCache = {}; // { videoId: { result, timestamp } }
+
+function getVideoId(url) {
+    try {
+        const u = new URL(url);
+        return u.searchParams.get('v') || u.pathname.replace('/', '') || null;
+    } catch { return null; }
+}
+
 // Reconnect state — retries at 1s, 3s, 7s, 15s before giving up
 const RECONNECT_DELAYS_MS = [1000, 3000, 7000, 15000];
 let reconnectAttempt = 0;
@@ -146,10 +158,22 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     }
 
     if (message.type === MSG.EXT_PREFETCH) {
-        // Forward PREFETCH call and wait for immediate response
+        const videoId = getVideoId(message.url);
+        const cached = videoId && prefetchCache[videoId];
+        if (cached && (Date.now() - cached.timestamp < PREFETCH_CACHE_TTL_MS)) {
+            // Cache hit — return quality metadata instantly without hitting native host
+            sendResponse(cached.result);
+            return true;
+        }
+
+        // Cache miss — forward to native host
         const listener = (response) => {
             if (response.type === MSG.HOST_PREFETCH_RESULT || response.type === MSG.HOST_ERROR) {
                 nativePort.onMessage.removeListener(listener);
+                if (response.type === MSG.HOST_PREFETCH_RESULT && videoId) {
+                    // Store quality metadata in cache — never store stream URLs
+                    prefetchCache[videoId] = { result: response, timestamp: Date.now() };
+                }
                 try {
                     sendResponse(response);
                 } catch (e) {
@@ -159,7 +183,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         };
         nativePort.onMessage.addListener(listener);
         nativePort.postMessage({ type: MSG.HOST_PREFETCH, url: message.url });
-        return true; // Keeps the sendResponse channel open asynchronously
+        return true;
     }
 
     if (message.type === MSG.EXT_DOWNLOAD) {
