@@ -208,14 +208,14 @@ def prefetch_qualities(url, cookies_browser=None):
             for v in sorted_vids:
                 qualities.append({
                     "label": v['label'],
-                    "itag": int(v['itag']), # Spec demands int 137, 22 etc if possible, but we use height for simplicity selector
+                    "max_height": int(v['itag']), # Semantically correct: this is a height boundary, not a real itag
                     "size_mb": v['size_mb']
                 })
                 
             if best_audio:
                 qualities.append({
                     "label": "Audio Only (MP3)",
-                    "itag": "audio",
+                    "max_height": "audio",
                     "size_mb": round(audio_filesize / (1024 * 1024), 1)
                 })
                 
@@ -251,7 +251,7 @@ def _build_video_format_string(max_height):
         "bestaudio"
     )
 
-def download_video(url, itag, output_dir, progress_callback, cookies_browser=None):
+def download_video(url, max_height, output_dir, progress_callback, cookies_browser=None):
     """
     Downloads the video and streams progress lines natively back.
     """
@@ -269,7 +269,7 @@ def download_video(url, itag, output_dir, progress_callback, cookies_browser=Non
     cookie_dict = None
         
     # Analyze format to build selector sequence
-    if itag == "audio":
+    if max_height == "audio":
         cmd.extend([
             "-f", "bestaudio/best",
             "--extract-audio",
@@ -277,9 +277,9 @@ def download_video(url, itag, output_dir, progress_callback, cookies_browser=Non
         ])
     else:
         try:
-            h = int(itag)
+            h = int(max_height)
         except (ValueError, TypeError):
-            log.warning(f"[Downloader] Non-integer itag '{itag}' received — defaulting to 1080p.")
+            log.warning(f"[Downloader] Non-integer max_height '{max_height}' received — defaulting to 1080p.")
             h = 1080
         cmd.extend([
             "-f", _build_video_format_string(h),

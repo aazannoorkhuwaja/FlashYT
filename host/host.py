@@ -77,8 +77,8 @@ def handle_task(msg):
     try:
         if action == "prefetch":
             url = msg.get("url")
-            if not url:
-                send_message({"type": "error", "message": "No URL provided for prefetch."})
+            if not url or ('youtube.com' not in url.lower() and 'youtu.be' not in url.lower()):
+                send_message({"type": "error", "message": "Invalid YouTube URL."})
                 return
 
             result = prefetch_qualities(url)
@@ -86,18 +86,22 @@ def handle_task(msg):
 
         elif action == "download":
             url = msg.get("url")
-            itag = msg.get("itag")
+            max_height = msg.get("max_height")
             title = msg.get("title", "YouTube Video")
 
-            if not url or not itag:
-                send_message({"type": "error", "message": "Missing URL or format itag for download."})
+            if not url or ('youtube.com' not in url.lower() and 'youtu.be' not in url.lower()):
+                send_message({"type": "error", "message": "Invalid YouTube URL."})
+                return
+
+            if not max_height:
+                send_message({"type": "error", "message": "Missing format height for download."})
                 return
 
             def progress_callback(update_dict):
                 send_message(update_dict)
 
             log.info(f"[Host] Beginning parallel download: {title}")
-            result = download_video(url, itag, downloads_dir, progress_callback)
+            result = download_video(url, max_height, downloads_dir, progress_callback)
             send_message(result)
 
         elif action == "update_engine":

@@ -174,7 +174,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         nativePort.postMessage({
             type: MSG.HOST_DOWNLOAD,
             url: message.url,
-            itag: message.itag,
+            max_height: message.max_height,
             title: message.title,
             thumbnail: thumb
         });
@@ -256,7 +256,7 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
         nativePort.postMessage({
             type: MSG.HOST_DOWNLOAD,
             url: url,
-            itag: 1080,
+            max_height: 1080,
             title: "Quick Download",
             thumbnail: thumb
         });

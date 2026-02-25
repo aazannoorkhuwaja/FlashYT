@@ -196,7 +196,7 @@ function buildMenu(qualities, title, urlToDownload) {
             chrome.runtime.sendMessage({
                 type: MSG.EXT_DOWNLOAD,
                 url: urlToDownload,
-                itag: q.itag,
+                max_height: q.max_height,
                 title: currentTitle
             }, (res) => {
                 if (res && res.error) {
@@ -266,52 +266,42 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     }
 });
 
-let lastUrl = location.href;
-const observer = new MutationObserver(() => {
-    if (location.href !== lastUrl) {
-        lastUrl = location.href;
-        if (location.href.includes('/watch')) {
-            // Clean up old injection if navigating between videos in the SPA
-            const oldContainer = document.getElementById('ytdl-native-btn-container');
-            if (oldContainer) {
-                oldContainer.remove();
-                console.log("[YT-Native] Cleaned up previous video's UI container.");
-            }
+function attachButtonObserver() {
+    if (window.ytdlBtnObserver) {
+        window.ytdlBtnObserver.disconnect();
+    }
 
-            // Wait for target container to re-render using a cheap looping poll
-            let retryCount = 0;
-            const tryInject = setInterval(() => {
-                const existingNodes = document.querySelectorAll('#ytdl-native-btn-container');
-                console.assert(existingNodes.length <= 1, "[YT-Native] MEMORY LEAK WARNING: Multiple download buttons detected in DOM!");
+    // Try injecting immediately in case the DOM is already ready
+    injectButton();
+    if (document.getElementById('ytdl-native-btn-container')) return;
 
-                if (existingNodes.length > 1) {
-                    console.warn("[YT-Native] Forcing cleanup of ghost DOM nodes.");
-                    for (let i = 1; i < existingNodes.length; i++) existingNodes[i].remove();
-                }
-
-                injectButton();
-                if (document.getElementById('ytdl-native-btn-container')) {
-                    clearInterval(tryInject);
-                    return;
-                }
-                retryCount++;
-                if (retryCount > 10) clearInterval(tryInject);
-            }, 500);
+    // Otherwise, watch for the target container to appear
+    window.ytdlBtnObserver = new MutationObserver((mutations, obs) => {
+        const existingNodes = document.querySelectorAll('#ytdl-native-btn-container');
+        if (existingNodes.length > 1) {
+            for (let i = 1; i < existingNodes.length; i++) existingNodes[i].remove();
         }
+
+        injectButton();
+        if (document.getElementById('ytdl-native-btn-container')) {
+            obs.disconnect(); // Scoped observer disconnects immediately once button is mounted
+        }
+    });
+
+    const rootTarget = document.querySelector('ytd-app') || document.body;
+    window.ytdlBtnObserver.observe(rootTarget, { childList: true, subtree: true });
+}
+
+// Hook into YouTube's native SPA navigation event (much safer than global MutationObserver)
+document.addEventListener('yt-navigate-finish', () => {
+    if (location.href.includes('/watch')) {
+        const oldContainer = document.getElementById('ytdl-native-btn-container');
+        if (oldContainer) oldContainer.remove();
+        attachButtonObserver();
     }
 });
 
-observer.observe(document.body, { childList: true, subtree: true });
-
-// Initial load check on boot
+// Fallback for first-time page load if yt-navigate-finish doesn't fire
 if (location.href.includes('/watch')) {
-    let retryCount = 0;
-    const tryInject = setInterval(() => {
-        injectButton();
-        if (document.getElementById('ytdl-native-btn-container')) {
-            clearInterval(tryInject);
-        }
-        retryCount++;
-        if (retryCount > 10) clearInterval(tryInject);
-    }, 500);
+    attachButtonObserver();
 }
