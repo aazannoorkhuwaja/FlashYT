@@ -51,7 +51,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 titleEl.title = item.title;
                 titleEl.textContent = item.title;
 
-                const ext = (item.filename || '').split('.').pop().toUpperCase();
+                const ext = item.filename
+                    ? item.filename.split('.').pop().toUpperCase()
+                    : 'MP4'; // Default for legacy history entries without filename
 
                 div.innerHTML = `
                     <img class="vid-thumbnail" src="${item.thumbnail || 'icons/icon48.png'}" alt="thumbnail" onerror="this.src='icons/icon48.png'">
@@ -105,9 +107,31 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Refresh queue immediately and then every second while the popup is open
+    // Start queue refresh only if there are active downloads; stop when queue empties.
+    // This prevents constant IPC noise while the popup is idle.
+    let queueInterval = null;
+    function startQueuePolling() {
+        if (queueInterval) return;
+        queueInterval = setInterval(() => {
+            refreshQueue();
+            chrome.runtime.sendMessage({ type: MSG.EXT_GET_QUEUE }, (response) => {
+                if (!response || !response.queue || response.queue.length === 0) {
+                    clearInterval(queueInterval);
+                    queueInterval = null;
+                }
+            });
+        }, 1000);
+    }
     refreshQueue();
-    setInterval(refreshQueue, 1000);
+    chrome.runtime.sendMessage({ type: MSG.EXT_GET_QUEUE }, (response) => {
+        if (response && response.queue && response.queue.length > 0) {
+            startQueuePolling();
+        }
+    });
+    // Also start polling if a download begins while the popup is open
+    chrome.runtime.onMessage.addListener((msg) => {
+        if (msg.type === MSG.HOST_PROGRESS) startQueuePolling();
+    });
 
     document.getElementById('btn-open-folder').addEventListener('click', () => {
         chrome.runtime.sendMessage({ type: MSG.EXT_OPEN_FOLDER });

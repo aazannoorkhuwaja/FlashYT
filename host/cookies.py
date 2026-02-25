@@ -71,10 +71,12 @@ def copy_browser_cookies(browser, target_dir):
 
 def get_best_available_cookies():
     """
-    Tries each browser in order.
-    Returns: {"cookiesfrombrowser": (browser, profile_dir)} tuple-like dict
-             or {"cookiesfrombrowser": (browser,)}
-             or None if no browser cookies found.
+    Tries each browser in order and copies its cookie database to a temp dir.
+    Returns a dict with 'browser' and 'profile_dir', or None if nothing found.
+
+    NOTE: Cookie support is disabled by default in `download_video()` (cookie_dict = None).
+    This function is only invoked if cookie support is explicitly re-enabled there.
+    The code is intentionally kept to make re-enabling easy.
     """
     for browser in BROWSER_PRIORITY:
         temp_dir = tempfile.mkdtemp()

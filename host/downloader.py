@@ -69,7 +69,7 @@ def update_ytdlp(progress_callback):
             ext_dir = os.path.join(appdata, 'YouTubeNativeExt')
             os.makedirs(ext_dir, exist_ok=True)
             new_ytdlp_path = os.path.join(ext_dir, 'yt-dlp.exe')
-            
+
             progress_callback({
                 "type": "progress",
                 "percent": "50%",
@@ -77,8 +77,14 @@ def update_ytdlp(progress_callback):
                 "eta": "00:05",
                 "title": "yt-dlp Core Updater"
             })
-            
-            urllib.request.urlretrieve("https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.exe", new_ytdlp_path)
+
+            url = "https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.exe"
+            # urlopen with explicit timeout instead of urlretrieve (which has none)
+            # Prevents the update thread from hanging forever on a stalled connection.
+            with urllib.request.urlopen(url, timeout=30) as response, \
+                 open(new_ytdlp_path, 'wb') as out_file:
+                while chunk := response.read(65536):
+                    out_file.write(chunk)
         else:
             # Mac/Linux Native Python distribution
             progress_callback({
