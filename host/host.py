@@ -7,6 +7,7 @@ import struct
 import traceback
 import threading
 import subprocess
+from concurrent.futures import ThreadPoolExecutor
 
 from logger import log
 from downloader import prefetch_qualities, download_video, update_ytdlp
@@ -134,8 +135,9 @@ def main():
     except Exception as e:
         log.warning(f"[Tray] System tray disabled (missing Linux bindings): {e}")
 
-    # Each prefetch/download/update spawns its own daemon thread.
-    active_threads = []
+    # ThreadPoolExecutor bounds concurrent downloads and handles lifecycle automatically.
+    # max_workers=8 allows plenty of parallel downloads without exhausting system resources.
+    executor = ThreadPoolExecutor(max_workers=8, thread_name_prefix="ytdl_worker")
 
     try:
         while True:
@@ -177,13 +179,8 @@ def main():
                     send_message({"type": "error", "message": f"Failed to open folder: {e}"})
 
             elif action in ["prefetch", "download", "update_engine"]:
-                # Spawn concurrent download/prefetch thread instantly
-                t = threading.Thread(target=handle_task, args=(msg,), daemon=True)
-                t.start()
-                active_threads.append(t)
-
-                # Cleanup dead threads from tracking list
-                active_threads = [thread for thread in active_threads if thread.is_alive()]
+                # Submit task to the bounded thread pool
+                executor.submit(handle_task, msg)
 
             else:
                 log.warning(f"[Host] Raw unhandled message type: {action}")
@@ -197,10 +194,9 @@ def main():
     finally:
         # Signal all worker threads to stop writing to the closed pipe
         _host_alive = False
-        log.info(f"[Host] Waiting for {len(active_threads)} active download threads to finish...")
-        for t in active_threads:
-            if t.is_alive():
-                t.join(timeout=2.0)
+        log.info("[Host] Waiting for active download workers to finish...")
+        # wait=True lets in-flight downloads complete; cancel_futures=False is default
+        executor.shutdown(wait=True)
         sys.exit(0)
 
 if __name__ == '__main__':
