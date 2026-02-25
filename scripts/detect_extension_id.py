@@ -41,7 +41,7 @@ def find_extension_id():
                             with open(manifest_path, 'r', encoding='utf-8') as f:
                                 if json.load(f).get('name') == target_name:
                                     return ext_id
-            except: pass
+            except (OSError, json.JSONDecodeError, ValueError, KeyError): pass
 
         # Strategy 2: Check Preferences file for Unpacked extensions (Developer Mode)
         prefs_path = os.path.join(profile_path, 'Preferences')
@@ -56,7 +56,7 @@ def find_extension_id():
                             with open(manifest_path, 'r', encoding='utf-8') as m:
                                 if json.load(m).get('name') == target_name:
                                     return ext_id
-            except: pass
+            except (OSError, json.JSONDecodeError, ValueError, KeyError): pass
             
     return None
 

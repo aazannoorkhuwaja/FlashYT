@@ -18,7 +18,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const connText = connStatus.querySelector('.text');
 
     chrome.runtime.sendMessage({ type: MSG.EXT_CHECK_STATUS }, (response) => {
-        if (!response || response.error || response.status === "disconnected") {
+        if (!response || response.error === MSG.ERR_HOST_OUTDATED) {
+            connStatus.className = 'status-indicator disconnected';
+            connText.textContent = '⚠ Outdated Host — Re-run Installer';
+        } else if (!response || response.error || response.status === "disconnected") {
             connStatus.className = 'status-indicator disconnected';
             connText.textContent = 'Not Running';
         } else {

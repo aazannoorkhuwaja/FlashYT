@@ -19,5 +19,10 @@ const MSG = {
     EXT_GET_QUEUE: "GET_QUEUE",
     EXT_UPDATE_ENGINE: "UPDATE_ENGINE",
 
-    ERR_NOT_CONNECTED: "HOST_NOT_CONNECTED"
+    ERR_NOT_CONNECTED: "HOST_NOT_CONNECTED",
+    ERR_HOST_OUTDATED: "HOST_OUTDATED"
 };
+
+// Must match "version" field in host.py pong response.
+// Bump this whenever the IPC protocol changes (new fields, renamed keys, etc.)
+const EXPECTED_HOST_VERSION = "1.0.0";

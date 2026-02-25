@@ -130,6 +130,7 @@ def prefetch_qualities(url, cookies_browser=None):
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             text=True,
+            timeout=30,  # Prevent thread pool exhaustion on hung DNS / rate-limited requests
             encoding='utf-8',
             errors='replace'
         )
@@ -229,6 +230,9 @@ def prefetch_qualities(url, cookies_browser=None):
             log.error("[Downloader] Failed to decode yt-dlp JSON.")
             return {"type": "error", "message": "Failed to parse video info from YouTube."}
             
+    except subprocess.TimeoutExpired:
+        log.error("[Downloader] prefetch_qualities timed out after 30s — yt-dlp or network is hanging.")
+        return {"type": "error", "message": "Timed out fetching video info. Check your internet connection."}
     except Exception as e:
         log.exception(f"[Downloader] prefetch_qualities encountered Python exception: {e}")
         return {"type": "error", "message": str(e)}
@@ -295,7 +299,7 @@ def download_video(url, max_height, output_dir, progress_callback, cookies_brows
     process = subprocess.Popen(
         cmd,
         stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
+        stderr=subprocess.STDOUT,  # Merge stderr into stdout — prevents pipe buffer deadlock
         text=True,
         bufsize=1,
         encoding='utf-8',
@@ -356,15 +360,10 @@ def download_video(url, max_height, output_dir, progress_callback, cookies_brows
         process.wait()
         
         if process.returncode != 0:
-            stderr_out = process.stderr.read()
-            log.error(f"[Downloader] download_video failed (Code {process.returncode}): {stderr_out}")
-            
-            msg = "yt-dlp encountered an error during download."
-            for err_line in stderr_out.split('\n'):
-                if 'ERROR:' in err_line:
-                    msg = err_line.split('ERROR:', 1)[1].strip()
-                    break
-            return {"type": "error", "message": msg}
+            # Errors are already in the combined stdout stream we just consumed.
+            # Use the last captured line context from the readline loop as the error message.
+            log.error(f"[Downloader] download_video failed (Code {process.returncode})")
+            return {"type": "error", "message": f"yt-dlp exited with code {process.returncode}. Check host.log for details."}
 
         if not last_filename:
             log.warning("[Downloader] Finished but could not accurately determine the filename from logs.")

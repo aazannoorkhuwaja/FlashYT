@@ -38,10 +38,19 @@ function connectToHost() {
         if (!response) return;
 
         if (response.type === MSG.HOST_PONG) {
-            hostConnected = true;
-            hostNotConnectedFlag = false;
-            reconnectAttempt = 0; // reset backoff on successful connect
-            console.log("Native host connected successfully.");
+            const hostVer = response.version || "unknown";
+            if (hostVer !== EXPECTED_HOST_VERSION) {
+                console.warn(`[YT-Native] Host version mismatch: expected ${EXPECTED_HOST_VERSION}, got ${hostVer}. Please re-run the installer.`);
+                hostConnected = false;
+                hostNotConnectedFlag = true;
+                // Relay a structured error so popup.js can show a clear message
+                chrome.runtime.sendMessage({ type: MSG.ERR_HOST_OUTDATED, expected: EXPECTED_HOST_VERSION, got: hostVer });
+            } else {
+                hostConnected = true;
+                hostNotConnectedFlag = false;
+                reconnectAttempt = 0; // reset backoff on successful connect
+                console.log("Native host connected successfully.");
+            }
         }
         else if (response.type === MSG.HOST_PROGRESS || response.type === MSG.HOST_DONE || response.type === MSG.HOST_ERROR) {
             // Track active download progress keyed by title
