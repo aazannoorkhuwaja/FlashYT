@@ -11,65 +11,49 @@ from cookies import get_best_available_cookies, cleanup_cookie_dir
 
 ansi_escape = re.compile(r'\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])')
 
-def get_ytdlp_path():
+def _find_executable(name):
     """
-    Returns absolute path to bundled yt-dlp.exe
-    Checks:
-        1. Persistent auto-update AppData directory (OVERRIDES BUNDLE)
-        2. Same directory as host.exe (PyInstaller bundle)
-        3. Relative path ../vendor/yt-dlp.exe (script)
-    Raises FileNotFoundError with clear message if not found.
+    Shared executable resolver. Lookup order:
+      1. Persistent auto-update AppData dir (overrides everything)
+      2. PyInstaller bundle (_MEIPASS)
+      3. ../vendor/ relative to source
+      4. System PATH
     """
-    executable_name = 'yt-dlp.exe' if platform.system() == 'Windows' else 'yt-dlp'
-    
-    # 0. Check persistent update directory first (Overrides strictly packed versions)
+    executable_name = f"{name}.exe" if platform.system() == 'Windows' else name
+
+    # 1. Check persistent auto-update directory (overrides bundle)
     appdata = os.environ.get('APPDATA', '') or os.path.expanduser('~')
-    ext_dir = os.path.join(appdata, 'YouTubeNativeExt')
-    updated_path = os.path.join(ext_dir, executable_name)
+    updated_path = os.path.join(appdata, 'YouTubeNativeExt', executable_name)
     if os.path.exists(updated_path):
         return updated_path
-        
-    # 1. Check if running as compiled PyInstaller executable
+
+    # 2. PyInstaller bundle
     if getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS'):
         bundle_path = os.path.join(sys._MEIPASS, executable_name)
         if os.path.exists(bundle_path):
             return bundle_path
-            
-    # 2. Check vendor/ directory when running from source
+
+    # 3. vendor/ directory (development / source installs)
     script_dir = os.path.dirname(os.path.abspath(__file__))
-    vendor_path = os.path.join(os.path.dirname(script_dir), "vendor", executable_name)
+    vendor_path = os.path.join(os.path.dirname(script_dir), 'vendor', executable_name)
     if os.path.exists(vendor_path):
         return vendor_path
-        
-    # 3. Check system PATH as fallback
-    system_path = shutil.which("yt-dlp")
+
+    # 4. System PATH
+    system_path = shutil.which(name)
     if system_path:
         return system_path
-        
-    raise FileNotFoundError("yt-dlp not found. Please reinstall the downloader.")
+
+    raise FileNotFoundError(f"'{name}' not found. Please reinstall the downloader.")
+
+def get_ytdlp_path():
+    """Returns the absolute path to the yt-dlp executable."""
+    return _find_executable('yt-dlp')
 
 def get_ffmpeg_path():
-    """
-    Returns absolute path to bundled ffmpeg.exe
-    Same logic as get_ytdlp_path()
-    """
-    executable_name = 'ffmpeg.exe' if platform.system() == 'Windows' else 'ffmpeg'
-    
-    if getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS'):
-        bundle_path = os.path.join(sys._MEIPASS, executable_name)
-        if os.path.exists(bundle_path):
-            return bundle_path
-            
-    script_dir = os.path.dirname(os.path.abspath(__file__))
-    vendor_path = os.path.join(os.path.dirname(script_dir), "vendor", executable_name)
-    if os.path.exists(vendor_path):
-        return vendor_path
-        
-    system_path = shutil.which("ffmpeg")
-    if system_path:
-        return system_path
-        
-    raise FileNotFoundError("ffmpeg not found. Please reinstall the downloader.")
+    """Returns the absolute path to the ffmpeg executable."""
+    return _find_executable('ffmpeg')
+
 
 def update_ytdlp(progress_callback):
     """
@@ -294,7 +278,8 @@ def download_video(url, itag, output_dir, progress_callback, cookies_browser=Non
     else:
         try:
             h = int(itag)
-        except:
+        except (ValueError, TypeError):
+            log.warning(f"[Downloader] Non-integer itag '{itag}' received — defaulting to 1080p.")
             h = 1080
         cmd.extend([
             "-f", _build_video_format_string(h),

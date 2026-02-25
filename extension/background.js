@@ -8,6 +8,27 @@ let hostNotConnectedFlag = false;
 // Cache for active downloads tracking
 let activeDownloads = {};
 
+// Reconnect state — retries at 1s, 3s, 7s, 15s before giving up
+const RECONNECT_DELAYS_MS = [1000, 3000, 7000, 15000];
+let reconnectAttempt = 0;
+let reconnectTimer = null;
+
+function scheduleReconnect() {
+    if (reconnectTimer !== null) return; // already scheduled
+    if (reconnectAttempt >= RECONNECT_DELAYS_MS.length) {
+        console.warn("[YT-Native] Host did not recover after all retry attempts. User action required.");
+        reconnectAttempt = 0;
+        return;
+    }
+    const delay = RECONNECT_DELAYS_MS[reconnectAttempt];
+    console.log(`[YT-Native] Scheduling reconnect attempt ${reconnectAttempt + 1} in ${delay}ms...`);
+    reconnectTimer = setTimeout(() => {
+        reconnectTimer = null;
+        reconnectAttempt++;
+        connectToHost();
+    }, delay);
+}
+
 function connectToHost() {
     if (nativePort) return;
 
@@ -19,6 +40,7 @@ function connectToHost() {
         if (response.type === MSG.HOST_PONG) {
             hostConnected = true;
             hostNotConnectedFlag = false;
+            reconnectAttempt = 0; // reset backoff on successful connect
             console.log("Native host connected successfully.");
         }
         else if (response.type === MSG.HOST_PROGRESS || response.type === MSG.HOST_DONE || response.type === MSG.HOST_ERROR) {
@@ -56,9 +78,6 @@ function connectToHost() {
                     message: response.filename || "Video saved to Downloads folder."
                 });
 
-                // Grab thumbnail from cache before we delete it (or if it was just deleted, maybe pass it, wait, we deleted it above)
-                // Let's rely on the fact that if it's missing we just use a placeholder
-
                 chrome.storage.local.get({ history: [] }, (data) => {
                     let history = data.history;
                     history.unshift({
@@ -80,11 +99,14 @@ function connectToHost() {
     });
 
     nativePort.onDisconnect.addListener(() => {
-        console.error("Native host disconnected:", chrome.runtime.lastError);
+        console.error("[YT-Native] Native host disconnected:", chrome.runtime.lastError?.message);
         nativePort = null;
         hostConnected = false;
         hostNotConnectedFlag = true;
-        activeDownloads = {}; // Clear queue heavily
+        activeDownloads = {}; // Clear in-progress tracking
+
+        // Begin exponential backoff reconnect sequence
+        scheduleReconnect();
     });
 
     // Test the connection immediately

@@ -42,16 +42,25 @@ document.addEventListener('DOMContentLoaded', () => {
                     month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
                 });
 
+                // Use textContent for user-supplied strings to prevent XSS
+                const titleEl = document.createElement('div');
+                titleEl.className = 'vid-title';
+                titleEl.title = item.title;
+                titleEl.textContent = item.title;
+
+                const ext = (item.filename || '').split('.').pop().toUpperCase();
+
                 div.innerHTML = `
                     <img class="vid-thumbnail" src="${item.thumbnail || 'icons/icon48.png'}" alt="thumbnail" onerror="this.src='icons/icon48.png'">
                     <div class="vid-info">
-                        <div class="vid-title" title="${item.title}">${item.title}</div>
                         <div class="vid-meta">
-                            <span class="quality-badge">${item.filename.split('.').pop().toUpperCase()}</span>
+                            <span class="quality-badge">${ext}</span>
                             <span>${item.size_mb} MB &bull; ${date}</span>
                         </div>
                     </div>
                 `;
+                // Safely inject title as text node (not innerHTML)
+                div.querySelector('.vid-info').prepend(titleEl);
 
                 div.addEventListener('click', () => {
                     chrome.runtime.sendMessage({ type: MSG.EXT_OPEN_FOLDER });
@@ -117,6 +126,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     document.getElementById('btn-view-log').addEventListener('click', () => {
-        chrome.runtime.sendMessage({ type: MSG.EXT_OPEN_FOLDER, path: "%APPDATA%\\YouTubeNativeExt" });
+        // Open the log folder cross-platform via the native host's open_folder handler
+        chrome.runtime.sendMessage({ type: MSG.EXT_OPEN_FOLDER, path: "LOG_DIR" });
     });
 });
