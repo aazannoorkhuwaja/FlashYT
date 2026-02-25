@@ -11,6 +11,7 @@ let activeDownloads = {};
 // Quality metadata cache keyed by videoId — caches labels/max_height only (not stream URLs)
 // 10-minute TTL: quality options are stable within a session, stream URLs are not cached here
 const PREFETCH_CACHE_TTL_MS = 10 * 60 * 1000;
+const PREFETCH_CACHE_MAX = 50;  // Evict oldest entry when exceeded to prevent unbounded growth
 const prefetchCache = {}; // { videoId: { result, timestamp } }
 
 function getVideoId(url) {
@@ -18,6 +19,16 @@ function getVideoId(url) {
         const u = new URL(url);
         return u.searchParams.get('v') || u.pathname.replace('/', '') || null;
     } catch { return null; }
+}
+
+function setPrefetchCache(videoId, result) {
+    const keys = Object.keys(prefetchCache);
+    if (keys.length >= PREFETCH_CACHE_MAX) {
+        // Evict the oldest entry by timestamp
+        const oldest = keys.reduce((a, b) => prefetchCache[a].timestamp < prefetchCache[b].timestamp ? a : b);
+        delete prefetchCache[oldest];
+    }
+    prefetchCache[videoId] = { result, timestamp: Date.now() };
 }
 
 // Reconnect state — retries at 1s, 3s, 7s, 15s before giving up
@@ -50,6 +61,7 @@ function connectToHost() {
         if (!response) return;
 
         if (response.type === MSG.HOST_PONG) {
+            _clearPongTimeout(); // Cancel the stall watchdog — host is alive
             const hostVer = response.version || "unknown";
             if (hostVer !== EXPECTED_HOST_VERSION) {
                 console.warn(`[YT-Native] Host version mismatch: expected ${EXPECTED_HOST_VERSION}, got ${hostVer}. Please re-run the installer.`);
@@ -137,6 +149,28 @@ function connectToHost() {
 // Initial connection
 connectToHost();
 
+// Issue D — 30-second heartbeat: detect a silently hung host.
+// PING is sent every 30s; if no PONG arrives within 5s we treat the host as dead.
+let _pongTimeout = null;
+setInterval(() => {
+    if (!nativePort || !hostConnected) return;
+    _pongTimeout = setTimeout(() => {
+        console.warn('[YT-Native] Heartbeat pong not received — host may be hung. Marking disconnected.');
+        hostConnected = false;
+        hostNotConnectedFlag = true;
+        nativePort?.disconnect();
+        nativePort = null;
+        scheduleReconnect();
+    }, 5000);
+    nativePort.postMessage({ type: MSG.HOST_PING });
+}, 30000);
+
+// Clear the pong watchdog when we receive any PONG
+// (handled in the HOST_PONG branch of nativePort.onMessage, added inline)
+function _clearPongTimeout() {
+    if (_pongTimeout) { clearTimeout(_pongTimeout); _pongTimeout = null; }
+}
+
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     // Attempt automatic reconnect if dead
     if (!nativePort) {
@@ -172,7 +206,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                 nativePort.onMessage.removeListener(listener);
                 if (response.type === MSG.HOST_PREFETCH_RESULT && videoId) {
                     // Store quality metadata in cache — never store stream URLs
-                    prefetchCache[videoId] = { result: response, timestamp: Date.now() };
+                    setPrefetchCache(videoId, response);
                 }
                 try {
                     sendResponse(response);

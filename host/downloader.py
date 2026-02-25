@@ -7,6 +7,7 @@ import platform
 import shutil
 import threading
 import functools
+from urllib.parse import urlparse
 
 from logger import log
 from cookies import get_best_available_cookies, cleanup_cookie_dir

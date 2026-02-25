@@ -90,6 +90,56 @@ class TestUpdateYtdlpErrors(unittest.TestCase):
 
         self.assertEqual(result.get('type'), 'error')
 
+class TestStallWatchdog(unittest.TestCase):
+    """Issue C: Verify the 60s stall watchdog kills a hung yt-dlp process."""
 
-if __name__ == '__main__':
-    unittest.main()
+    def test_watchdog_kills_process_on_stall(self):
+        """Asserts threading.Timer fires process.kill() when yt-dlp produces no stdout."""
+        kill_called = [False]
+
+        mock_proc = MagicMock()
+        mock_proc.returncode = -9
+        mock_proc.poll.return_value = -9
+
+        # Simulate stdout that blocks after the first line (no more lines = stall)
+        first_call = [True]
+        def slow_readline():
+            if first_call[0]:
+                first_call[0] = False
+                return ''  # Empty string terminates iter loop immediately
+            return ''
+        mock_proc.stdout.readline = slow_readline
+        mock_proc.stdout.__iter__ = MagicMock(return_value=iter([]))
+
+        captured_timers = []
+
+        class FakeTimer:
+            def __init__(self, delay, fn):
+                self.fn = fn
+            def cancel(self):
+                pass
+            @property
+            def daemon(self): return False
+            @daemon.setter
+            def daemon(self, v): pass
+            def start(self):
+                captured_timers.append(self)
+
+        with patch('downloader.get_ytdlp_path', return_value='/fake/yt-dlp'), \
+             patch('downloader.get_ffmpeg_path', return_value='/fake/ffmpeg'), \
+             patch('subprocess.Popen', return_value=mock_proc), \
+             patch('threading.Timer', FakeTimer):
+            downloader.download_video(
+                url='https://www.youtube.com/watch?v=stall',
+                max_height=1080,
+                output_dir='/tmp',
+                progress_callback=lambda d: None
+            )
+
+        # FakeTimer was created — fire the first one to simulate the 60s timeout
+        self.assertGreater(len(captured_timers), 0, "Stall watchdog timer should have been started")
+        # Fire the stall timer and verify process.kill() would be called
+        captured_timers[0].fn()  # Simulate timeout firing
+        mock_proc.kill.assert_called()
+
+

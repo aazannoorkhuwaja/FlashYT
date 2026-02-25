@@ -8,6 +8,7 @@ import traceback
 import threading
 import subprocess
 from concurrent.futures import ThreadPoolExecutor
+from urllib.parse import urlparse
 
 from logger import log
 from downloader import prefetch_qualities, download_video, update_ytdlp
@@ -18,6 +19,17 @@ from downloader import prefetch_qualities, download_video, update_ytdlp
 # -------------------------------------------------------
 _host_alive = True
 _stdout_lock = threading.Lock()
+
+# Allowed YouTube hostnames — urlparse check prevents spoofing via query parameters.
+# e.g. https://evil.com/?redirect=youtube.com would bypass a naive substring 'in url' check.
+_YOUTUBE_HOSTS = frozenset({'youtube.com', 'www.youtube.com', 'm.youtube.com', 'youtu.be'})
+
+def _is_youtube_url(url):
+    """Returns True only if the URL hostname is a known YouTube domain."""
+    try:
+        return urlparse(url).netloc.lower() in _YOUTUBE_HOSTS
+    except Exception:
+        return False
 
 def send_message(msg):
     """
@@ -78,7 +90,7 @@ def handle_task(msg):
     try:
         if action == "prefetch":
             url = msg.get("url")
-            if not url or ('youtube.com' not in url.lower() and 'youtu.be' not in url.lower()):
+            if not url or not _is_youtube_url(url):
                 send_message({"type": "error", "message": "Invalid YouTube URL."})
                 return
 
@@ -90,7 +102,7 @@ def handle_task(msg):
             max_height = msg.get("max_height")
             title = msg.get("title", "YouTube Video")
 
-            if not url or ('youtube.com' not in url.lower() and 'youtu.be' not in url.lower()):
+            if not url or not _is_youtube_url(url):
                 send_message({"type": "error", "message": "Invalid YouTube URL."})
                 return
 

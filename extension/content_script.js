@@ -240,7 +240,11 @@ function triggerPrefetch(url) {
         } else if (response.type === MSG.HOST_ERROR) {
             const menu = document.getElementById('ytdl-native-menu');
             if (menu && menu.style.display === 'block') {
-                menu.innerHTML = `<div style="padding: 10px 16px; font-size: 14px; color: #e74c3c; text-align: center;">⚠ Error: ${response.message}</div>`;
+                const errDiv = document.createElement('div');
+                errDiv.style.cssText = 'padding: 10px 16px; font-size: 14px; color: #e74c3c; text-align: center;';
+                errDiv.textContent = `⚠ Error: ${response.message}`;
+                menu.innerHTML = '';
+                menu.appendChild(errDiv);
             }
             console.error("Prefetch failed:", response.message);
         }
