@@ -1,331 +1,676 @@
-importScripts("constants.js");
-
 const HOST_NAME = "com.youtube.native.ext";
+
 let nativePort = null;
 let hostConnected = false;
-let hostNotConnectedFlag = false;
+let keepAliveTimer = null;
 
-// Cache for active downloads tracking
-let activeDownloads = {};
+const formatCache = new Map();
+const CACHE_MAX = 50;
+const CACHE_TTL_MS = 10 * 60 * 1000;
+const prefetchInflight = new Map();
+const PREFETCH_TIMEOUT_MS = 60000;
 
-// Quality metadata cache keyed by videoId — caches labels/max_height only (not stream URLs)
-// 10-minute TTL: quality options are stable within a session, stream URLs are not cached here
-const PREFETCH_CACHE_TTL_MS = 10 * 60 * 1000;
-const PREFETCH_CACHE_MAX = 50;  // Evict oldest entry when exceeded to prevent unbounded growth
-const prefetchCache = {}; // { videoId: { result, timestamp } }
-
-function getVideoId(url) {
-    try {
-        const u = new URL(url);
-        return u.searchParams.get('v') || u.pathname.replace('/', '') || null;
-    } catch { return null; }
+function sendToYouTubeTabs(payload) {
+  chrome.tabs.query({ url: "https://www.youtube.com/*" }, (tabs) => {
+    tabs.forEach((tab) => {
+      chrome.tabs.sendMessage(tab.id, payload, () => chrome.runtime.lastError);
+    });
+  });
 }
 
-function setPrefetchCache(videoId, result) {
-    const keys = Object.keys(prefetchCache);
-    if (keys.length >= PREFETCH_CACHE_MAX) {
-        // Evict the oldest entry by timestamp
-        const oldest = keys.reduce((a, b) => prefetchCache[a].timestamp < prefetchCache[b].timestamp ? a : b);
-        delete prefetchCache[oldest];
+function startKeepAlive() {
+  if (keepAliveTimer) return;
+  keepAliveTimer = setInterval(() => {
+    if (nativePort && hostConnected) {
+      nativePort.postMessage({ type: "ping" });
+    } else {
+      stopKeepAlive();
     }
-    prefetchCache[videoId] = { result, timestamp: Date.now() };
+  }, 20000);
 }
 
-// Reconnect state — retries at 1s, 3s, 7s, 15s before giving up
-const RECONNECT_DELAYS_MS = [1000, 3000, 7000, 15000];
-let reconnectAttempt = 0;
-let reconnectTimer = null;
+function stopKeepAlive() {
+  if (!keepAliveTimer) return;
+  clearInterval(keepAliveTimer);
+  keepAliveTimer = null;
+}
 
-function scheduleReconnect() {
-    if (reconnectTimer !== null) return; // already scheduled
-    if (reconnectAttempt >= RECONNECT_DELAYS_MS.length) {
-        console.warn("[YT-Native] Host did not recover after all retry attempts. User action required.");
-        reconnectAttempt = 0;
-        return;
+function clearPrefetchInflight(reason) {
+  prefetchInflight.forEach((entry) => {
+    if (entry.timer) clearTimeout(entry.timer);
+    if (nativePort && entry.listener) nativePort.onMessage.removeListener(entry.listener);
+    const payload = { type: "error", message: reason || "Prefetch failed." };
+    (entry.responders || []).forEach((respond) => {
+      try { respond(payload); } catch (_) {}
+    });
+  });
+  prefetchInflight.clear();
+}
+
+class DownloadManager {
+  constructor() {
+    this.downloads = {};
+    this.maxConcurrent = 3;
+    this.restoreState();
+    this.loadSettings();
+    chrome.storage.onChanged.addListener((changes, area) => {
+      if (area !== "local" || !changes.max_concurrent) return;
+      this.maxConcurrent = this._normalizeConcurrent(changes.max_concurrent.newValue);
+      this.processQueue();
+    });
+  }
+
+  restoreState() {
+    chrome.storage.local.get(["active_downloads"], (result) => {
+      this.downloads = result.active_downloads || {};
+      this.processQueue();
+    });
+  }
+
+  loadSettings() {
+    chrome.storage.local.get({ max_concurrent: 3 }, (result) => {
+      this.maxConcurrent = this._normalizeConcurrent(result.max_concurrent);
+      this.processQueue();
+    });
+  }
+
+  _normalizeConcurrent(rawValue) {
+    const parsed = parseInt(rawValue, 10);
+    if (Number.isNaN(parsed)) return 3;
+    return Math.min(10, Math.max(1, parsed));
+  }
+
+  activeCount() {
+    return Object.values(this.downloads).filter((d) => ["downloading", "starting", "pausing", "resuming", "cancelling"].includes(d.status)).length;
+  }
+
+  queueDownload(id, pendingAction = "start") {
+    const dl = this.downloads[id];
+    if (!dl) return;
+    dl.status = "queued";
+    dl.pendingAction = pendingAction;
+    dl.speed = 0;
+    delete dl.prevStatus;
+    this.saveState();
+  }
+
+  processQueue() {
+    executeWithHost(
+      () => {
+        let slots = this.maxConcurrent - this.activeCount();
+        if (slots <= 0) return;
+
+        const queued = Object.values(this.downloads).filter((d) => d.status === "queued");
+        for (const dl of queued) {
+          if (slots <= 0) break;
+          if (dl.pendingAction === "resume") {
+            this.markActionRequested(dl.id, "resume");
+            nativePort.postMessage({ type: "resume", downloadId: dl.id });
+          } else {
+            this.startNativeDownload(dl);
+          }
+          slots -= 1;
+        }
+      },
+      () => {}
+    );
+  }
+
+  saveState() {
+    chrome.storage.local.set({ active_downloads: this.downloads });
+    chrome.runtime.sendMessage({ type: "DOWNLOADS_UPDATED", downloads: Object.values(this.downloads) }, () => chrome.runtime.lastError);
+  }
+
+  findDownload(payload) {
+    if (payload.downloadId && this.downloads[payload.downloadId]) return this.downloads[payload.downloadId];
+    if (payload.videoId) return Object.values(this.downloads).find((d) => d.videoId === payload.videoId);
+    return null;
+  }
+
+  addDownload(videoInfo, url, filename, providedId = null) {
+    const downloadId = providedId || `${videoInfo.videoId || Date.now()}_${videoInfo.quality || "auto"}`;
+    this.downloads[downloadId] = {
+      id: downloadId,
+      videoId: videoInfo.videoId,
+      title: videoInfo.title,
+      thumbnail: videoInfo.thumbnail,
+      quality: videoInfo.quality,
+      real_itag: videoInfo.real_itag,
+      format: videoInfo.format || "MP4",
+      totalSize: videoInfo.totalSize || 0,
+      downloaded: 0,
+      progress: 0,
+      speed: 0,
+      status: "queued",
+      pendingAction: "start",
+      url,
+      filename,
+    };
+
+    this.saveState();
+    this.processQueue();
+    return downloadId;
+  }
+
+  startNativeDownload(download) {
+    if (!download) return;
+    download.status = "starting";
+    download.pendingAction = null;
+    delete download.prevStatus;
+    this.saveState();
+
+    executeWithHost(
+      () => {
+        chrome.storage.local.get({ save_location: "~/Downloads" }, (res) => {
+          nativePort.postMessage({
+            type: "download",
+            url: download.url,
+            itag: download.quality,
+            real_itag: download.real_itag,
+            title: download.title,
+            videoId: download.videoId,
+            downloadId: download.id,
+            save_location: res.save_location,
+          });
+          startKeepAlive();
+        });
+      },
+      () => {
+        download.status = "error";
+        download.pendingAction = null;
+        this.saveState();
+        this.processQueue();
+      }
+    );
+  }
+
+  updateProgress(payload) {
+    const dl = this.findDownload(payload);
+    if (!dl) return;
+
+    const pct = parseFloat((payload.percent || "").toString().replace("%", ""));
+    if (!Number.isNaN(pct)) {
+      dl.progress = Math.max(dl.progress || 0, pct);
     }
-    const delay = RECONNECT_DELAYS_MS[reconnectAttempt];
-    console.log(`[YT-Native] Scheduling reconnect attempt ${reconnectAttempt + 1} in ${delay}ms...`);
-    reconnectTimer = setTimeout(() => {
-        reconnectTimer = null;
-        reconnectAttempt++;
-        connectToHost();
-    }, delay);
+
+    if (payload.speed && typeof payload.speed === "string") {
+      const match = payload.speed.match(/([\d.]+)\s*(KiB|MiB|GiB)/);
+      if (match) {
+        const val = parseFloat(match[1]);
+        const unit = match[2];
+        let bytes = val;
+        if (unit === "KiB") bytes *= 1024;
+        if (unit === "MiB") bytes *= 1048576;
+        if (unit === "GiB") bytes *= 1073741824;
+        dl.speed = bytes;
+      }
+    }
+
+    if (dl.totalSize > 0) {
+      dl.downloaded = Math.round(dl.totalSize * (dl.progress / 100));
+    }
+
+    dl.status = "downloading";
+    dl.pendingAction = null;
+    delete dl.prevStatus;
+    this.saveState();
+  }
+
+  markTerminal(payload) {
+    const dl = this.findDownload(payload);
+    if (!dl) return;
+
+    if (payload.type === "cancelled") {
+      delete this.downloads[dl.id];
+      this.saveState();
+      this.processQueue();
+      return;
+    }
+
+    dl.status = payload.type === "error" ? "error" : "completed";
+    dl.pendingAction = null;
+    delete dl.prevStatus;
+    dl.speed = 0;
+    if (payload.type === "done") dl.progress = 100;
+
+    if (payload.type === "done") {
+      chrome.storage.local.get({ history: [] }, (data) => {
+        const history = [{
+          videoId: dl.videoId,
+          title: dl.title,
+          thumbnail: dl.thumbnail,
+          filename: payload.filename || dl.filename,
+          size_mb: payload.size_mb || 0,
+          path: payload.path || "",
+          already_exists: !!payload.already_exists,
+          time: Date.now(),
+        }, ...data.history].slice(0, 50);
+        chrome.storage.local.set({ history });
+      });
+
+      if (chrome.notifications) {
+        chrome.notifications.create({
+          type: "basic",
+          iconUrl: "icons/icon128.png",
+          title: payload.already_exists ? "⚡ FlashYT – Already Downloaded" : "⚡ FlashYT – Download Complete",
+          message: payload.filename || "Video ready.",
+        });
+      }
+    }
+
+    this.saveState();
+    this.processQueue();
+    if (!Object.values(this.downloads).some((d) => ["downloading", "starting", "pausing", "resuming", "cancelling"].includes(d.status))) {
+      stopKeepAlive();
+    }
+  }
+
+  pauseDownload(id) {
+    const dl = this.downloads[id];
+    if (!dl) return;
+    dl.status = "paused";
+    dl.speed = 0;
+    dl.pendingAction = null;
+    delete dl.prevStatus;
+    this.saveState();
+    this.processQueue();
+  }
+
+  resumeDownload(id) {
+    const dl = this.downloads[id];
+    if (!dl) return;
+    dl.status = "starting";
+    dl.pendingAction = null;
+    delete dl.prevStatus;
+    this.saveState();
+  }
+
+  cancelDownload(id) {
+    if (!this.downloads[id]) return;
+    delete this.downloads[id];
+    this.saveState();
+    this.processQueue();
+  }
+
+  markActionRequested(id, action) {
+    const dl = this.downloads[id];
+    if (!dl) return;
+    dl.prevStatus = dl.status;
+    dl.pendingAction = action;
+    if (action === "pause") dl.status = "pausing";
+    if (action === "resume") dl.status = "resuming";
+    if (action === "cancel") dl.status = "cancelling";
+    if (action !== "cancel") dl.speed = 0;
+    this.saveState();
+  }
+
+  markActionFailed(id, action, message) {
+    const dl = this.downloads[id];
+    if (!dl) return;
+    dl.pendingAction = null;
+    dl.status = dl.prevStatus || dl.status || "downloading";
+    delete dl.prevStatus;
+    dl.last_error = message || "";
+    this.saveState();
+    this.processQueue();
+  }
+
+  handleControlAck(payload) {
+    if (!payload.downloadId) return;
+    if (!payload.ok) {
+      this.markActionFailed(payload.downloadId, payload.action, payload.message);
+      return;
+    }
+
+    const msg = (payload.message || "").toLowerCase();
+    if (payload.action === "pause" && msg.includes("already paused")) {
+      this.pauseDownload(payload.downloadId);
+      return;
+    }
+    if (payload.action === "resume" && msg.includes("resume queued")) {
+      this.queueDownload(payload.downloadId, "resume");
+      this.processQueue();
+      return;
+    }
+    if (payload.action === "resume" && msg.includes("already active")) {
+      const dl = this.downloads[payload.downloadId];
+      if (dl) {
+        dl.status = "downloading";
+        dl.pendingAction = null;
+        delete dl.prevStatus;
+        this.saveState();
+      }
+      return;
+    }
+    if (payload.action === "cancel" && (msg.includes("already inactive") || msg.includes("cancel requested"))) {
+      this.cancelDownload(payload.downloadId);
+      return;
+    }
+
+    // Final state transition is driven by host terminal messages.
+    // Here we only keep transitional status aligned until that arrives.
+    this.markActionRequested(payload.downloadId, payload.action);
+  }
+
+  clearCompleted() {
+    Object.keys(this.downloads).forEach((id) => {
+      const s = this.downloads[id].status;
+      if (s === "completed" || s === "error" || s === "cancelled") delete this.downloads[id];
+    });
+    this.saveState();
+  }
 }
+
+const manager = new DownloadManager();
 
 function connectToHost() {
-    if (nativePort) return;
+  if (nativePort) return;
+  nativePort = chrome.runtime.connectNative(HOST_NAME);
 
-    nativePort = chrome.runtime.connectNative(HOST_NAME);
+  nativePort.onMessage.addListener((rawResponse) => {
+    let response = rawResponse;
+    if (!response.type) {
+      if (response.error) response = { type: "error", message: response.error, ...response };
+      else if (response.filename || response.path) response = { type: "done", ...response };
+    }
 
-    nativePort.onMessage.addListener((response) => {
-        if (!response) return;
+    if (response.type === "pong") {
+      hostConnected = true;
+      manager.processQueue();
+      return;
+    }
 
-        if (response.type === MSG.HOST_PONG) {
-            _clearPongTimeout(); // Cancel the stall watchdog — host is alive
-            const hostVer = response.version || "unknown";
-            if (hostVer !== EXPECTED_HOST_VERSION) {
-                console.warn(`[YT-Native] Host version mismatch: expected ${EXPECTED_HOST_VERSION}, got ${hostVer}. Please re-run the installer.`);
-                hostConnected = false;
-                hostNotConnectedFlag = true;
-                // Relay a structured error so popup.js can show a clear message
-                chrome.runtime.sendMessage({ type: MSG.ERR_HOST_OUTDATED, expected: EXPECTED_HOST_VERSION, got: hostVer });
-            } else {
-                hostConnected = true;
-                hostNotConnectedFlag = false;
-                reconnectAttempt = 0; // reset backoff on successful connect
-                console.log("Native host connected successfully.");
-            }
-        }
-        else if (response.type === MSG.HOST_PROGRESS || response.type === MSG.HOST_DONE || response.type === MSG.HOST_ERROR) {
-            // Track active download progress keyed by title
-            if (response.type === MSG.HOST_PROGRESS && response.title) {
-                if (activeDownloads[response.title]) {
-                    activeDownloads[response.title].percent = response.percent;
-                    activeDownloads[response.title].speed = response.speed;
-                    activeDownloads[response.title].eta = response.eta;
-                }
-            }
-            if (response.type === MSG.HOST_DONE || response.type === MSG.HOST_ERROR) {
-                if (response.title && activeDownloads[response.title]) {
-                    delete activeDownloads[response.title];
-                }
-            }
+    const isDownloadError = response.type === "error" && (response.downloadId || response.videoId);
 
-            // Relays passive streaming events back to all active YouTube tabs
-            chrome.tabs.query({ url: "*://*.youtube.com/*" }, (tabs) => {
-                tabs.forEach(tab => {
-                    try {
-                        chrome.tabs.sendMessage(tab.id, response).catch(() => { });
-                    } catch (e) {
-                        // Ignore context invalidated errors if the tab was closed/reloaded mid-stream
-                    }
-                });
-            });
+    if (response.type === "progress") manager.updateProgress(response);
+    if (response.type === "done" || response.type === "cancelled" || isDownloadError) manager.markTerminal(response);
+    if (response.type === "paused") manager.pauseDownload(response.downloadId);
+    if (response.type === "control_ack") manager.handleControlAck(response);
 
-            // Log history or notify
-            if (response.type === MSG.HOST_DONE) {
-                chrome.notifications.create({
-                    type: "basic",
-                    iconUrl: "icons/icon128.png",
-                    title: "Download Complete",
-                    message: response.filename || "Video saved to Downloads folder."
-                });
+    if (["progress", "done", "cancelled", "paused", "control_ack"].includes(response.type) || isDownloadError) {
+      sendToYouTubeTabs(response);
+    }
+  });
 
-                chrome.storage.local.get({ history: [] }, (data) => {
-                    let history = data.history;
-                    history.unshift({
-                        title: response.title || response.filename,
-                        filename: response.filename,
-                        size_mb: response.size_mb,
-                        thumbnail: response.thumbnail || "icons/icon48.png",
-                        time: Date.now()
-                    });
-                    if (history.length > 50) history.pop();
-                    chrome.storage.local.set({ history: history });
-                });
-            }
-        }
-        else {
-            // Unhandled broadcast
-            console.log("Received unhandled broadcast from host:", response);
-        }
-    });
+  nativePort.onDisconnect.addListener(() => {
+    const errMsg = chrome.runtime.lastError?.message || "";
+    const notInstalled = errMsg.includes("not found") || errMsg.includes("cannot be found");
+    if (notInstalled) sendToYouTubeTabs({ type: "HOST_NOT_INSTALLED" });
+    nativePort = null;
+    hostConnected = false;
+    clearPrefetchInflight("Host disconnected during format fetch.");
+  });
 
-    nativePort.onDisconnect.addListener(() => {
-        console.error("[YT-Native] Native host disconnected:", chrome.runtime.lastError?.message);
-        nativePort = null;
-        hostConnected = false;
-        hostNotConnectedFlag = true;
-        activeDownloads = {}; // Clear in-progress tracking
-
-        // Begin exponential backoff reconnect sequence
-        scheduleReconnect();
-    });
-
-    // Test the connection immediately
-    nativePort.postMessage({ type: MSG.HOST_PING });
+  nativePort.postMessage({ type: "ping" });
 }
 
-// Initial connection
-connectToHost();
-
-// Issue D — 30-second heartbeat: detect a silently hung host.
-// PING is sent every 30s; if no PONG arrives within 5s we treat the host as dead.
-let _pongTimeout = null;
-setInterval(() => {
-    if (!nativePort || !hostConnected) return;
-    _pongTimeout = setTimeout(() => {
-        console.warn('[YT-Native] Heartbeat pong not received — host may be hung. Marking disconnected.');
-        hostConnected = false;
-        hostNotConnectedFlag = true;
-        nativePort?.disconnect();
-        nativePort = null;
-        scheduleReconnect();
-    }, 5000);
-    nativePort.postMessage({ type: MSG.HOST_PING });
-}, 30000);
-
-// Clear the pong watchdog when we receive any PONG
-// (handled in the HOST_PONG branch of nativePort.onMessage, added inline)
-function _clearPongTimeout() {
-    if (_pongTimeout) { clearTimeout(_pongTimeout); _pongTimeout = null; }
+function executeWithHost(onSuccess, onError) {
+  if (!nativePort || !hostConnected) {
+    connectToHost();
+    setTimeout(() => {
+      if (hostConnected) onSuccess();
+      else if (onError) onError();
+    }, 350);
+    return;
+  }
+  onSuccess();
 }
 
-chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-    // Attempt automatic reconnect if dead
-    if (!nativePort) {
-        connectToHost();
-    }
+function cacheSet(url, value) {
+  if (formatCache.size >= CACHE_MAX) {
+    formatCache.delete(formatCache.keys().next().value);
+  }
+  formatCache.set(url, { value, ts: Date.now() });
+}
 
-    if (message.type === MSG.EXT_CHECK_STATUS) {
-        if (!hostConnected && !nativePort) {
-            connectToHost();
-            // We return "disconnected" quickly, but the background spin-up is already happening now
-        }
-        sendResponse({ status: hostConnected ? "connected" : "disconnected" });
-        return true;
-    }
+function hasRealQualityData(response) {
+  if (!response || !Array.isArray(response.qualities) || response.qualities.length === 0) return false;
+  return response.qualities.some((q) => q && q.real_itag !== null && q.real_itag !== undefined && q.real_itag !== "");
+}
 
-    if (hostNotConnectedFlag || !nativePort) {
-        sendResponse({ error: MSG.ERR_NOT_CONNECTED });
-        return true;
-    }
+function cacheGet(url) {
+  const entry = formatCache.get(url);
+  if (!entry) return null;
+  if (Date.now() - entry.ts > CACHE_TTL_MS) {
+    formatCache.delete(url);
+    return null;
+  }
+  if (entry.value?.degraded || !hasRealQualityData(entry.value)) {
+    formatCache.delete(url);
+    return null;
+  }
+  return entry.value;
+}
 
-    if (message.type === MSG.EXT_PREFETCH) {
-        const videoId = getVideoId(message.url);
-        const cached = videoId && prefetchCache[videoId];
-        if (cached && (Date.now() - cached.timestamp < PREFETCH_CACHE_TTL_MS)) {
-            // Cache hit — return quality metadata instantly without hitting native host
-            sendResponse(cached.result);
-            return true;
-        }
-
-        // Cache miss — forward to native host
-        const listener = (response) => {
-            if (response.type === MSG.HOST_PREFETCH_RESULT || response.type === MSG.HOST_ERROR) {
-                nativePort.onMessage.removeListener(listener);
-                if (response.type === MSG.HOST_PREFETCH_RESULT && videoId) {
-                    // Store quality metadata in cache — never store stream URLs
-                    setPrefetchCache(videoId, response);
-                }
-                try {
-                    sendResponse(response);
-                } catch (e) {
-                    console.warn("[YT-Native] Failed to sendResponse to prefetch. Tab may have closed.", e);
-                }
-            }
-        };
-        nativePort.onMessage.addListener(listener);
-        nativePort.postMessage({ type: MSG.HOST_PREFETCH, url: message.url });
-        return true;
-    }
-
-    if (message.type === MSG.EXT_DOWNLOAD) {
-        let videoId = "placeholder";
-        try {
-            videoId = new URL(message.url).searchParams.get("v") || "placeholder";
-        } catch (e) {
-            console.warn("[YT-Native] Failed to parse YouTube video ID from URL:", message.url, e);
-        }
-        let thumb = videoId !== "placeholder" ? `https://i.ytimg.com/vi/${videoId}/mqdefault.jpg` : "icons/icon48.png";
-
-        activeDownloads[message.title] = {
-            type: MSG.HOST_PROGRESS,
-            filename: message.title,
-            percent: "0%",
-            eta: "Starting...",
-            speed: "0 KiB/s",
-            thumbnail: thumb
-        };
-
-        nativePort.postMessage({
-            type: MSG.HOST_DOWNLOAD,
-            url: message.url,
-            max_height: message.max_height,
-            title: message.title,
-            thumbnail: thumb
-        });
-        sendResponse({ status: "started" });
-        return true;
-    }
-
-    if (message.type === MSG.EXT_OPEN_FOLDER) {
-        nativePort.postMessage({ type: MSG.HOST_OPEN_FOLDER, path: message.path || "" });
-        sendResponse({ status: "ok" });
-        return true;
-    }
-
-    if (message.type === MSG.EXT_UPDATE_ENGINE) {
-        activeDownloads["Core Updater"] = {
-            type: MSG.HOST_PROGRESS,
-            filename: `yt-dlp Core Updater`,
-            percent: "0%",
-            eta: "Starting...",
-            speed: "0 KiB/s",
-            thumbnail: "icons/icon48.png"
-        };
-        nativePort.postMessage({ type: MSG.HOST_UPDATE_ENGINE });
-        sendResponse({ status: "ok" });
-        return true;
-    }
-
-    if (message.type === MSG.EXT_GET_HISTORY) {
-        chrome.storage.local.get({ history: [] }, (data) => {
-            sendResponse({ history: data.history });
-        });
-        return true;
-    }
-
-    if (message.type === MSG.EXT_GET_QUEUE) {
-        sendResponse({ queue: Object.values(activeDownloads) });
-        return true;
-    }
-});
-
-// Setup Context Menu Installer
 chrome.runtime.onInstalled.addListener(() => {
-    chrome.contextMenus.create({
-        id: "ytdl_native_download",
-        title: "Download with YouTube Native Downloader",
-        contexts: ["link", "page"],
-        documentUrlPatterns: ["*://*.youtube.com/*"]
-    });
+  chrome.contextMenus.create({
+    id: "download_youtube",
+    title: "⚡ Download with FlashYT",
+    contexts: ["link"],
+    targetUrlPatterns: ["https://www.youtube.com/watch*", "https://youtube.com/watch*"],
+  });
 });
 
-chrome.contextMenus.onClicked.addListener((info, tab) => {
-    if (info.menuItemId === "ytdl_native_download") {
-        let url = info.linkUrl || info.pageUrl;
-        if (!url || !url.includes("youtube.com/watch")) return;
-
-        if (!nativePort || hostNotConnectedFlag) {
-            chrome.notifications.create({
-                type: "basic",
-                iconUrl: "icons/icon128.png",
-                title: "Error",
-                message: "Native Desktop App is not running."
-            });
-            return;
-        }
-
-        let videoId = "placeholder";
-        try { videoId = new URL(url).searchParams.get("v") || "placeholder"; } catch (e) { }
-        let thumb = videoId !== "placeholder" ? `https://i.ytimg.com/vi/${videoId}/mqdefault.jpg` : "icons/icon48.png";
-
-        activeDownloads[`Quick Context Download`] = {
-            type: MSG.HOST_PROGRESS,
-            filename: `Quick Context Download`,
-            percent: "0%",
-            eta: "Starting...",
-            speed: "0 KiB/s",
-            thumbnail: thumb
-        };
-
-        nativePort.postMessage({
-            type: MSG.HOST_DOWNLOAD,
-            url: url,
-            max_height: 1080,
-            title: "Quick Download",
-            thumbnail: thumb
+chrome.contextMenus.onClicked.addListener((info) => {
+  if (info.menuItemId !== "download_youtube") return;
+  executeWithHost(
+    () => {
+      nativePort.postMessage({ type: "download", url: info.linkUrl, itag: "video_1080", title: "YouTube Video" });
+    },
+    () => {
+      if (chrome.notifications) {
+        chrome.notifications.create({
+          type: "basic",
+          iconUrl: "icons/icon128.png",
+          title: "FlashYT Not Running",
+          message: "Run the FlashYT installer and try again.",
         });
+      }
     }
+  );
+});
+
+function processMessage(request, sendResponse) {
+  if (request.type === "PREFETCH") {
+    const url = request.url;
+    if (!request.force) {
+      const cached = cacheGet(url);
+      if (cached) {
+        sendResponse(cached);
+        return false;
+      }
+    } else {
+      formatCache.delete(url);
+    }
+
+    const existing = prefetchInflight.get(url);
+    if (existing) {
+      existing.responders.push(sendResponse);
+      return true;
+    }
+
+    const responders = [sendResponse];
+    let settled = false;
+    const finalize = (payload) => {
+      if (settled) return;
+      settled = true;
+      const entry = prefetchInflight.get(url);
+      if (entry?.timer) clearTimeout(entry.timer);
+      if (nativePort && entry?.listener) nativePort.onMessage.removeListener(entry.listener);
+      prefetchInflight.delete(url);
+      responders.forEach((respond) => {
+        try { respond(payload); } catch (_) {}
+      });
+    };
+
+    const listener = (response) => {
+      const sameReq = !response.reqUrl || response.reqUrl === url;
+      if (!sameReq) return;
+
+      if (response.type === "prefetch_result") {
+        if (!response.degraded && hasRealQualityData(response)) cacheSet(url, response);
+        finalize(response);
+        return;
+      }
+
+      const isPrefetchError = response.type === "prefetch_error" || (response.type === "error" && !!response.reqUrl);
+      if (!isPrefetchError) return;
+      finalize({ type: "error", message: response.message || "Could not fetch qualities." });
+    };
+
+    const timer = setTimeout(() => {
+      finalize({ type: "error", message: "Still fetching formats. Please try again in a few seconds." });
+    }, PREFETCH_TIMEOUT_MS);
+
+    prefetchInflight.set(url, { responders, listener, timer });
+    nativePort.onMessage.addListener(listener);
+    nativePort.postMessage({ type: "prefetch", url });
+    return true;
+  }
+
+  if (request.type === "DOWNLOAD") {
+    const downloadId = manager.addDownload({
+      title: request.title,
+      videoId: request.videoId,
+      thumbnail: request.thumbnail,
+      quality: request.itag,
+      real_itag: request.real_itag,
+      format: request.format || "MP4",
+      totalSize: parseFloat(request.size_mb || 0) * 1048576,
+    }, request.url, `${request.title}.mp4`, request.downloadId);
+    const status = manager.downloads[downloadId]?.status || "queued";
+    sendResponse({ status, downloadId });
+    return false;
+  }
+
+  if (request.type === "START_DOWNLOAD") {
+    const downloadId = manager.addDownload(request.videoInfo, request.url, request.filename, request.downloadId);
+    sendResponse({ success: true, downloadId, status: manager.downloads[downloadId]?.status || "queued" });
+    return false;
+  }
+
+  if (request.type === "GET_DOWNLOAD_STATE") {
+    const download = Object.values(manager.downloads).find((d) => d.videoId === request.videoId && ["queued", "starting", "downloading", "paused", "pausing", "resuming", "cancelling"].includes(d.status));
+    if (!download) {
+      sendResponse({ active: false });
+      return false;
+    }
+    sendResponse({ active: true, status: download.status, percent: `${download.progress}%`, downloadId: download.id, speed: download.speed });
+    return false;
+  }
+
+  if (request.type === "GET_DOWNLOADS") {
+    sendResponse({ downloads: Object.values(manager.downloads) });
+    return false;
+  }
+
+  if (request.type === "CLEAR_COMPLETED") {
+    manager.clearCompleted();
+    sendResponse({ success: true });
+    return false;
+  }
+
+  if (request.type === "PAUSE_DOWNLOAD") {
+    const target = manager.downloads[request.id];
+    if (!target) {
+      sendResponse({ success: false, error: "NOT_FOUND" });
+      return false;
+    }
+    if (target.status === "queued") {
+      target.status = "paused";
+      target.pendingAction = "resume";
+      target.speed = 0;
+      manager.saveState();
+      sendResponse({ success: true });
+      return false;
+    }
+    if (target.status === "paused") {
+      sendResponse({ success: true });
+      return false;
+    }
+    manager.markActionRequested(request.id, "pause");
+    executeWithHost(
+      () => {
+        nativePort.postMessage({ type: "pause", downloadId: request.id });
+        sendResponse({ success: true });
+      },
+      () => {
+        manager.markActionFailed(request.id, "pause", "Host not connected.");
+        sendResponse({ success: false, error: "HOST_NOT_CONNECTED" });
+      }
+    );
+    return true;
+  }
+
+  if (request.type === "RESUME_DOWNLOAD") {
+    const target = manager.downloads[request.id];
+    if (!target) {
+      sendResponse({ success: false, error: "NOT_FOUND" });
+      return false;
+    }
+    if (manager.activeCount() >= manager.maxConcurrent) {
+      manager.queueDownload(request.id, "resume");
+      sendResponse({ success: true, queued: true });
+      return false;
+    }
+    manager.markActionRequested(request.id, "resume");
+    executeWithHost(
+      () => {
+        nativePort.postMessage({ type: "resume", downloadId: request.id });
+        sendResponse({ success: true });
+      },
+      () => {
+        manager.markActionFailed(request.id, "resume", "Host not connected.");
+        sendResponse({ success: false, error: "HOST_NOT_CONNECTED" });
+      }
+    );
+    return true;
+  }
+
+  if (request.type === "CANCEL_DOWNLOAD") {
+    const target = manager.downloads[request.id];
+    if (!target) {
+      sendResponse({ success: false, error: "NOT_FOUND" });
+      return false;
+    }
+    if (target.status === "queued" || target.status === "paused") {
+      manager.cancelDownload(request.id);
+      sendResponse({ success: true });
+      return false;
+    }
+    manager.markActionRequested(request.id, "cancel");
+    executeWithHost(
+      () => {
+        nativePort.postMessage({ type: "cancel", downloadId: request.id });
+        sendResponse({ success: true });
+      },
+      () => {
+        manager.markActionFailed(request.id, "cancel", "Host not connected.");
+        sendResponse({ success: false, error: "HOST_NOT_CONNECTED" });
+      }
+    );
+    return true;
+  }
+
+  if (request.type === "OPEN_FOLDER") {
+    if (nativePort) nativePort.postMessage({ type: "open_folder", path: request.path || "" });
+    sendResponse({ status: "ok" });
+    return false;
+  }
+
+  sendResponse({ error: "UNKNOWN_REQUEST_TYPE" });
+  return false;
+}
+
+chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
+  if (request.type === "CHECK_STATUS") {
+    sendResponse({ status: hostConnected ? "connected" : "disconnected" });
+    return false;
+  }
+
+  executeWithHost(
+    () => processMessage(request, sendResponse),
+    () => sendResponse({ type: "error", error: "HOST_NOT_CONNECTED" })
+  );
+  return true;
 });

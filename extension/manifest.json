@@ -1,17 +1,21 @@
 {
   "manifest_version": 3,
-  "name": "YouTube Native Downloader",
-  "version": "1.0.0",
-  "description": "Download any YouTube video in one click. Fast, private, works offline.",
+  "name": "FlashYT",
+  "version": "2.0.0",
+  "description": "Fast and reliable YouTube video downloader extension.",
   "permissions": [
-    "nativeMessaging",
+    "downloads",
     "storage",
+    "tabs",
+    "scripting",
+    "nativeMessaging",
     "contextMenus",
     "notifications"
   ],
   "host_permissions": [
     "https://www.youtube.com/*",
-    "https://youtube.com/*"
+    "https://youtube.com/*",
+    "https://*.googlevideo.com/*"
   ],
   "background": {
     "service_worker": "background.js"
@@ -19,17 +23,19 @@
   "content_scripts": [
     {
       "matches": [
-        "https://www.youtube.com/watch*"
+        "https://www.youtube.com/*"
       ],
       "js": [
-        "constants.js",
         "content_script.js"
       ],
-      "run_at": "document_idle"
+      "css": [
+        "content_styles.css"
+      ],
+      "run_at": "document_end"
     }
   ],
   "action": {
-    "default_title": "YouTube Native Downloader",
+    "default_title": "FlashYT",
     "default_popup": "popup.html",
     "default_icon": {
       "16": "icons/icon16.png",

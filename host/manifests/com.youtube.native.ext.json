@@ -1,0 +1,9 @@
+{
+    "name": "com.youtube.native.ext",
+    "description": "FlashYT Native Host",
+    "path": "PLACEHOLDER_PATH/host_runner.sh",
+    "type": "stdio",
+    "allowed_origins": [
+        "chrome-extension://PLACEHOLDER_ID/"
+    ]
+}

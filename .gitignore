@@ -1,12 +1,24 @@
-venv/
-.venv/
+# Python
 __pycache__/
-*.pyc
-.env
-config.json
-.cached_cookies.txt
-ffmpeg.exe
-*.zip
-dist/
+*.py[cod]
+*.pyo
+*.pyd
+
+# Test/cache
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Build/output
 build/
+dist/
 *.spec
+
+# OS/editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Logs
+*.log

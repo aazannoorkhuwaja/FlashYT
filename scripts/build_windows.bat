@@ -17,7 +17,15 @@ if %ERRORLEVEL% neq 0 (
 
 echo.
 echo [2/4] Building host.exe (Native Messaging Target)...
-pyinstaller --clean --onefile --noconsole --name host --distpath host\dist --workpath host\build host\host.py
+pyinstaller --clean --onefile --noconsole --name host ^
+    --distpath host\dist ^
+    --workpath host\build ^
+    --hidden-import=pystray._win32 ^
+    --hidden-import=pystray._base ^
+    --hidden-import=PIL.Image ^
+    --hidden-import=PIL.ImageDraw ^
+    --hidden-import=PIL.ImageFont ^
+    host\host.py
 if %ERRORLEVEL% neq 0 (
     echo [ERROR] Failed to compile host.exe
     exit /b 1

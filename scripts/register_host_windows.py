@@ -9,8 +9,23 @@ except ImportError:
     winreg = None
 
 # Windows Registry Keys for Native Messaging
-CHROME_REG_KEY = r"Software\Google\Chrome\NativeMessagingHosts\com.youtube.native.ext"
-BRAVE_REG_KEY = r"Software\BraveSoftware\Brave-Browser\NativeMessagingHosts\com.youtube.native.ext"
+REG_KEYS = {
+    "Chrome":   r"Software\Google\Chrome\NativeMessagingHosts\com.youtube.native.ext",
+    "Brave":    r"Software\BraveSoftware\Brave-Browser\NativeMessagingHosts\com.youtube.native.ext",
+    "Edge":     r"Software\Microsoft\Edge\NativeMessagingHosts\com.youtube.native.ext",
+    "Chromium": r"Software\Chromium\NativeMessagingHosts\com.youtube.native.ext",
+    "Opera":    r"Software\Opera Software\NativeMessagingHosts\com.youtube.native.ext",
+}
+
+
+def parse_extension_ids(raw_value):
+    ids = []
+    for ext_id in (raw_value or "").split(","):
+        ext_id = ext_id.strip()
+        if len(ext_id) == 32 and all('a' <= ch <= 'p' for ch in ext_id):
+            ids.append(ext_id)
+    # preserve order while deduplicating
+    return list(dict.fromkeys(ids))
 
 def log_install(msg):
     appdata = os.environ.get('APPDATA')
@@ -26,26 +41,25 @@ def log_install(msg):
         pass
     print(msg, file=sys.stderr)
 
-def write_registry(key_path, manifest_path):
+def write_registry(key_path, manifest_path, browser_name="Browser"):
     try:
         winreg.CreateKey(winreg.HKEY_CURRENT_USER, key_path)
         with winreg.OpenKey(winreg.HKEY_CURRENT_USER, key_path, 0, winreg.KEY_WRITE) as key:
             winreg.SetValueEx(key, "", 0, winreg.REG_SZ, manifest_path)
-            log_install(f"✓ Created registry key: HKCU\\{key_path} -> {manifest_path}")
+            log_install(f"✓ [{browser_name}] Registry key written: HKCU\\{key_path}")
     except Exception as e:
-        log_install(f"✗ Failed to write registry key: HKCU\\{key_path}: {e}")
-        sys.exit(1)
+        log_install(f"  [{browser_name}] Skipped (not installed or access denied): {e}")
 
 def main():
     if len(sys.argv) != 3:
-        log_install(f"✗ Invalid arguments. Usage: {sys.argv[0]} <install_dir> <extension_id>")
+        log_install(f"✗ Invalid arguments. Usage: {sys.argv[0]} <install_dir> <extension_ids_csv>")
         sys.exit(1)
 
     install_dir = sys.argv[1]
-    extension_id = sys.argv[2]
-    
-    if len(extension_id) != 32:
-        log_install(f"✗ Invalid extension ID length: '{extension_id}'")
+    extension_ids = parse_extension_ids(sys.argv[2])
+
+    if not extension_ids:
+        log_install("✗ No valid extension IDs were supplied for host registration.")
         sys.exit(1)
 
     # 1. Read template manifest
@@ -77,7 +91,7 @@ def main():
         
     # Strictly enforce that the path uses backslashes for Windows Native Messaging
     manifest['path'] = host_exe_path.replace('/', '\\')
-    manifest['allowed_origins'] = [f"chrome-extension://{extension_id}/"]
+    manifest['allowed_origins'] = [f"chrome-extension://{extension_id}/" for extension_id in extension_ids]
 
     # 3. Write final manifest to %APPDATA%
     appdata = os.environ.get('APPDATA')
@@ -92,14 +106,17 @@ def main():
     try:
         with open(target_manifest_path, 'w', encoding='utf-8') as f:
             json.dump(manifest, f, indent=2)
-        log_install(f"✓ Wrote dynamic manifest with ID '{extension_id}' and path '{manifest['path']}' to {target_manifest_path}")
+        log_install(
+            f"✓ Wrote dynamic manifest with {len(extension_ids)} extension ID(s) and path "
+            f"'{manifest['path']}' to {target_manifest_path}"
+        )
     except Exception as e:
         log_install(f"✗ Failed to write final manifest: {e}")
         sys.exit(1)
 
     # 4. Write Registry Keys
-    write_registry(CHROME_REG_KEY, target_manifest_path)
-    write_registry(BRAVE_REG_KEY, target_manifest_path)
+    for browser_name, key_path in REG_KEYS.items():
+        write_registry(key_path, target_manifest_path, browser_name)
 
     log_install("✓ Host registration completed successfully.")
     sys.exit(0)

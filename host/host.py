@@ -1,185 +1,211 @@
-#!/usr/bin/env python3
-# --- Top-level imports (explicit dependency graph) ---
-import sys
-import os
 import json
+import os
+import queue
 import struct
-import traceback
-import threading
 import subprocess
-from concurrent.futures import ThreadPoolExecutor
-from urllib.parse import urlparse
+import sys
+import threading
+import time
+import traceback
 
 from logger import log
-from downloader import prefetch_qualities, download_video, update_ytdlp
 
-# -------------------------------------------------------
-# Global lifecycle flag — threads check this before writing
-# to stdout to prevent BrokenPipeError deadlocks on shutdown.
-# -------------------------------------------------------
-_host_alive = True
 _stdout_lock = threading.Lock()
+DEFAULT_DOWNLOAD_WORKERS = max(1, int(os.environ.get('FLASHYT_MAX_CONCURRENT', '10')))
+DEFAULT_PREFETCH_WORKERS = max(1, int(os.environ.get('FLASHYT_PREFETCH_WORKERS', '2')))
+_resume_wait_lock = threading.Lock()
+_resume_waiting = set()
 
-# Allowed YouTube hostnames — urlparse check prevents spoofing via query parameters.
-# e.g. https://evil.com/?redirect=youtube.com would bypass a naive substring 'in url' check.
-_YOUTUBE_HOSTS = frozenset({'youtube.com', 'www.youtube.com', 'm.youtube.com', 'youtu.be'})
-
-def _is_youtube_url(url):
-    """Returns True only if the URL hostname is a known YouTube domain."""
-    try:
-        return urlparse(url).netloc.lower() in _YOUTUBE_HOSTS
-    except Exception:
-        return False
 
 def send_message(msg):
-    """
-    Sends a serialized JSON message back to Chrome via stdout.
-    MUST handle little-endian length prefix.
-    Returns False silently if the host is shutting down.
-    """
-    if not _host_alive:
-        return False
     try:
         json_msg = json.dumps(msg)
-        msg_bytes = json_msg.encode('utf-8')
+        data = json_msg.encode('utf-8')
         with _stdout_lock:
-            sys.stdout.buffer.write(struct.pack('<I', len(msg_bytes)))
-            sys.stdout.buffer.write(msg_bytes)
+            sys.stdout.buffer.write(struct.pack('<I', len(data)))
+            sys.stdout.buffer.write(data)
             sys.stdout.buffer.flush()
-        log.debug(f"[Host] Sent: {json_msg}")
-        return True
-    except BrokenPipeError:
-        log.warning("[Host] Stdout pipe closed (Chrome disconnected). Stopping outbound messages.")
-        return False
-    except Exception as e:
-        log.error(f"[Host] Error sending msg: {e}")
-        return False
+    except Exception as exc:
+        log.error('[Host] send_message failed: %s', exc)
 
-def read_message(dev_mode=False):
-    """
-    Reads a single message from Chrome via stdin.
-    In --dev-mode, accepts plain JSON from echo pipes (for CLI testing only).
-    In production, strictly enforces the Chrome Native Messaging 4-byte LE prefix protocol.
-    """
+
+def read_message():
     try:
         raw_length = sys.stdin.buffer.read(4)
         if len(raw_length) == 0:
             return None
 
-        if dev_mode:
-            # Explicit dev-mode path: read rest of the pipe as plain JSON
+        if raw_length[0] == ord('{'):
             rest = sys.stdin.buffer.read()
-            msg_str = (raw_length + rest).decode('utf-8').strip()
-            log.debug(f"[Host] DEV MODE raw pipe: {msg_str}")
-            return json.loads(msg_str)
+            return json.loads((raw_length + rest).decode('utf-8').strip())
 
-        # Production path: enforce Chrome's strict little-endian 4-byte length prefix
-        msg_length = struct.unpack('<I', raw_length)[0]
-        msg_bytes = sys.stdin.buffer.read(msg_length)
-        msg_str = msg_bytes.decode('utf-8')
-        log.debug(f"[Host] Received raw: {msg_str}")
-        return json.loads(msg_str)
-    except Exception as e:
-        log.error(f"[Host] Error reading msg: {e}")
+        msg_len = struct.unpack('<I', raw_length)[0]
+        return json.loads(sys.stdin.buffer.read(msg_len).decode('utf-8'))
+    except Exception as exc:
+        log.error('[Host] read_message failed: %s', exc)
         return None
 
-def handle_task(msg):
-    downloads_dir = os.path.join(os.path.expanduser('~'), 'Downloads')
-    action = msg.get("type")
+
+def _resolve_download_dir(path_hint):
+    target = path_hint or os.path.join(os.path.expanduser('~'), 'Downloads')
+    target = os.path.abspath(os.path.expanduser(target))
+    os.makedirs(target, exist_ok=True)
+    return target
+
+
+def _progress_payload(update, download_id, video_id):
+    return {
+        'type': 'progress',
+        'downloadId': download_id,
+        'videoId': video_id,
+        'percent': update.get('percent', '0%'),
+        'speed': update.get('speed', ''),
+        'eta': update.get('eta', ''),
+    }
+
+
+def _queue_resume_when_ready(download_id, download_queue):
+    from downloader import resume_video
+
+    with _resume_wait_lock:
+        if download_id in _resume_waiting:
+            return
+        _resume_waiting.add(download_id)
 
     try:
-        if action == "prefetch":
-            url = msg.get("url")
-            if not url or not _is_youtube_url(url):
-                send_message({"type": "error", "message": "Invalid YouTube URL."})
+        deadline = time.time() + 12
+        while time.time() < deadline:
+            ok, payload, info = resume_video(download_id)
+            if ok and payload:
+                download_queue.put(payload)
                 return
+            if not ok and info != 'No paused job found.':
+                send_message({
+                    'type': 'control_ack',
+                    'action': 'resume',
+                    'downloadId': download_id,
+                    'ok': False,
+                    'message': info,
+                })
+                return
+            time.sleep(0.2)
+
+        send_message({
+            'type': 'control_ack',
+            'action': 'resume',
+            'downloadId': download_id,
+            'ok': False,
+            'message': 'Resume timed out while waiting for pause to complete.',
+        })
+    finally:
+        with _resume_wait_lock:
+            _resume_waiting.discard(download_id)
+
+
+def prefetch_worker(prefetch_queue):
+    from downloader import prefetch_qualities
+
+    while True:
+        msg = prefetch_queue.get()
+        if msg is None:
+            prefetch_queue.task_done()
+            break
+
+        try:
+            url = msg.get('url')
+            if not url:
+                send_message({'type': 'prefetch_error', 'message': 'No URL provided for prefetch.', 'reqUrl': url})
+                continue
 
             result = prefetch_qualities(url)
+            if result.get('error'):
+                send_message({'type': 'prefetch_error', 'message': result['error'], 'reqUrl': url})
+            else:
+                out = {'type': 'prefetch_result', 'reqUrl': url}
+                out.update(result)
+                send_message(out)
+        except Exception:
+            log.error('[Host] prefetch_worker exception:\n%s', traceback.format_exc())
+            send_message({'type': 'prefetch_error', 'message': 'Prefetch failed unexpectedly.'})
+        finally:
+            prefetch_queue.task_done()
+
+
+def download_worker(download_queue):
+    from downloader import download_video
+
+    while True:
+        msg = download_queue.get()
+        if msg is None:
+            download_queue.task_done()
+            break
+
+        try:
+            url = msg.get('url')
+            itag = msg.get('itag')
+            download_id = msg.get('downloadId')
+            video_id = msg.get('videoId')
+            real_itag = msg.get('real_itag')
+            save_location = _resolve_download_dir(msg.get('save_location'))
+
+            if not url or not itag:
+                send_message({
+                    'type': 'error',
+                    'downloadId': download_id,
+                    'videoId': video_id,
+                    'message': 'Missing URL or format itag for download.',
+                })
+                continue
+
+            def progress_cb(update):
+                send_message(_progress_payload(update, download_id, video_id))
+
+            result = download_video(
+                url,
+                itag,
+                save_location,
+                progress_cb,
+                download_id=download_id,
+                video_id=video_id,
+                real_itag=real_itag,
+            )
             send_message(result)
+        except Exception:
+            log.error('[Host] download_worker exception:\n%s', traceback.format_exc())
+            send_message({'type': 'error', 'message': 'Download failed unexpectedly.'})
+        finally:
+            download_queue.task_done()
 
-        elif action == "download":
-            url = msg.get("url")
-            max_height = msg.get("max_height")
-            title = msg.get("title", "YouTube Video")
-
-            if not url or not _is_youtube_url(url):
-                send_message({"type": "error", "message": "Invalid YouTube URL."})
-                return
-
-            if not max_height:
-                send_message({"type": "error", "message": "Missing format height for download."})
-                return
-
-            def progress_callback(update_dict):
-                send_message(update_dict)
-
-            log.info(f"[Host] Beginning parallel download: {title}")
-            result = download_video(url, max_height, downloads_dir, progress_callback)
-            send_message(result)
-
-        elif action == "update_engine":
-            def progress_callback(update_dict):
-                send_message(update_dict)
-            log.info("[Host] Initiating manual yt-dlp core auto-update sequence.")
-            result = update_ytdlp(progress_callback)
-            send_message(result)
-
-    except Exception as e:
-        err_msg = traceback.format_exc()
-        log.error(f"[Host] Unexpected worker error:\n{err_msg}")
-        # CQ-8: Send the actual exception type so users get actionable info
-        send_message({"type": "error", "message": f"Host error: {type(e).__name__}: {e}"})
 
 def main():
-    global _host_alive
+    from downloader import cancel_video, pause_video, resume_video
+    from tray import start_tray_icon
 
-    # Parse --dev-mode CLI flag explicitly (never passed by Chrome installer)
-    dev_mode = "--dev-mode" in sys.argv
+    start_tray_icon()
 
-    log.info("=" * 40)
-    log.info("One-Click YT Downloader Host Started")
-    if dev_mode:
-        log.info("[Host] *** DEV MODE ACTIVE — plain JSON stdin accepted ***")
-    log.info("=" * 40)
-
-    try:
-        from tray import start_tray_icon
-        start_tray_icon()
-    except Exception as e:
-        log.warning(f"[Tray] System tray disabled (missing Linux bindings): {e}")
-
-    # ThreadPoolExecutor bounds concurrent downloads and handles lifecycle automatically.
-    # max_workers=8 allows plenty of parallel downloads without exhausting system resources.
-    executor = ThreadPoolExecutor(max_workers=8, thread_name_prefix="ytdl_worker")
+    prefetch_queue = queue.Queue()
+    download_queue = queue.Queue()
+    prefetch_workers = DEFAULT_PREFETCH_WORKERS
+    for _ in range(prefetch_workers):
+        threading.Thread(target=prefetch_worker, args=(prefetch_queue,), daemon=True).start()
+    worker_count = DEFAULT_DOWNLOAD_WORKERS
+    for _ in range(worker_count):
+        threading.Thread(target=download_worker, args=(download_queue,), daemon=True).start()
 
     try:
         while True:
-            msg = read_message(dev_mode=dev_mode)
+            msg = read_message()
             if msg is None:
-                log.info("[Host] Extension closed the pipe. Exiting.")
                 break
 
-            action = msg.get("type")
-            if not action:
-                continue
+            action = msg.get('type')
+            if action == 'ping':
+                send_message({'type': 'pong', 'version': '2.1.0'})
 
-            if action == "ping":
-                send_message({"type": "pong", "version": "1.0.0"})
-
-            elif action == "open_folder":
-                target_path = msg.get("path")
-
-                # Resolve special sentinel paths
-                if not target_path or target_path == "LOG_DIR":
-                    if sys.platform == 'win32':
-                        target_path = os.path.join(os.environ.get('APPDATA', os.path.expanduser('~')), 'YouTubeNativeExt')
-                    else:
-                        target_path = os.path.join(os.path.expanduser('~'), '.config', 'YouTubeNativeExt')
-
-                if not os.path.exists(target_path):
-                    target_path = os.path.join(os.path.expanduser('~'), 'Downloads')
-                    os.makedirs(target_path, exist_ok=True)
-
+            elif action == 'open_folder':
+                target_path = msg.get('path')
+                if not target_path or not os.path.exists(target_path):
+                    target_path = _resolve_download_dir(None)
                 try:
                     if sys.platform == 'win32':
                         os.startfile(target_path)
@@ -187,30 +213,50 @@ def main():
                         subprocess.Popen(['open', target_path])
                     else:
                         subprocess.Popen(['xdg-open', target_path])
-                    send_message({"type": "ok"})
-                except Exception as e:
-                    send_message({"type": "error", "message": f"Failed to open folder: {e}"})
+                    send_message({'type': 'ok'})
+                except Exception as exc:
+                    send_message({'type': 'error', 'message': f'Failed to open folder: {exc}'})
 
-            elif action in ["prefetch", "download", "update_engine"]:
-                # Submit task to the bounded thread pool
-                executor.submit(handle_task, msg)
+            elif action == 'prefetch':
+                prefetch_queue.put(msg)
+
+            elif action == 'download':
+                download_queue.put(msg)
+
+            elif action == 'pause':
+                download_id = msg.get('downloadId')
+                ok, info = pause_video(download_id)
+                send_message({'type': 'control_ack', 'action': 'pause', 'downloadId': download_id, 'ok': ok, 'message': info})
+
+            elif action == 'resume':
+                download_id = msg.get('downloadId')
+                ok, payload, info = resume_video(download_id)
+                if ok and payload:
+                    download_queue.put(payload)
+                elif ok and not payload:
+                    threading.Thread(target=_queue_resume_when_ready, args=(download_id, download_queue), daemon=True).start()
+                send_message({'type': 'control_ack', 'action': 'resume', 'downloadId': download_id, 'ok': ok, 'message': info})
+
+            elif action == 'cancel':
+                download_id = msg.get('downloadId')
+                ok, info = cancel_video(download_id)
+                send_message({'type': 'control_ack', 'action': 'cancel', 'downloadId': download_id, 'ok': ok, 'message': info})
 
             else:
-                log.warning(f"[Host] Raw unhandled message type: {action}")
-                send_message({"type": "error", "message": f"Unhandled message type: {action}"})
-
+                send_message({'type': 'error', 'message': f'Unhandled message type: {action}'})
     except KeyboardInterrupt:
-        log.info("[Host] Shutting down via KeyboardInterrupt.")
-    except Exception as e:
-        err_msg = traceback.format_exc()
-        log.error(f"[Host] Fatal main loop error:\n{err_msg}")
+        pass
+    except Exception:
+        log.error('[Host] fatal:\n%s', traceback.format_exc())
     finally:
-        # Signal all worker threads to stop writing to the closed pipe
-        _host_alive = False
-        log.info("[Host] Waiting for active download workers to finish...")
-        # wait=True lets in-flight downloads complete; cancel_futures=False is default
-        executor.shutdown(wait=True)
+        for _ in range(prefetch_workers):
+            prefetch_queue.put(None)
+        for _ in range(worker_count):
+            download_queue.put(None)
+        prefetch_queue.join()
+        download_queue.join()
         sys.exit(0)
+
 
 if __name__ == '__main__':
     main()

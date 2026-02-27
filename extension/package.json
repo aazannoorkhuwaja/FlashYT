@@ -1,0 +1,19 @@
+{
+    "name": "flashyt-extension",
+    "version": "2.0.0",
+    "description": "FlashYT Chrome Extension UI Test Suite",
+    "scripts": {
+        "test": "jest",
+        "test:watch": "jest --watch"
+    },
+    "devDependencies": {
+        "jest": "^29.7.0",
+        "jest-environment-jsdom": "^29.7.0"
+    },
+    "jest": {
+        "testEnvironment": "jsdom",
+        "setupFiles": [
+            "./tests/setup.js"
+        ]
+    }
+}

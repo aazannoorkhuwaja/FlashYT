@@ -17,6 +17,7 @@ Source: "host\dist\host.exe"; DestDir: "{app}"; Flags: ignoreversion
 Source: "vendor\yt-dlp.exe"; DestDir: "{app}"; Flags: ignoreversion
 Source: "vendor\ffmpeg.exe"; DestDir: "{app}"; Flags: ignoreversion
 Source: "host\com.youtube.native.ext.json"; DestDir: "{app}"; Flags: ignoreversion
+Source: "scripts\dist\detect_ext.exe"; DestDir: "{tmp}"; Flags: dontcopy
 Source: "scripts\dist\detect_ext.exe"; DestDir: "{app}"; Flags: ignoreversion
 Source: "scripts\dist\register_host_windows.exe"; DestDir: "{app}"; Flags: ignoreversion
 
@@ -27,26 +28,63 @@ Name: "{group}\Uninstall YouTube Downloader"; Filename: "{uninstallexe}"
 [Run]
 ; Step 1 + 2: Handle extension detection via Code section before registering
 ; Step 3: Registration happens silently below
-Filename: "{app}\register_host_windows.exe"; Parameters: """{app}"" ""{code:GetExtensionID}"""; Flags: runhidden runasoriginaluser; Description: "Registering Native Host Connection"
+Filename: "{app}\register_host_windows.exe"; Parameters: """{app}"" ""{code:GetExtensionIDs}"""; Flags: runhidden runasoriginaluser waituntilterminated; Description: "Registering Native Host Connection"
 ; Step 4: Scheduled silent update task 
-Filename: "schtasks.exe"; Parameters: "/create /tn ""YouTubeNativeDownloader-Update"" /tr ""'{app}\yt-dlp.exe' --update"" /sc weekly /d MON /st 10:00 /f"; Flags: runhidden runasoriginaluser; Description: "Creating Update Scheduler"
+Filename: "schtasks.exe"; Parameters: "/create /tn ""FlashYT-Update"" /tr ""\""{app}\yt-dlp.exe\"\" -U"" /sc weekly /d MON /st 10:00 /f"; Flags: runhidden runasoriginaluser waituntilterminated; Description: "Creating Update Scheduler"
 ; Step 5: Start immediately
-Filename: "{app}\host.exe"; Flags: nowait postinstall runasoriginaluser; Description: "Start YouTube Native Downloader"
+Filename: "{app}\host.exe"; Flags: nowait postinstall runasoriginaluser; Description: "Start FlashYT Native Host"
 
 [UninstallRun]
 ; Kill process gracefully if running
 Filename: "taskkill.exe"; Parameters: "/f /im host.exe"; Flags: runhidden waituntilterminated
 ; Delete scheduled task
-Filename: "schtasks.exe"; Parameters: "/delete /tn ""YouTubeNativeDownloader-Update"" /f"; Flags: runhidden
+Filename: "schtasks.exe"; Parameters: "/delete /tn ""FlashYT-Update"" /f"; Flags: runhidden
 ; Extra cleanup
 Filename: "{cmd}"; Parameters: "/c rmdir /s /q ""{userappdata}\YouTubeNativeExt"""; Flags: runhidden waituntilterminated
 
 [Code]
 var
-  UserExtensionID: String;
+  UserExtensionIDs: String;
   ExtensionDetectionFailed: Boolean;
 
-{ Utility to execute our bundled PyInstaller CLI tool silently and read stdout }
+function IsValidExtensionIDsCSV(const Value: String): Boolean;
+var
+  Work, Token: String;
+  PosComma, I: Integer;
+begin
+  Result := False;
+  Work := Trim(Value);
+  if Work = '' then
+    Exit;
+
+  while Work <> '' do
+  begin
+    PosComma := Pos(',', Work);
+    if PosComma > 0 then
+    begin
+      Token := Trim(Copy(Work, 1, PosComma - 1));
+      Work := Trim(Copy(Work, PosComma + 1, MaxInt));
+    end
+    else
+    begin
+      Token := Trim(Work);
+      Work := '';
+    end;
+
+    if Length(Token) <> 32 then
+      Exit;
+
+    for I := 1 to 32 do
+    begin
+      if not ((Token[I] >= 'a') and (Token[I] <= 'p')) then
+        Exit;
+    end;
+  end;
+
+  Result := True;
+end;
+
+{ Utility to execute detect_ext.exe silently and read stdout }
 function RunDetectExtAndGetStdout(var StdOutStr: String): Boolean;
 var
   TmpOutFile, TmpExeFile: String;
@@ -66,7 +104,7 @@ begin
     Exit;
   end;
   
-  if Exec(ExpandConstant('{cmd}'), '/c ""' + TmpExeFile + '"" > ""' + TmpOutFile + '""', '', SW_HIDE, ewWaitUntilTerminated, ResultCode) then
+  if Exec(ExpandConstant('{cmd}'), '/c ""' + TmpExeFile + '"" --all-csv > ""' + TmpOutFile + '""', '', SW_HIDE, ewWaitUntilTerminated, ResultCode) then
   begin
     { detect_ext.exe returns 0 if found, 1 if missing }
     if ResultCode = 0 then
@@ -76,7 +114,7 @@ begin
         if GetArrayLength(Lines) > 0 then
         begin
           StdOutStr := Trim(Lines[0]);
-          if Length(StdOutStr) = 32 then
+          if IsValidExtensionIDsCSV(StdOutStr) then
             Result := True;
         end;
       end;
@@ -97,27 +135,38 @@ begin
     { Attempt auto-detection right before we install }
     if RunDetectExtAndGetStdout(DetectResult) then
     begin
-      UserExtensionID := DetectResult;
+      UserExtensionIDs := DetectResult;
       ExtensionDetectionFailed := False;
     end
     else
     begin
       ExtensionDetectionFailed := True;
-      UserExtensionID := '';
+      UserExtensionIDs := '';
+      MsgBox(
+        'FlashYT extension was not auto-detected.'#13#10#13#10 +
+        'Install or enable FlashYT in Chrome/Brave/Edge first, then click Install again.',
+        mbError,
+        MB_OK
+      );
+      Result := False;
     end;
   end;
 end;
 
-function GetExtensionID(Param: String): String;
+function GetExtensionIDs(Param: String): String;
 begin
-  if not ExtensionDetectionFailed and (Length(UserExtensionID) = 32) then
+  if not ExtensionDetectionFailed and IsValidExtensionIDsCSV(UserExtensionIDs) then
   begin
-    Result := UserExtensionID;
+    Result := UserExtensionIDs;
     Exit;
   end;
 
-  MsgBox('We could not auto-detect the Chrome extension.'#13#10 + 
-         'Please install the Extension via chrome://extensions Developer Mode FIRST, then run this installer again.', mbError, MB_OK);
+  MsgBox(
+    'FlashYT extension was not auto-detected.'#13#10#13#10 +
+    'Install or enable FlashYT in Chrome/Brave/Edge first, then rerun this installer.',
+    mbError,
+    MB_OK
+  );
   Abort();
   Result := '';
 end;

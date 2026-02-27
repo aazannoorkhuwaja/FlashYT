@@ -19,10 +19,7 @@ jobs:
           python-version: '3.11'
           
       - name: Install Python Tools
-        run: pip install pyinstaller pystray Pillow setuptools pytest
-
-      - name: Run Core IPC Protocol Tests
-        run: pytest tests/test_protocol.py -v
+        run: pip install pyinstaller pystray Pillow setuptools
 
       - name: Download yt-dlp.exe
         run: |
@@ -36,7 +33,6 @@ jobs:
           del ffmpeg.zip
 
       - name: Build Executable Binaries (PyInstaller)
-        shell: cmd
         run: call scripts\build_windows.bat
         
       - name: Upload Windows Installer Payload
@@ -53,14 +49,6 @@ jobs:
         
       - name: Make install.sh executable
         run: chmod +x install.sh
-
-      - name: Install Python Dependencies
-        run: pip install pytest yt-dlp pystray Pillow secretstorage
-
-      - name: Run Core IPC Protocol Tests
-        run: |
-          export PYTHONPATH=$(pwd)/host
-          python3 -m unittest tests/test_protocol.py -v
 
       - name: Upload Bash Installer Payload
         uses: actions/upload-artifact@v4

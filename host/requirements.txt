@@ -1,4 +1,5 @@
 pystray
 Pillow
 secretstorage
-yt-dlp
+pytest
+jsonschema

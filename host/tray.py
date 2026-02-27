@@ -1,14 +1,13 @@
-import threading
-import os
-import subprocess
-import webbrowser
 import sys
-from logger import log
+import threading
+import subprocess
+import os
+import webbrowser
+
+from logger import log  # FIX 1: was "from .logger import log" – relative import fails
+
 
 def create_tray_image():
-    """
-    Creates a simple in-memory tray icon.
-    """
     try:
         from PIL import Image, ImageDraw
     except ImportError:
@@ -21,10 +20,8 @@ def create_tray_image():
     margin = 8
     draw.rounded_rectangle(
         [(margin, margin), (size - margin, size - margin)],
-        radius=12,
-        fill=(204, 0, 0, 255)
+        radius=12, fill=(204, 0, 0, 255)
     )
-
     triangle = [
         (size * 0.40, size * 0.32),
         (size * 0.40, size * 0.68),
@@ -35,18 +32,14 @@ def create_tray_image():
 
 
 def start_tray_icon():
-    """
-    Spawns the pystray icon loop. If dependencies are missing, it returns safely.
-    """
     try:
         import pystray
-    except ImportError:
-        log.warning("[Tray] pystray/Pillow not installed; system tray disabled.")
+    except Exception as e:
+        log.warning(f"[Tray] pystray/Pillow not installed or system lacks UI backend: {e}")
         return
 
     def on_quit(icon, item):
-        log.info("[Tray] User selected Quit. Exiting host process.")
-        icon.visible = False
+        log.info("[Tray] User selected Quit.")
         icon.stop()
         os._exit(0)
 
@@ -64,7 +57,7 @@ def start_tray_icon():
             log.error(f"[Tray] Failed to open folder: {e}")
 
     def on_view_log(icon, item):
-        from logger import get_log_dir
+        from logger import get_log_dir  # FIX 2: was "from .logger import get_log_dir"
         log_file = os.path.join(get_log_dir(), 'host.log')
         if not os.path.exists(log_file):
             return
@@ -82,7 +75,7 @@ def start_tray_icon():
         webbrowser.open("https://github.com/aazannoorkhuwaja/youtube-native-ext/releases")
 
     menu = pystray.Menu(
-        pystray.MenuItem('One-Click YouTube Downloader v1.0.0', lambda i, it: None, enabled=False),
+        pystray.MenuItem('FlashYT v1.0.0', lambda i, it: None, enabled=False),
         pystray.Menu.SEPARATOR,
         pystray.MenuItem('Open Downloads Folder', on_open_folder),
         pystray.MenuItem('View Log File', on_view_log),
@@ -95,12 +88,14 @@ def start_tray_icon():
     if not image:
         return
 
-    icon = pystray.Icon(
-        name='youtube-downloader',
-        title='One-Click YT Downloader',
-        icon=image,
-        menu=menu
-    )
-
-    log.info("[Tray] Starting system tray icon...")
-    threading.Thread(target=icon.run, daemon=True).start()
+    try:
+        icon = pystray.Icon(
+            name='FlashYT',
+            title='FlashYT Native Host',
+            icon=image,
+            menu=menu
+        )
+        log.info("[Tray] Starting system tray icon...")
+        threading.Thread(target=icon.run, daemon=True).start()
+    except Exception as e:
+        log.warning(f"[Tray] Failed to start system tray icon. Your desktop environment might not support it. Reason: {e}")

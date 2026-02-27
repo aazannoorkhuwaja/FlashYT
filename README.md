@@ -1,61 +1,135 @@
-# 🚀 YouTube Native Downloader
+# FlashYT
 
-A strictly local, blazing-fast native Chrome extension to download any YouTube video in one click. No web services, no SaaS accounts, and absolutely no privacy-invading metrics.
+Fast, local-first YouTube downloader built as a browser extension + native host.
+Your video data stays on your machine.
 
-![YouTube Native Downloader](extension/icons/icon128.png)
+![FlashYT](extension/icons/icon128.png)
 
-### Why This Exists (And Why It Works When Others Fail)
-Most YouTube downloader extensions on the Chrome Web Store break every few weeks, slow down your browser, or are packed with hidden ads. This happens because YouTube constantly changes its underlying code to block direct browser downloads.
+## Why FlashYT
 
-**The Solution:** This extension is a true **Native Desktop App** cleverly disguised as a browser button. It brings the power of the legendary `yt-dlp` command-line engine directly to your Chrome browser. It downloads videos instantly in 1-Click straight to your hard drive, completely ad-free and tracking-free. Best of all, it has a built-in **"Update Core Engine"** button, meaning if YouTube ever changes their systems, you can self-patch the app in exactly 3 seconds!
+- Real-time progress in both YouTube page button and popup queue
+- Queue controls: `pause`, `resume`, `cancel`, `delete`
+- Cross-platform native host support for Windows, Linux, and macOS
+- No cloud relay for downloads
 
-> [!IMPORTANT]
-> Because this is a powerful Native Desktop application, Google does not allow it on the standard Chrome Web Store. You must install it manually in two very quick steps: loading the un-packaged browser extension, and installing the invisible desktop engine.
+## Supported Browsers
 
----
+- Google Chrome
+- Brave
+- Microsoft Edge
+- Chromium
 
-## 🛠️ Step-by-Step Installation
+## Important Before You Start
 
-### Step 1: Add the Button to Chrome / Brave
-1. Download the latest source code `.zip` from the [GitHub Releases Page](https://github.com/aazannoorkhuwaja/youtube-native-ext/releases).
-2. Extract the downloaded `.zip` file into a permanent folder on your computer (e.g., inside your `Documents` folder). **Do not delete this folder later, or the extension will break!**
-3. Open your browser and type `chrome://extensions` in the URL address bar (or `brave://extensions` if using Brave).
-4. Turn **ON** the **"Developer mode"** toggle switch in the top right corner.
-5. Click the **"Load unpacked"** button in the top left.
-6. Select the `extension` folder located inside the files you just extracted.
-*(The red YouTube Downloader icon should now appear in your browser extensions list!)*
+1. Install the browser extension first, then the native host.
+2. Keep the install path stable after setup.
+3. If you switch browser or browser profile, run setup again.
+4. For repeated format/prefetch failures, sign in to YouTube in the same browser profile.
 
-### Step 2: Install the Desktop Engine
-The browser button now exists, but it needs its background engine to actually download the massive video files to your computer.
-* **For Windows:** Double-click the `youtube-native-downloader-setup.exe` (if you downloaded the Windows release) OR run the `scripts/build_windows.bat` file.
-* **For Mac / Linux:** Open your terminal, navigate inside the extracted folder, and run: `bash install.sh`
+## 1) Install the Browser Extension
 
-🎉 **You are completely done!** Go to any YouTube video and click the newly injected red **⬇ Download** button right beneath the video player.
+### Option A: Chrome Web Store (recommended when published)
+1. Install FlashYT from the store listing.
+2. Continue to OS setup below.
 
----
+### Option B: Load from source (available now)
+1. Open extensions page:
+`chrome://extensions` or `brave://extensions` or `edge://extensions`
+2. Enable `Developer mode`.
+3. Click `Load unpacked`.
+4. Select the `extension/` folder from this repo.
+5. Keep extension enabled, then run setup script/installer.
 
-## 🛑 Common Issues & Troubleshooting
+## 2) Native Host Setup by OS
 
-#### ❌ Error: "Desktop app not running" or UI status says "Disconnected"
-**Solution:** The browser extension cannot find the background desktop engine.
-1. Make sure you actually completed **Step 2** and ran the installer script.
-2. If you moved or renamed the extraction folder *after* loading the extension into Chrome, the connection is fundamentally broken. Go to `chrome://extensions`, click "Remove" on the extension, and repeat Step 1 from the new folder location. Then, run the installer script again.
+### Windows
+1. Download the latest installer:
+[Download Windows installer (.exe)](https://github.com/aazannoorkhuwaja/youtube-native-ext/releases/latest)
+2. Run the installer.
+3. Installer auto-detects extension ID(s) and registers native host.
+4. Restart browser.
 
-#### ❌ Downloads are suddenly freezing at 0% or failing completely!
-**Solution:** YouTube likely updated their cipher codes to block downloads. *This is exactly why we built the auto-updater!*
-1. Click the red Downloader Extension icon in the top right corner of Chrome to open the popup UI.
-2. Go to the **About** tab.
-3. Click the **"Update Core Engine"** button. 
-4. A background task will fetch the absolute newest `yt-dlp` patches. Wait about 10 seconds, refresh your YouTube page, and your downloads will instantly work again!
+### Linux
+1. Run:
+```bash
+curl -fsSL https://raw.githubusercontent.com/aazannoorkhuwaja/youtube-native-ext/main/install.sh | bash
+```
+2. Setup auto-detects extension ID(s) and registers native host.
+3. Restart browser.
 
-#### ❌ Error: "Requested format is not available"
-**Solution:** The specific YouTube video you are watching does not have the exact video resolution you selected (for example, you tried to download 1080p, but the creator only uploaded it in 720p maximum). Click the button again and select a different quality option.
+### macOS
+1. Run:
+```bash
+curl -fsSL https://raw.githubusercontent.com/aazannoorkhuwaja/youtube-native-ext/main/install.sh | bash
+```
+2. Setup auto-detects extension ID(s) and registers native host.
+3. Restart browser.
 
-#### ❌ The red Download button randomly disappears
-**Solution:** Simply **Refresh the page (`F5` or `Ctrl+R`)**. Because YouTube is a "Single Page Application", it sometimes loads new videos without actually refreshing your browser tab, which can occasionally hide the injected button.
+## 3) Verify in 60 Seconds
+
+1. Open any YouTube watch page.
+2. Confirm FlashYT button appears near video actions.
+3. Start one download.
+4. Confirm progress updates live in:
+- YouTube button
+- Popup `Queue` row
+5. Test `pause`, `resume`, and `cancel`.
+
+## Common Issues and Solutions
+
+### 1) Button not visible on YouTube
+1. Refresh the tab.
+2. Confirm extension is enabled.
+3. Reload extension from browser extensions page.
+4. Re-run native host setup.
+
+### 2) "Host not connected" error
+1. Re-run installer/setup for your OS.
+2. Confirm FlashYT extension is installed and enabled in your active browser profile.
+3. Restart browser after setup.
+
+### 3) "Failed to fetch qualities" or prefetch timeout
+1. Sign in to YouTube and retry.
+2. Refresh the video page and reopen quality selector.
+3. Reduce heavy parallel activity and retry.
+4. If persistent, collect `host.log` and open an issue.
+
+### 4) Pause/resume feels out of sync under heavy concurrency
+1. Keep `Max Concurrent` at `2-4` for best stability.
+2. Pause one item, wait a moment, then resume.
+3. Reopen popup if queue UI looks stale.
+
+### 5) Linux popup asks to open external app for email
+This is fixed in current builds: email uses copy-to-clipboard in About section.
+If you still see prompt behavior, reload extension to latest code.
+
+## Log File Locations
+
+- Linux/macOS: `~/.config/YouTubeNativeExt/host.log`
+- Windows: `%APPDATA%\YouTubeNativeExt\host.log`
+
+## Feedback
+
+Report bugs and suggestions:
+1. GitHub Issues: https://github.com/aazannoorkhuwaja/youtube-native-ext/issues
+2. Include:
+- OS + browser + browser version
+- FlashYT extension version
+- Exact reproduction steps
+- Exact error text shown
+- Relevant lines from `host.log`
+
+## User Guidance (Recommended)
+
+1. Set `Max Concurrent` to `2-4` for consistent behavior.
+2. Prefer local SSD save location for better merge speed.
+3. Stay signed in on YouTube for fewer format-fetch failures.
+4. Reload extension after pulling repo updates.
 
 ## Contributing
-Contributions are always welcome. Please make sure to test the Native Messaging protocol using standard Python `stdin/stdout` pipes via `pytest tests/test_protocol.py` before submitting PRs altering `host.py`.
+
+PRs are welcome. If your change touches host protocol or queue states, run host tests and verify native messaging flows before submitting.
 
 ## License
+
 MIT

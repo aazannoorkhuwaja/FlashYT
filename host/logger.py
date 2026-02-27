@@ -1,6 +1,7 @@
 import os
 import sys
 import logging
+import tempfile
 from logging.handlers import RotatingFileHandler
 import platform
 
@@ -15,17 +16,39 @@ def get_log_dir():
     return log_dir
 
 def setup_logger():
-    log_dir = get_log_dir()
-    log_file = os.path.join(log_dir, 'host.log')
-    logger = logging.getLogger('oneclick_ytmp4')
+    logger = logging.getLogger('FlashYT')
     logger.setLevel(logging.DEBUG)
     logger.propagate = False
-    
-    if not logger.handlers:
-        handler = RotatingFileHandler(log_file, maxBytes=5*1024*1024, backupCount=1, encoding='utf-8')
-        formatter = logging.Formatter('[%(asctime)s] [%(levelname)s] %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
-        handler.setFormatter(formatter)
-        logger.addHandler(handler)
+
+    if logger.handlers:
+        return logger
+
+    formatter = logging.Formatter('[%(asctime)s] [%(levelname)s] %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
+
+    # Primary path: user config directory.
+    candidates = []
+    try:
+        candidates.append(os.path.join(get_log_dir(), 'host.log'))
+    except Exception:
+        pass
+
+    # Fallback path: temp directory.
+    candidates.append(os.path.join(tempfile.gettempdir(), 'flashyt-host.log'))
+
+    for log_file in candidates:
+        try:
+            os.makedirs(os.path.dirname(log_file), exist_ok=True)
+            handler = RotatingFileHandler(log_file, maxBytes=5 * 1024 * 1024, backupCount=1, encoding='utf-8')
+            handler.setFormatter(formatter)
+            logger.addHandler(handler)
+            return logger
+        except Exception:
+            continue
+
+    # Last fallback: stderr to avoid import-time crashes.
+    stream_handler = logging.StreamHandler(sys.stderr)
+    stream_handler.setFormatter(formatter)
+    logger.addHandler(stream_handler)
     return logger
 
 log = setup_logger()
