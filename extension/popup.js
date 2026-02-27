@@ -5,6 +5,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const iconSun = document.getElementById('icon-sun');
     const iconMoon = document.getElementById('icon-moon');
     let isDark = true;
+    let hostStatusInfo = null;
+    let releaseInfo = null;
+    let updateOpenUrl = "https://github.com/aazannoorkhuwaja/FlashYT/releases/latest";
+    let updateCopyCommand = null;
 
     function toggleTheme() {
         isDark = !isDark;
@@ -156,6 +160,25 @@ document.addEventListener('DOMContentLoaded', () => {
     function formatSpeed(bytesPerSec) {
         if (!bytesPerSec) return '–';
         return `${(bytesPerSec / 1048576).toFixed(1)} MB/s`;
+    }
+
+    async function copyText(text) {
+        if (!text) return false;
+        try {
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                await navigator.clipboard.writeText(text);
+                return true;
+            }
+            const temp = document.createElement('input');
+            temp.value = text;
+            document.body.appendChild(temp);
+            temp.select();
+            document.execCommand('copy');
+            temp.remove();
+            return true;
+        } catch (_) {
+            return false;
+        }
     }
 
     function calcEta(total, done, speed) {
@@ -349,8 +372,55 @@ document.addEventListener('DOMContentLoaded', () => {
         headerSpeedText: document.getElementById('header-speed-text'),
 
         hostStatusText: document.getElementById('host-status-text'),
-        hostStatusDot: document.getElementById('host-status-dot')
+        hostStatusDot: document.getElementById('host-status-dot'),
+        updateBanner: document.getElementById('update-banner'),
+        updateBannerTitle: document.getElementById('update-banner-title'),
+        updateBannerText: document.getElementById('update-banner-text'),
+        updateBannerOpenBtn: document.getElementById('update-banner-open-btn'),
+        updateBannerCopyBtn: document.getElementById('update-banner-copy-btn')
     };
+
+    function renderUpdateBanner() {
+        if (!els.updateBanner) return;
+
+        const hostNeedsUpdate = !!(hostStatusInfo && hostStatusInfo.update_required);
+        const appUpdateAvailable = !!(releaseInfo && releaseInfo.updateAvailable);
+        if (!hostNeedsUpdate && !appUpdateAvailable) {
+            els.updateBanner.classList.add('hidden');
+            return;
+        }
+
+        els.updateBanner.classList.remove('hidden');
+        if (hostNeedsUpdate) {
+            const installed = hostStatusInfo.host_version || "unknown";
+            const required = hostStatusInfo.min_required_host_version || "latest";
+            updateOpenUrl = hostStatusInfo.updateUrl || updateOpenUrl;
+            updateCopyCommand = hostStatusInfo.updateCommand || null;
+
+            els.updateBanner.style.background = 'rgba(239,68,68,0.08)';
+            els.updateBanner.style.borderColor = 'rgba(239,68,68,0.35)';
+            els.updateBannerTitle.textContent = 'Host Update Required';
+            els.updateBannerText.textContent = `Installed host ${installed} is outdated. Required ${required}+ for reliable downloads.`;
+            els.updateBannerOpenBtn.textContent = hostStatusInfo.updateLabel || 'Update Host';
+        } else {
+            updateOpenUrl = (releaseInfo && releaseInfo.releaseUrl) || updateOpenUrl;
+            updateCopyCommand = null;
+            els.updateBanner.style.background = 'rgba(255,0,0,0.08)';
+            els.updateBanner.style.borderColor = 'rgba(255,0,0,0.28)';
+            els.updateBannerTitle.textContent = 'FlashYT Update Available';
+            els.updateBannerText.textContent = `A newer FlashYT release ${releaseInfo.latestVersion || ''} is available.`;
+            els.updateBannerOpenBtn.textContent = 'Open Latest Release';
+        }
+
+        if (updateCopyCommand) els.updateBannerCopyBtn.classList.remove('hidden');
+        else els.updateBannerCopyBtn.classList.add('hidden');
+    }
+
+    function applyUpdateStatus(payload) {
+        if (payload?.host) hostStatusInfo = payload.host;
+        if (payload?.release) releaseInfo = payload.release;
+        renderUpdateBanner();
+    }
 
     function attachListeners(container) {
         container.querySelectorAll('.dl-action-btn').forEach(btn => {
@@ -470,15 +540,28 @@ document.addEventListener('DOMContentLoaded', () => {
     function checkHost() {
         chrome.runtime.sendMessage({ type: "CHECK_STATUS" }, (response) => {
             if (!els.hostStatusText) return;
+            hostStatusInfo = response || hostStatusInfo;
             if (response && response.status === "connected") {
                 els.hostStatusText.textContent = "Connected";
                 els.hostStatusText.className = "text-emerald";
                 els.hostStatusDot.className = "w-2 h-2 rounded-full bg-emerald animate-pulse";
+            } else if (response && response.status === "update_required") {
+                els.hostStatusText.textContent = "Update Required";
+                els.hostStatusText.className = "text-amber";
+                els.hostStatusDot.className = "w-2 h-2 rounded-full bg-amber animate-pulse";
             } else {
                 els.hostStatusText.textContent = "Disconnected";
                 els.hostStatusText.className = "text-red";
                 els.hostStatusDot.className = "w-2 h-2 rounded-full bg-red";
             }
+            renderUpdateBanner();
+        });
+    }
+
+    function fetchUpdateStatus() {
+        chrome.runtime.sendMessage({ type: "GET_UPDATE_STATUS" }, (response) => {
+            if (!response) return;
+            applyUpdateStatus(response);
         });
     }
 
@@ -496,13 +579,36 @@ document.addEventListener('DOMContentLoaded', () => {
                 renderState(message.downloads, data.history);
             });
         }
+        if (message.type === 'UPDATE_STATUS' || message.type === 'HOST_STATUS_CHANGED') {
+            applyUpdateStatus(message);
+            checkHost();
+        }
+    });
+
+    if (els.updateBannerOpenBtn) {
+        els.updateBannerOpenBtn.addEventListener('click', () => {
+            chrome.runtime.sendMessage({ type: "OPEN_UPDATE_LINK", url: updateOpenUrl }, () => chrome.runtime.lastError);
+        });
+    }
+
+    if (els.updateBannerCopyBtn) {
+        els.updateBannerCopyBtn.addEventListener('click', async () => {
+            const ok = await copyText(updateCopyCommand || "");
+            const old = els.updateBannerCopyBtn.textContent;
+            els.updateBannerCopyBtn.textContent = ok ? "Copied" : "Copy Failed";
+            setTimeout(() => { els.updateBannerCopyBtn.textContent = old; }, 1200);
+        });
     });
 
     // Initial check
     fetchDownloads();
     checkHost();
+    fetchUpdateStatus();
+    let updateTick = 0;
     setInterval(() => {
         fetchDownloads();
         checkHost();
+        updateTick += 1;
+        if (updateTick % 20 === 0) fetchUpdateStatus();
     }, 1000); // Polling for progress bar smoothness and host status
 });

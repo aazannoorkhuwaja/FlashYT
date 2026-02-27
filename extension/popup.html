@@ -97,6 +97,20 @@
 
     <!-- Content -->
     <div class="max-w-2xl mx-auto px-4 py-5 content-area">
+        <div id="update-banner" class="rounded-xl p-3 mb-3 border hidden">
+            <div id="update-banner-title" class="font-bold text-sm text-brand mb-1">Update Available</div>
+            <div id="update-banner-text" class="text-xs text-sub mb-2"></div>
+            <div class="flex items-center gap-2">
+                <button id="update-banner-open-btn"
+                    class="bg-red text-white px-3 py-1 rounded-lg text-xs font-bold border hover-opacity-90 transition-all">
+                    Open Update
+                </button>
+                <button id="update-banner-copy-btn"
+                    class="surface2-bg border2 text-brand px-3 py-1 rounded-lg text-xs font-bold hover-opacity-90 transition-all hidden">
+                    Copy Update Command
+                </button>
+            </div>
+        </div>
 
         <!-- DOWNLOADS VIEW -->
         <div id="view-downloads" class="view active">

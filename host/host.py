@@ -15,6 +15,7 @@ DEFAULT_DOWNLOAD_WORKERS = max(1, int(os.environ.get('FLASHYT_MAX_CONCURRENT', '
 DEFAULT_PREFETCH_WORKERS = max(1, int(os.environ.get('FLASHYT_PREFETCH_WORKERS', '2')))
 _resume_wait_lock = threading.Lock()
 _resume_waiting = set()
+HOST_VERSION = os.environ.get('FLASHYT_HOST_VERSION', '2.0.4')
 
 
 def send_message(msg):
@@ -200,7 +201,7 @@ def main():
 
             action = msg.get('type')
             if action == 'ping':
-                send_message({'type': 'pong', 'version': '2.1.0'})
+                send_message({'type': 'pong', 'version': HOST_VERSION})
 
             elif action == 'open_folder':
                 target_path = msg.get('path')

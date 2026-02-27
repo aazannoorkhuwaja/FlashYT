@@ -10,12 +10,14 @@
     "scripting",
     "nativeMessaging",
     "contextMenus",
-    "notifications"
+    "notifications",
+    "alarms"
   ],
   "host_permissions": [
     "https://www.youtube.com/*",
     "https://youtube.com/*",
-    "https://*.googlevideo.com/*"
+    "https://*.googlevideo.com/*",
+    "https://api.github.com/*"
   ],
   "background": {
     "service_worker": "background.js"

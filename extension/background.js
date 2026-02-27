@@ -1,14 +1,145 @@
 const HOST_NAME = "com.youtube.native.ext";
+const MIN_REQUIRED_HOST_VERSION = "2.0.4";
+const GITHUB_RELEASE_API = "https://api.github.com/repos/aazannoorkhuwaja/FlashYT/releases/latest";
+const GITHUB_RELEASES_URL = "https://github.com/aazannoorkhuwaja/FlashYT/releases/latest";
+const UPDATE_ALARM_NAME = "flashyt_update_check";
+const UPDATE_CHECK_INTERVAL_MIN = 180;
+const UPDATE_CACHE_MS = 15 * 60 * 1000;
 
 let nativePort = null;
 let hostConnected = false;
 let keepAliveTimer = null;
+let hostVersion = null;
+let hostUpdateRequired = false;
+let updateFetchInFlight = null;
+let updateState = {
+  checkedAt: 0,
+  latestVersion: null,
+  releaseUrl: GITHUB_RELEASES_URL,
+  updateAvailable: false,
+  error: null,
+};
 
 const formatCache = new Map();
 const CACHE_MAX = 50;
 const CACHE_TTL_MS = 10 * 60 * 1000;
 const prefetchInflight = new Map();
 const PREFETCH_TIMEOUT_MS = 60000;
+
+function normalizeVersion(raw) {
+  const src = (raw || "").toString().trim().replace(/^v/i, "");
+  const core = src.split("-")[0];
+  const parts = core.split(".").map((p) => parseInt(p, 10));
+  if (parts.some((p) => Number.isNaN(p))) return [0, 0, 0];
+  while (parts.length < 3) parts.push(0);
+  return parts.slice(0, 3);
+}
+
+function compareVersions(a, b) {
+  const va = normalizeVersion(a);
+  const vb = normalizeVersion(b);
+  for (let i = 0; i < 3; i += 1) {
+    if (va[i] > vb[i]) return 1;
+    if (va[i] < vb[i]) return -1;
+  }
+  return 0;
+}
+
+function getPlatform() {
+  const p = (navigator.userAgentData?.platform || navigator.platform || navigator.userAgent || "").toLowerCase();
+  if (p.includes("win")) return "windows";
+  if (p.includes("mac")) return "macos";
+  return "linux";
+}
+
+function getHostUpdateGuidance() {
+  const platform = getPlatform();
+  if (platform === "windows") {
+    return {
+      updateUrl: GITHUB_RELEASES_URL,
+      updateLabel: "Download FlashYT Setup",
+      updateCommand: null,
+    };
+  }
+  return {
+    updateUrl: GITHUB_RELEASES_URL,
+    updateLabel: "Open Update Guide",
+    updateCommand: "curl -fsSL https://raw.githubusercontent.com/aazannoorkhuwaja/FlashYT/main/install.sh | bash",
+  };
+}
+
+function getHostStatusPayload() {
+  const guidance = getHostUpdateGuidance();
+  const status = hostUpdateRequired
+    ? "update_required"
+    : hostConnected
+      ? "connected"
+      : "disconnected";
+  return {
+    status,
+    host_version: hostVersion,
+    min_required_host_version: MIN_REQUIRED_HOST_VERSION,
+    update_required: hostUpdateRequired,
+    ...guidance,
+  };
+}
+
+function broadcastUpdateStatus() {
+  const payload = {
+    type: "UPDATE_STATUS",
+    host: getHostStatusPayload(),
+    release: updateState,
+  };
+  chrome.runtime.sendMessage(payload, () => chrome.runtime.lastError);
+}
+
+async function refreshUpdateState(force = false) {
+  if (!force && Date.now() - (updateState.checkedAt || 0) < UPDATE_CACHE_MS) {
+    return updateState;
+  }
+  if (updateFetchInFlight) return updateFetchInFlight;
+
+  updateFetchInFlight = (async () => {
+    try {
+      const res = await fetch(GITHUB_RELEASE_API, {
+        headers: { Accept: "application/vnd.github+json" },
+        cache: "no-store",
+      });
+      if (!res.ok) throw new Error(`GitHub API ${res.status}`);
+      const data = await res.json();
+      const tag = (data.tag_name || "").toString().trim();
+      const latest = tag.replace(/^v/i, "");
+      const extVersion = chrome.runtime.getManifest().version || "0.0.0";
+      const hostVer = hostVersion || "0.0.0";
+      const isNewer = compareVersions(latest, extVersion) > 0 || compareVersions(latest, hostVer) > 0;
+      updateState = {
+        checkedAt: Date.now(),
+        latestVersion: latest || null,
+        releaseUrl: data.html_url || GITHUB_RELEASES_URL,
+        updateAvailable: !!latest && isNewer,
+        error: null,
+      };
+      chrome.storage.local.set({ flashyt_update_state: updateState });
+    } catch (err) {
+      updateState = {
+        ...updateState,
+        checkedAt: Date.now(),
+        error: err?.message || "Update check failed",
+      };
+      chrome.storage.local.set({ flashyt_update_state: updateState });
+    } finally {
+      broadcastUpdateStatus();
+      updateFetchInFlight = null;
+    }
+    return updateState;
+  })();
+
+  return updateFetchInFlight;
+}
+
+function scheduleUpdateChecks() {
+  chrome.alarms.create(UPDATE_ALARM_NAME, { periodInMinutes: UPDATE_CHECK_INTERVAL_MIN });
+}
 
 function sendToYouTubeTabs(payload) {
   chrome.tabs.query({ url: "https://www.youtube.com/*" }, (tabs) => {
@@ -33,6 +164,25 @@ function stopKeepAlive() {
   if (!keepAliveTimer) return;
   clearInterval(keepAliveTimer);
   keepAliveTimer = null;
+}
+
+function markHostCompatibility(version) {
+  hostVersion = version || null;
+  hostUpdateRequired = !!hostVersion && compareVersions(hostVersion, MIN_REQUIRED_HOST_VERSION) < 0;
+  hostConnected = !!version && !hostUpdateRequired;
+
+  if (hostUpdateRequired) {
+    const guidance = getHostUpdateGuidance();
+    sendToYouTubeTabs({
+      type: "HOST_UPDATE_REQUIRED",
+      hostVersion,
+      minRequiredVersion: MIN_REQUIRED_HOST_VERSION,
+      updateUrl: guidance.updateUrl,
+      updateCommand: guidance.updateCommand,
+      message: `FlashYT host ${hostVersion} is outdated. Update to ${MIN_REQUIRED_HOST_VERSION}+ to continue.`,
+    });
+  }
+  broadcastUpdateStatus();
 }
 
 function clearPrefetchInflight(reason) {
@@ -375,8 +525,9 @@ function connectToHost() {
     }
 
     if (response.type === "pong") {
-      hostConnected = true;
-      manager.processQueue();
+      markHostCompatibility(response.version);
+      if (hostConnected) manager.processQueue();
+      refreshUpdateState(false);
       return;
     }
 
@@ -398,6 +549,9 @@ function connectToHost() {
     if (notInstalled) sendToYouTubeTabs({ type: "HOST_NOT_INSTALLED" });
     nativePort = null;
     hostConnected = false;
+    hostVersion = null;
+    hostUpdateRequired = false;
+    broadcastUpdateStatus();
     clearPrefetchInflight("Host disconnected during format fetch.");
   });
 
@@ -405,11 +559,37 @@ function connectToHost() {
 }
 
 function executeWithHost(onSuccess, onError) {
+  if (hostUpdateRequired) {
+    const guidance = getHostUpdateGuidance();
+    if (onError) {
+      onError({
+        code: "HOST_UPDATE_REQUIRED",
+        message: `Host update required (installed: ${hostVersion || "unknown"}, required: ${MIN_REQUIRED_HOST_VERSION}+).`,
+        hostVersion,
+        minRequiredVersion: MIN_REQUIRED_HOST_VERSION,
+        ...guidance,
+      });
+    }
+    return;
+  }
   if (!nativePort || !hostConnected) {
     connectToHost();
     setTimeout(() => {
       if (hostConnected) onSuccess();
-      else if (onError) onError();
+      else if (onError) {
+        if (hostUpdateRequired) {
+          const guidance = getHostUpdateGuidance();
+          onError({
+            code: "HOST_UPDATE_REQUIRED",
+            message: `Host update required (installed: ${hostVersion || "unknown"}, required: ${MIN_REQUIRED_HOST_VERSION}+).`,
+            hostVersion,
+            minRequiredVersion: MIN_REQUIRED_HOST_VERSION,
+            ...guidance,
+          });
+        } else {
+          onError({ code: "HOST_NOT_CONNECTED", message: "Host not connected." });
+        }
+      }
     }, 350);
     return;
   }
@@ -449,6 +629,17 @@ chrome.runtime.onInstalled.addListener(() => {
     contexts: ["link"],
     targetUrlPatterns: ["https://www.youtube.com/watch*", "https://youtube.com/watch*"],
   });
+  scheduleUpdateChecks();
+  refreshUpdateState(true);
+});
+
+chrome.runtime.onStartup.addListener(() => {
+  scheduleUpdateChecks();
+  refreshUpdateState(false);
+});
+
+chrome.alarms.onAlarm.addListener((alarm) => {
+  if (alarm.name === UPDATE_ALARM_NAME) refreshUpdateState(true);
 });
 
 chrome.contextMenus.onClicked.addListener((info) => {
@@ -471,6 +662,23 @@ chrome.contextMenus.onClicked.addListener((info) => {
 });
 
 function processMessage(request, sendResponse) {
+  if (request.type === "GET_UPDATE_STATUS") {
+    sendResponse({
+      host: getHostStatusPayload(),
+      release: updateState,
+    });
+    refreshUpdateState(false);
+    return false;
+  }
+
+  if (request.type === "OPEN_UPDATE_LINK") {
+    const guidance = getHostUpdateGuidance();
+    const targetUrl = request.url || guidance.updateUrl || GITHUB_RELEASES_URL;
+    chrome.tabs.create({ url: targetUrl }, () => chrome.runtime.lastError);
+    sendResponse({ ok: true });
+    return false;
+  }
+
   if (request.type === "PREFETCH") {
     const url = request.url;
     if (!request.force) {
@@ -664,13 +872,24 @@ function processMessage(request, sendResponse) {
 
 chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
   if (request.type === "CHECK_STATUS") {
-    sendResponse({ status: hostConnected ? "connected" : "disconnected" });
+    sendResponse(getHostStatusPayload());
     return false;
+  }
+  if (request.type === "GET_UPDATE_STATUS" || request.type === "OPEN_UPDATE_LINK") {
+    return processMessage(request, sendResponse);
   }
 
   executeWithHost(
     () => processMessage(request, sendResponse),
-    () => sendResponse({ type: "error", error: "HOST_NOT_CONNECTED" })
+    (reason) => sendResponse({
+      type: "error",
+      error: reason?.code || "HOST_NOT_CONNECTED",
+      message: reason?.message || "Host not connected.",
+      host_version: reason?.hostVersion || null,
+      min_required_host_version: reason?.minRequiredVersion || MIN_REQUIRED_HOST_VERSION,
+      update_url: reason?.updateUrl || GITHUB_RELEASES_URL,
+      update_command: reason?.updateCommand || null,
+    })
   );
   return true;
 });

@@ -102,7 +102,10 @@ function openModal() {
     renderModalContent();
 
     safeSendMessage({ type: "CHECK_STATUS" }, (response) => {
-        if (response && response.status === "disconnected") {
+        if (response && response.status === "update_required") {
+            closeModal();
+            showToast("FlashYT host update required. Open popup and click Update Host.", true, 7000);
+        } else if (response && response.status === "disconnected") {
             closeModal();
             showToast("FlashYT desktop app not running. Run the installer first.", true);
         }
@@ -197,6 +200,7 @@ function startDownload(qualityObj, title, videoId) {
         format: qualityObj.label
     }, (res) => {
         if (res && res.error) {
+            const isUpdateRequired = res.error === "HOST_UPDATE_REQUIRED";
             if (btn) {
                 btn.textContent = 'Error!';
                 btn.style.backgroundColor = '#e74c3c';
@@ -204,7 +208,11 @@ function startDownload(qualityObj, title, videoId) {
                 btn.dataset.state = 'idle';
                 setTimeout(() => { btn.innerHTML = defaultBtnHtml; btn.style.backgroundColor = 'rgb(204,0,0)'; }, 3000);
             }
-            showToast(res.error, true);
+            if (isUpdateRequired) {
+                showToast("FlashYT host update required. Open popup and click Update Host.", true, 7000);
+            } else {
+                showToast(res.message || res.error || "Download failed.", true);
+            }
         } else {
             showToast("Download added to queue.");
         }
@@ -299,6 +307,12 @@ function triggerPrefetch(url, force = false) {
         if (response.error === "HOST_NOT_CONNECTED") {
             return;
         }
+        if (response.error === "HOST_UPDATE_REQUIRED") {
+            lastPrefetchError = response.message || "Host update required.";
+            if (isModalOpen) renderModalContent();
+            else showToast("FlashYT host update required. Open popup and click Update Host.", true, 7000);
+            return;
+        }
         if (response.type === "prefetch_result") {
             currentQualities = response.qualities;
             lastPrefetchError = '';
@@ -321,6 +335,14 @@ chrome.runtime.onMessage.addListener((message) => {
     if (message.type === 'HOST_NOT_INSTALLED') {
         showToast(
             '⚡ FlashYT: Desktop host not installed. Download the installer from GitHub.',
+            true,
+            8000
+        );
+        return;
+    }
+    if (message.type === 'HOST_UPDATE_REQUIRED') {
+        showToast(
+            '⚡ FlashYT: Host update required. Open popup and click Update Host.',
             true,
             8000
         );
