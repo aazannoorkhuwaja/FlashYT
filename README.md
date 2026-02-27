@@ -8,7 +8,6 @@ Your video data stays on your machine.
 ## Why FlashYT
 
 - Real-time progress in both YouTube page button and popup queue
-- Queue controls: `pause`, `resume`, `cancel`, `delete`
 - Cross-platform native host support for Windows, Linux, and macOS
 - No cloud relay for downloads
 
