@@ -167,9 +167,10 @@ function stopKeepAlive() {
 }
 
 function markHostCompatibility(version) {
-  hostVersion = version || null;
-  hostUpdateRequired = !!hostVersion && compareVersions(hostVersion, MIN_REQUIRED_HOST_VERSION) < 0;
-  hostConnected = !!version && !hostUpdateRequired;
+  const normalized = (version || "").toString().trim();
+  hostVersion = normalized || "legacy";
+  hostUpdateRequired = compareVersions(hostVersion, MIN_REQUIRED_HOST_VERSION) < 0;
+  hostConnected = !hostUpdateRequired;
 
   if (hostUpdateRequired) {
     const guidance = getHostUpdateGuidance();
@@ -872,8 +873,22 @@ function processMessage(request, sendResponse) {
 
 chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
   if (request.type === "CHECK_STATUS") {
-    sendResponse(getHostStatusPayload());
-    return false;
+    if (hostConnected || hostUpdateRequired) {
+      sendResponse(getHostStatusPayload());
+      return false;
+    }
+    let responded = false;
+    const respondStatus = () => {
+      if (responded) return;
+      responded = true;
+      sendResponse(getHostStatusPayload());
+    };
+    executeWithHost(
+      () => respondStatus(),
+      () => respondStatus()
+    );
+    setTimeout(respondStatus, 700);
+    return true;
   }
   if (request.type === "GET_UPDATE_STATUS" || request.type === "OPEN_UPDATE_LINK") {
     return processMessage(request, sendResponse);

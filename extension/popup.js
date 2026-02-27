@@ -537,23 +537,45 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    function setHostIndicator(status) {
+        if (!els.hostStatusText) return;
+        if (status === "connected") {
+            els.hostStatusText.textContent = "Connected";
+            els.hostStatusText.className = "text-emerald";
+            if (els.hostStatusDot) els.hostStatusDot.className = "w-2 h-2 rounded-full bg-emerald animate-pulse";
+            return;
+        }
+        if (status === "update_required") {
+            els.hostStatusText.textContent = "Update Required";
+            els.hostStatusText.className = "text-amber";
+            if (els.hostStatusDot) els.hostStatusDot.className = "w-2 h-2 rounded-full bg-amber animate-pulse";
+            return;
+        }
+        els.hostStatusText.textContent = "Disconnected";
+        els.hostStatusText.className = "text-red";
+        if (els.hostStatusDot) els.hostStatusDot.className = "w-2 h-2 rounded-full bg-red";
+    }
+
     function checkHost() {
+        let settled = false;
+        const timer = setTimeout(() => {
+            if (settled) return;
+            settled = true;
+            setHostIndicator("disconnected");
+            renderUpdateBanner();
+        }, 1200);
+
         chrome.runtime.sendMessage({ type: "CHECK_STATUS" }, (response) => {
-            if (!els.hostStatusText) return;
-            hostStatusInfo = response || hostStatusInfo;
-            if (response && response.status === "connected") {
-                els.hostStatusText.textContent = "Connected";
-                els.hostStatusText.className = "text-emerald";
-                els.hostStatusDot.className = "w-2 h-2 rounded-full bg-emerald animate-pulse";
-            } else if (response && response.status === "update_required") {
-                els.hostStatusText.textContent = "Update Required";
-                els.hostStatusText.className = "text-amber";
-                els.hostStatusDot.className = "w-2 h-2 rounded-full bg-amber animate-pulse";
-            } else {
-                els.hostStatusText.textContent = "Disconnected";
-                els.hostStatusText.className = "text-red";
-                els.hostStatusDot.className = "w-2 h-2 rounded-full bg-red";
+            if (settled) return;
+            settled = true;
+            clearTimeout(timer);
+            if (chrome.runtime.lastError || !response) {
+                setHostIndicator("disconnected");
+                renderUpdateBanner();
+                return;
             }
+            hostStatusInfo = response || hostStatusInfo;
+            setHostIndicator(response.status);
             renderUpdateBanner();
         });
     }
