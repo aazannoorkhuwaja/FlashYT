@@ -103,6 +103,12 @@ curl -fsSL https://raw.githubusercontent.com/aazannoorkhuwaja/youtube-native-ext
 This is fixed in current builds: email uses copy-to-clipboard in About section.
 If you still see prompt behavior, reload extension to latest code.
 
+### 6) Windows SmartScreen/Defender warns on installer
+1. Always download from official GitHub Releases.
+2. Use the latest signed release build (code-signing step in CI).
+3. If your org policy blocks unknown publishers, ask IT to trust your signing certificate thumbprint.
+4. Verify SHA256 checksum of release assets before install.
+
 ## Log File Locations
 
 - Linux/macOS: `~/.config/YouTubeNativeExt/host.log`
