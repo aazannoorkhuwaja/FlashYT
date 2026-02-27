@@ -5,8 +5,10 @@ import os
 # Ensure the host directory is in the path for importing
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
+import downloader
 from downloader import (
     _build_download_cmd,
+    _is_auth_or_access_error,
     _is_format_unavailable_error,
     _re_eta,
     _re_pct,
@@ -47,6 +49,12 @@ def test_format_unavailable_error_detection():
     assert _is_format_unavailable_error("Sign in to confirm you are not a bot") is False
 
 
+def test_auth_or_access_error_detection():
+    assert _is_auth_or_access_error("Sign in to confirm you're not a bot") is True
+    assert _is_auth_or_access_error("HTTP Error 403: Forbidden") is True
+    assert _is_auth_or_access_error("Requested format is not available.") is False
+
+
 def test_build_cmd_audio_only_uses_audio_selector():
     cmd = _build_download_cmd(
         "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
@@ -72,3 +80,29 @@ def test_build_cmd_real_itag_has_adaptive_fallback_selector():
     selector = cmd[cmd.index("-f") + 1]
     assert "137+bestaudio[ext=m4a]/137/" in selector
     assert "height<=720" in selector
+
+
+def test_build_cmd_uses_cookies_from_browser_when_cookiefile_missing(monkeypatch):
+    monkeypatch.setattr(downloader, "get_best_available_cookies", lambda: {"cookiesfrombrowser": ("brave", None, None, None)})
+
+    cmd = _build_download_cmd(
+        "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+        "video_720",
+        "/tmp",
+        "dl_cookie_browser",
+        None,
+    )
+    assert "--cookies-from-browser" in cmd
+    assert cmd[cmd.index("--cookies-from-browser") + 1] == "brave"
+
+
+def test_build_cmd_does_not_force_subtitle_flags():
+    cmd = _build_download_cmd(
+        "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+        "video_720",
+        "/tmp",
+        "dl_no_subs",
+        None,
+    )
+    assert "--write-subs" not in cmd
+    assert "--embed-subs" not in cmd

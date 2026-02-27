@@ -117,6 +117,17 @@ def _is_format_unavailable_error(message):
     )
 
 
+def _is_auth_or_access_error(message):
+    text = (message or '').lower()
+    return (
+        'sign in to confirm' in text
+        or 'not a bot' in text
+        or 'unable to download api page' in text
+        or 'http error 403' in text
+        or 'forbidden' in text
+    )
+
+
 def _parse_height_from_itag(itag, default=1080):
     if isinstance(itag, str) and itag.startswith('video_'):
         try:
@@ -290,16 +301,19 @@ def _build_download_cmd(url, itag, output_dir, download_id, real_itag):
         '--progress',
         '--cache-dir', os.path.join(os.path.expanduser('~'), '.flashyt_cache', download_id or 'default'),
         '-o', os.path.join(output_dir, '%(title)s.%(ext)s'),
+        '--extractor-args', 'youtube:player_client=web,ios,android',
     ]
-    if shutil.which('aria2c'):
-        cmd.extend([
-            '--downloader', 'aria2c',
-            '--downloader-args', 'aria2c:-c -x 16 -s 16 -k 1M --summary-interval=1 --console-log-level=notice',
-        ])
 
     cookie_opts = get_best_available_cookies()
     if 'cookiefile' in cookie_opts:
         cmd.extend(['--cookies', cookie_opts['cookiefile']])
+    elif cookie_opts.get('cookiesfrombrowser'):
+        browser = cookie_opts['cookiesfrombrowser'][0]
+        cmd.extend(['--cookies-from-browser', browser])
+    else:
+        browser = detect_browser()
+        if browser:
+            cmd.extend(['--cookies-from-browser', browser])
 
     if itag == 'audio_only':
         if real_itag:
@@ -312,14 +326,12 @@ def _build_download_cmd(url, itag, output_dir, download_id, real_itag):
         cmd.extend([
             '-f', selector,
             '--merge-output-format', 'mp4',
-            '--write-subs', '--sub-langs', 'en,all', '--embed-subs',
         ])
     elif isinstance(itag, str) and itag.startswith('video_'):
         h = _parse_height_from_itag(itag)
         cmd.extend([
             '-f', _build_video_format_string(h),
             '--merge-output-format', 'mp4',
-            '--write-subs', '--sub-langs', 'en,all', '--embed-subs',
         ])
 
     cmd.append(url)
@@ -392,7 +404,16 @@ def cancel_video(download_id):
     return False, 'Cancel failed while stopping process.'
 
 
-def download_video(url, itag, output_dir, progress_callback, download_id=None, video_id=None, real_itag=None):
+def download_video(
+    url,
+    itag,
+    output_dir,
+    progress_callback,
+    download_id=None,
+    video_id=None,
+    real_itag=None,
+    retry_stage=0,
+):
     if not url or not itag:
         return {'type': 'error', 'downloadId': download_id, 'videoId': video_id, 'message': 'Missing URL or format.'}
 
@@ -492,7 +513,7 @@ def download_video(url, itag, output_dir, progress_callback, download_id=None, v
         if process.returncode != 0:
             msg = _extract_ydlp_error(log_tail)
             # Real itags can go stale quickly; retry once with adaptive selector.
-            if real_itag and _is_format_unavailable_error(msg):
+            if real_itag and retry_stage == 0 and _is_format_unavailable_error(msg):
                 progress_callback({'percent': '0%', 'speed': 'Retrying with available quality', 'eta': ''})
                 log.warning(
                     '[Downloader] real_itag=%s unavailable for %s. Retrying with adaptive format.',
@@ -507,6 +528,27 @@ def download_video(url, itag, output_dir, progress_callback, download_id=None, v
                     download_id=download_id,
                     video_id=video_id,
                     real_itag=None,
+                    retry_stage=1,
+                )
+                if retry_result.get('type') != 'error':
+                    return retry_result
+                retry_msg = retry_result.get('message') or ''
+                if retry_msg:
+                    msg = retry_msg
+
+            # If quality-specific paths fail, retry once with yt-dlp automatic best selection.
+            if retry_stage < 2 and (_is_format_unavailable_error(msg) or _is_auth_or_access_error(msg)):
+                progress_callback({'percent': '0%', 'speed': 'Retrying with universal compatibility mode', 'eta': ''})
+                log.warning('[Downloader] Falling back to universal selector for %s (reason: %s)', url, msg)
+                retry_result = download_video(
+                    url,
+                    '__auto_best__',
+                    resolved_output,
+                    progress_callback,
+                    download_id=download_id,
+                    video_id=video_id,
+                    real_itag=None,
+                    retry_stage=2,
                 )
                 if retry_result.get('type') != 'error':
                     return retry_result
