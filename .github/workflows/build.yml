@@ -35,8 +35,8 @@ jobs:
           del ffmpeg.zip
 
       - name: Build Executable Binaries (PyInstaller)
-        shell: cmd
-        run: scripts\build_windows.bat
+        shell: pwsh
+        run: cmd /c scripts\build_windows.bat
 
       - name: Sign Windows Binaries (optional)
         if: ${{ secrets.WINDOWS_CERT_BASE64 != '' && secrets.WINDOWS_CERT_PASSWORD != '' }}
