@@ -1,4 +1,4 @@
-name: Build and Release YouTube Native Downloader
+name: Build and Release FlashYT
 
 on:
   push:
@@ -49,14 +49,14 @@ jobs:
           & $signtool sign /fd SHA256 /f $pfxPath /p "${{ secrets.WINDOWS_CERT_PASSWORD }}" /tr http://timestamp.digicert.com /td SHA256 "host\dist\host.exe"
           & $signtool sign /fd SHA256 /f $pfxPath /p "${{ secrets.WINDOWS_CERT_PASSWORD }}" /tr http://timestamp.digicert.com /td SHA256 "scripts\dist\detect_ext.exe"
           & $signtool sign /fd SHA256 /f $pfxPath /p "${{ secrets.WINDOWS_CERT_PASSWORD }}" /tr http://timestamp.digicert.com /td SHA256 "scripts\dist\register_host_windows.exe"
-          & $signtool sign /fd SHA256 /f $pfxPath /p "${{ secrets.WINDOWS_CERT_PASSWORD }}" /tr http://timestamp.digicert.com /td SHA256 "dist\youtube-native-downloader-setup.exe"
+          & $signtool sign /fd SHA256 /f $pfxPath /p "${{ secrets.WINDOWS_CERT_PASSWORD }}" /tr http://timestamp.digicert.com /td SHA256 "dist\FlashYT-setup.exe"
           Remove-Item $pfxPath -Force
 
       - name: Upload Windows Installer Payload
         uses: actions/upload-artifact@v4
         with:
-          name: youtube-native-downloader-setup
-          path: dist/youtube-native-downloader-setup.exe
+          name: flashyt-windows-setup
+          path: dist/FlashYT-setup.exe
 
   build-mac-linux:
     runs-on: ubuntu-latest
@@ -70,7 +70,7 @@ jobs:
       - name: Upload Bash Installer Payload
         uses: actions/upload-artifact@v4
         with:
-          name: native-downloader-install-sh
+          name: flashyt-install-bundle
           path: |
             install.sh
             host/
@@ -84,26 +84,26 @@ jobs:
       - name: Download Windows Artifact
         uses: actions/download-artifact@v4
         with:
-          name: youtube-native-downloader-setup
+          name: flashyt-windows-setup
           
       - name: Download Mac/Linux Artifact
         uses: actions/download-artifact@v4
         with:
-          name: native-downloader-install-sh
+          name: flashyt-install-bundle
           path: mac_linux_bundle
           
       - name: Zip Mac/Linux Resources
         run: |
           cd mac_linux_bundle
-          zip -r ../youtube-native-ext-linux-mac.zip .
+          zip -r ../FlashYT-linux-macos-bundle.zip .
           cd ..
           
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            youtube-native-downloader-setup.exe
-            youtube-native-ext-linux-mac.zip
+            FlashYT-setup.exe
+            FlashYT-linux-macos-bundle.zip
           fail_on_unmatched_files: true
           draft: false
           prerelease: false

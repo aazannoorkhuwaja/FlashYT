@@ -72,7 +72,7 @@ def start_tray_icon():
             log.error(f"[Tray] Failed to view log: {e}")
 
     def on_check_updates(icon, item):
-        webbrowser.open("https://github.com/aazannoorkhuwaja/youtube-native-ext/releases")
+        webbrowser.open("https://github.com/aazannoorkhuwaja/FlashYT/releases")
 
     menu = pystray.Menu(
         pystray.MenuItem('FlashYT v1.0.0', lambda i, it: None, enabled=False),

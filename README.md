@@ -43,7 +43,7 @@ Your video data stays on your machine.
 
 ### Windows
 1. Download the latest installer:
-[Download Windows installer (.exe)](https://github.com/aazannoorkhuwaja/youtube-native-ext/releases/latest)
+[Download Windows installer (.exe)](https://github.com/aazannoorkhuwaja/FlashYT/releases/latest)
 2. Run the installer.
 3. Installer auto-detects extension ID(s) and registers native host.
 4. Restart browser.
@@ -51,7 +51,7 @@ Your video data stays on your machine.
 ### Linux
 1. Run:
 ```bash
-curl -fsSL https://raw.githubusercontent.com/aazannoorkhuwaja/youtube-native-ext/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/aazannoorkhuwaja/FlashYT/main/install.sh | bash
 ```
 2. Setup auto-detects extension ID(s) and registers native host.
 3. Restart browser.
@@ -59,7 +59,7 @@ curl -fsSL https://raw.githubusercontent.com/aazannoorkhuwaja/youtube-native-ext
 ### macOS
 1. Run:
 ```bash
-curl -fsSL https://raw.githubusercontent.com/aazannoorkhuwaja/youtube-native-ext/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/aazannoorkhuwaja/FlashYT/main/install.sh | bash
 ```
 2. Setup auto-detects extension ID(s) and registers native host.
 3. Restart browser.
@@ -116,7 +116,7 @@ If you still see prompt behavior, reload extension to latest code.
 ## Feedback
 
 Report bugs and suggestions:
-1. GitHub Issues: https://github.com/aazannoorkhuwaja/youtube-native-ext/issues
+1. GitHub Issues: https://github.com/aazannoorkhuwaja/FlashYT/issues
 2. Include:
 - OS + browser + browser version
 - FlashYT extension version

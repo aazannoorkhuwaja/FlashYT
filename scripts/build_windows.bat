@@ -2,7 +2,7 @@
 setlocal enabledelayedexpansion
 
 echo ==================================================
-echo YouTube Native Downloader - Windows Build Pipeline
+echo FlashYT - Windows Build Pipeline
 echo ==================================================
 
 cd /d "%~dp0\.."
@@ -67,6 +67,6 @@ if %ERRORLEVEL% neq 0 (
 echo.
 echo ==================================================
 echo COMPLETED SUCCESSFULLY!
-echo Installer generated at: dist\youtube-native-downloader-setup.exe
+echo Installer generated at: dist\FlashYT-setup.exe
 echo ==================================================
 if /I not "%CI%"=="true" pause

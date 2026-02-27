@@ -1,6 +1,6 @@
 {
     "name": "com.youtube.native.ext",
-    "description": "YouTube Native Downloader host",
+    "description": "FlashYT Native Host",
     "path": "C:\\path\\to\\host.exe",
     "type": "stdio",
     "allowed_origins": [

@@ -1,12 +1,12 @@
 [Setup]
-AppName=YouTube Native Downloader
+AppName=FlashYT
 AppVersion=1.0.0
 AppPublisher=Aazan Noor Khuwaja
-AppPublisherURL=https://github.com/aazannoorkhuwaja/youtube-native-ext
-DefaultDirName={autopf}\YouTubeNativeDownloader
-DefaultGroupName=YouTube Native Downloader
+AppPublisherURL=https://github.com/aazannoorkhuwaja/FlashYT
+DefaultDirName={autopf}\FlashYT
+DefaultGroupName=FlashYT
 OutputDir=dist
-OutputBaseFilename=youtube-native-downloader-setup
+OutputBaseFilename=FlashYT-setup
 Compression=lzma2/ultra64
 SolidCompression=yes
 PrivilegesRequired=lowest
@@ -22,8 +22,8 @@ Source: "scripts\dist\detect_ext.exe"; DestDir: "{app}"; Flags: ignoreversion
 Source: "scripts\dist\register_host_windows.exe"; DestDir: "{app}"; Flags: ignoreversion
 
 [Icons]
-Name: "{group}\Start YouTube Downloader"; Filename: "{app}\host.exe"; WorkingDir: "{app}"
-Name: "{group}\Uninstall YouTube Downloader"; Filename: "{uninstallexe}"
+Name: "{group}\Start FlashYT"; Filename: "{app}\host.exe"; WorkingDir: "{app}"
+Name: "{group}\Uninstall FlashYT"; Filename: "{uninstallexe}"
 
 [Run]
 ; Step 1 + 2: Handle extension detection via Code section before registering

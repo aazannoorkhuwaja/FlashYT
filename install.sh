@@ -6,7 +6,7 @@ echo " FlashYT - Mac/Linux Setup"
 echo "=================================================="
 echo ""
 
-REPO_ARCHIVE_URL="https://codeload.github.com/aazannoorkhuwaja/youtube-native-ext/tar.gz/refs/heads/main"
+REPO_ARCHIVE_URL="https://codeload.github.com/aazannoorkhuwaja/FlashYT/tar.gz/refs/heads/main"
 WORKDIR=""
 
 if [[ -d "./host" && -d "./scripts" ]]; then
