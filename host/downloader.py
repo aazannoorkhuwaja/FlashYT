@@ -95,6 +95,37 @@ def _resolve_output_dir(path_hint):
     return target
 
 
+def _extract_ydlp_error(log_tail):
+    msg = 'yt-dlp encountered an error.'
+    for err_line in reversed(log_tail):
+        if 'ERROR:' in err_line:
+            msg = err_line.split('ERROR:', 1)[1].strip()
+            break
+        if err_line.lower().startswith('error:'):
+            msg = err_line.split(':', 1)[1].strip()
+            break
+    return msg
+
+
+def _is_format_unavailable_error(message):
+    text = (message or '').lower()
+    return (
+        'requested format is not available' in text
+        or 'requested format not available' in text
+        or 'format is not available' in text
+        or 'no video formats found' in text
+    )
+
+
+def _parse_height_from_itag(itag, default=1080):
+    if isinstance(itag, str) and itag.startswith('video_'):
+        try:
+            return int(itag.split('_')[1])
+        except Exception:
+            return default
+    return default
+
+
 def _canonicalize_youtube_url(url):
     if not url:
         return url
@@ -270,27 +301,26 @@ def _build_download_cmd(url, itag, output_dir, download_id, real_itag):
     if 'cookiefile' in cookie_opts:
         cmd.extend(['--cookies', cookie_opts['cookiefile']])
 
-    if real_itag and real_itag != 'audio_only':
+    if itag == 'audio_only':
+        if real_itag:
+            cmd.extend(['-f', f'{real_itag}/bestaudio/best', '--extract-audio', '--audio-format', 'mp3'])
+        else:
+            cmd.extend(['-f', 'bestaudio/best', '--extract-audio', '--audio-format', 'mp3'])
+    elif real_itag and real_itag != 'audio_only':
+        fallback_selector = _build_video_format_string(_parse_height_from_itag(itag))
+        selector = f'{real_itag}+bestaudio[ext=m4a]/{real_itag}/{fallback_selector}'
         cmd.extend([
-            '-f', f'{real_itag}+bestaudio[ext=m4a]/bestaudio',
+            '-f', selector,
             '--merge-output-format', 'mp4',
             '--write-subs', '--sub-langs', 'en,all', '--embed-subs',
         ])
     elif isinstance(itag, str) and itag.startswith('video_'):
-        try:
-            h = int(itag.split('_')[1])
-        except Exception:
-            h = 1080
+        h = _parse_height_from_itag(itag)
         cmd.extend([
             '-f', _build_video_format_string(h),
             '--merge-output-format', 'mp4',
             '--write-subs', '--sub-langs', 'en,all', '--embed-subs',
         ])
-    elif itag == 'audio_only':
-        if real_itag:
-            cmd.extend(['-f', str(real_itag), '--extract-audio', '--audio-format', 'mp3'])
-        else:
-            cmd.extend(['-f', 'bestaudio/best', '--extract-audio', '--audio-format', 'mp3'])
 
     cmd.append(url)
     return cmd
@@ -460,14 +490,35 @@ def download_video(url, itag, output_dir, progress_callback, download_id=None, v
             return {'type': 'cancelled', 'downloadId': download_id, 'videoId': video_id, 'message': 'Download cancelled.'}
 
         if process.returncode != 0:
-            msg = 'yt-dlp encountered an error.'
-            for err_line in reversed(log_tail):
-                if 'ERROR:' in err_line:
-                    msg = err_line.split('ERROR:', 1)[1].strip()
-                    break
-                if err_line.lower().startswith('error:'):
-                    msg = err_line.split(':', 1)[1].strip()
-                    break
+            msg = _extract_ydlp_error(log_tail)
+            # Real itags can go stale quickly; retry once with adaptive selector.
+            if real_itag and _is_format_unavailable_error(msg):
+                progress_callback({'percent': '0%', 'speed': 'Retrying with available quality', 'eta': ''})
+                log.warning(
+                    '[Downloader] real_itag=%s unavailable for %s. Retrying with adaptive format.',
+                    real_itag,
+                    url,
+                )
+                retry_result = download_video(
+                    url,
+                    itag,
+                    resolved_output,
+                    progress_callback,
+                    download_id=download_id,
+                    video_id=video_id,
+                    real_itag=None,
+                )
+                if retry_result.get('type') != 'error':
+                    return retry_result
+                retry_msg = retry_result.get('message') or ''
+                if retry_msg:
+                    msg = retry_msg
+
+            if _is_format_unavailable_error(msg):
+                msg = (
+                    'Selected quality is temporarily unavailable. FlashYT retried automatically; '
+                    'please refresh qualities and try another option.'
+                )
             return {'type': 'error', 'downloadId': download_id, 'videoId': video_id, 'message': msg}
 
         if not last_filename:
