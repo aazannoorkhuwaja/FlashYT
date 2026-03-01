@@ -30,7 +30,7 @@ Name: "{group}\Uninstall FlashYT"; Filename: "{uninstallexe}"
 ; Step 3: Registration happens silently below
 Filename: "{app}\register_host_windows.exe"; Parameters: """{app}"" ""{code:GetExtensionIDs}"""; Flags: runhidden runasoriginaluser waituntilterminated; Description: "Registering Native Host Connection"
 ; Step 4: Scheduled silent update task 
-Filename: "schtasks.exe"; Parameters: "/create /tn ""FlashYT-Update"" /tr ""\""{app}\yt-dlp.exe\"\" -U"" /sc weekly /d MON /st 10:00 /f"; Flags: runhidden runasoriginaluser waituntilterminated; Description: "Creating Update Scheduler"
+Filename: "schtasks.exe"; Parameters: "/create /tn ""FlashYT-Update"" /tr ""{app}\yt-dlp.exe -U"" /sc weekly /d MON /st 10:00 /f"; Flags: runhidden runasoriginaluser waituntilterminated; Description: "Creating Update Scheduler"
 ; Step 5: Start immediately
 Filename: "{app}\host.exe"; Flags: nowait postinstall runasoriginaluser; Description: "Start FlashYT Native Host"
 
