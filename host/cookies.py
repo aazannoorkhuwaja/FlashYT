@@ -86,18 +86,25 @@ def extract_cookies_to_file():
             '--quiet',
             '--no-warnings',
             '--ignore-config',
-            'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+            # Use YouTube homepage — no video format restriction checks.
+            # A watch URL triggers 'Requested format is not available' even
+            # with --skip-download, causing a corrupt/empty cookie file.
+            'https://www.youtube.com/',
         ]
         result = subprocess.run(cmd, capture_output=True, text=True, timeout=40)
         if result.returncode != 0:
             log.error(f"[Cookies] yt-dlp cookie extraction failed: {result.stderr[:200]}")
-        elif not os.path.exists(COOKIE_FILE):
-            log.error(f"[Cookies] Cookie file not created at {COOKIE_FILE}")
-        elif os.path.getsize(COOKIE_FILE) <= 100:
-            log.warning(f"[Cookies] Cookie file too small ({os.path.getsize(COOKIE_FILE)} bytes)")
-        else:
+            # Fallback: try the YouTube shorts feed (also has no format restriction)
+            cmd[-1] = 'https://www.youtube.com/shorts/'
+            result2 = subprocess.run(cmd, capture_output=True, text=True, timeout=40)
+            if result2.returncode != 0:
+                log.error(f"[Cookies] yt-dlp cookie extraction fallback also failed: {result2.stderr[:200]}")
+
+        if os.path.exists(COOKIE_FILE) and os.path.getsize(COOKIE_FILE) > 100:
             log.info(f"[Cookies] Successfully extracted cookies ({os.path.getsize(COOKIE_FILE)} bytes)")
-        return os.path.exists(COOKIE_FILE) and os.path.getsize(COOKIE_FILE) > 100
+            return True
+        log.warning(f"[Cookies] Cookie file missing or too small after extraction")
+        return False
     except subprocess.TimeoutExpired:
         log.error("[Cookies] Cookie extraction timed out after 40 seconds")
         return False
