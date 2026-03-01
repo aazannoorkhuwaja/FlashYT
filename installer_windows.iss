@@ -1,6 +1,6 @@
 [Setup]
 AppName=FlashYT
-AppVersion=1.0.0
+AppVersion=2.0.7
 AppPublisher=Aazan Noor Khuwaja
 AppPublisherURL=https://github.com/aazannoorkhuwaja/FlashYT
 DefaultDirName={autopf}\FlashYT
@@ -178,8 +178,13 @@ var
 begin
   if CurStep = ssDone then
   begin
-    URL := 'https://chrome.google.com/webstore/';
-    if MsgBox('Installation Complete!'#13#10#13#10'Would you like to open the Chrome Web Store to install the extension side now?', mbInformation, MB_YESNO) = idYes then
+    URL := 'https://github.com/aazannoorkhuwaja/FlashYT#step-1--load-the-extension';
+    if MsgBox(
+      'FlashYT installed successfully!'#13#10#13#10 +
+      'Next: reload the FlashYT extension in Chrome/Brave/Edge.'#13#10 +
+      'Would you like to open the setup guide?',
+      mbInformation, MB_YESNO
+    ) = idYes then
     begin
       ShellExec('open', URL, '', '', SW_SHOWNORMAL, ewNoWait, ErrorCode);
     end;

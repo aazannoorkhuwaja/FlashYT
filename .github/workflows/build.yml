@@ -53,6 +53,9 @@ jobs:
           7z e ffmpeg.zip -ovendor ffmpeg-master-latest-win64-gpl/bin/ffmpeg.exe -r
           del ffmpeg.zip
 
+      - name: Install Inno Setup 6
+        run: choco install innosetup --yes --no-progress
+
       - name: Build Executable Binaries (PyInstaller)
         shell: pwsh
         run: cmd /c scripts\build_windows.bat
