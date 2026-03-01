@@ -41,12 +41,26 @@
 
 ## Quick Start (Installation)
 
-### 🪟 Windows (Recommended)
-1.  **Step 1**: Download the [latest FlashYT-setup.exe](https://github.com/aazannoorkhuwaja/FlashYT/releases/latest).
-2.  **Step 2**: Open Chrome, go to `chrome://extensions`, enable **Developer Mode**, and click **Load unpacked**. Select the `extension/` folder from this repo.
-3.  **Step 3**: Run the `FlashYT-setup.exe`.
-    > [!TIP]
-    > If the installer doesn't detect the extension, it will ask you to paste your **Extension ID** (found on the `chrome://extensions` page).
+### 🪟 Windows (Step-by-Step for Everyone)
+
+> [!IMPORTANT]
+> To avoid errors, please follow these **3 steps in order**. **Do not run the installer first.**
+
+1.  **Step 1: Download & Extract Source Code**
+    *   Click the green **Code** button at the top of this page and select **Download ZIP**.
+    *   Extract the ZIP file to a folder on your computer (e.g., your Desktop).
+    *   Open that folder; you should see a sub-folder named `extension`.
+
+2.  **Step 2: Load Extension in Browser**
+    *   Open Chrome, Brave, or Edge and go to `chrome://extensions`.
+    *   Turn on **Developer Mode** (top right).
+    *   Click **Load unpacked** and select the `extension` folder you just extracted.
+    *   _Done? Keep the extension visible in your browser toolbar._
+
+3.  **Step 3: Run the FlashYT Installer**
+    *   Now, download and run the [latest FlashYT-setup.exe](https://github.com/aazannoorkhuwaja/FlashYT/releases/latest).
+    *   It will automatically detect your extension and link them together.
+    *   If it asks for an "Extension ID", copy it from your browser's extensions page.
 
 ### 🍎 macOS & 🐧 Linux
 1.  **Step 1**: Load the extension folder in your browser (Developer Mode).

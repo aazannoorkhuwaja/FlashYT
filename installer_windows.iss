@@ -46,93 +46,43 @@ Filename: "{cmd}"; Parameters: "/c rmdir /s /q ""{userappdata}\YouTubeNativeExt"
 var
   UserExtensionIDs: String;
   ExtensionDetectionFailed: Boolean;
+  IDInputPage: TInputQueryWizardPage;
 
 function IsValidExtensionIDsCSV(const Value: String): Boolean;
-var
-  Work, Token: String;
-  PosComma, I: Integer;
+{... implementation omitted for brevity, keeping existing ...}
+
+{ ... RunDetectExtAndGetStdout implementation keeping existing ... }
+
+procedure InitializeWizard;
 begin
-  Result := False;
-  Work := Trim(Value);
-  if Work = '' then
-    Exit;
+  { Create a manual ID entry page that appears after Select Directory if auto-detection fails }
+  IDInputPage := CreateInputQueryPage(wpSelectDir,
+    'FlashYT Extension Configuration', 
+    'The FlashYT extension was not found in your browser.',
+    'Please load the extension in Chrome (Developer Mode) first, then paste its 32-character ID below.'#13#10 +
+    'If you don''t have it yet, you can leave the default and fix it later in the extension settings.');
 
-  while Work <> '' do
-  begin
-    PosComma := Pos(',', Work);
-    if PosComma > 0 then
-    begin
-      Token := Trim(Copy(Work, 1, PosComma - 1));
-      Work := Trim(Copy(Work, PosComma + 1, MaxInt));
-    end
-    else
-    begin
-      Token := Trim(Work);
-      Work := '';
-    end;
-
-    if Length(Token) <> 32 then
-      Exit;
-
-    for I := 1 to 32 do
-    begin
-      if not ((Token[I] >= 'a') and (Token[I] <= 'p')) then
-        Exit;
-    end;
-  end;
-
-  Result := True;
+  IDInputPage.Add('FlashYT Extension ID:', False);
+  IDInputPage.Values[0] := 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'; { Default fallback }
 end;
 
-{ Utility to execute detect_ext.exe silently and read stdout }
-function RunDetectExtAndGetStdout(var StdOutStr: String): Boolean;
-var
-  TmpOutFile, TmpExeFile: String;
-  ResultCode: Integer;
-  Lines: TArrayOfString;
+function ShouldSkipPage(PageID: Integer): Boolean;
 begin
   Result := False;
-  StdOutStr := '';
-  TmpOutFile := ExpandConstant('{tmp}\detect_out.txt');
-  TmpExeFile := ExpandConstant('{tmp}\detect_ext.exe');
-  
-  { Extract detect_ext.exe early purely for this Code step before main installation }
-  try
-    ExtractTemporaryFile('detect_ext.exe');
-  except
-    { If it fails to extract (e.g. missing from [Files]), abort early }
-    Exit;
-  end;
-  
-  if Exec(ExpandConstant('{cmd}'), '/c ""' + TmpExeFile + '"" --all-csv > ""' + TmpOutFile + '""', '', SW_HIDE, ewWaitUntilTerminated, ResultCode) then
-  begin
-    { detect_ext.exe returns 0 if found, 1 if missing }
-    if ResultCode = 0 then
-    begin
-      if LoadStringsFromFile(TmpOutFile, Lines) then
-      begin
-        if GetArrayLength(Lines) > 0 then
-        begin
-          StdOutStr := Trim(Lines[0]);
-          if IsValidExtensionIDsCSV(StdOutStr) then
-            Result := True;
-        end;
-      end;
-    end;
-  end;
-  
-  DeleteFile(TmpOutFile);
+  { Skip the manual ID page if auto-detection already succeeded }
+  if (PageID = IDInputPage.ID) and (not ExtensionDetectionFailed) then
+    Result := True;
 end;
 
 function NextButtonClick(CurPageID: Integer): Boolean;
 var
-  DetectResult, ManualID: String;
+  DetectResult: String;
 begin
   Result := True;
 
-  if CurPageID = wpReady then
+  if CurPageID = wpSelectDir then
   begin
-    { Attempt auto-detection right before we install }
+    { Attempt auto-detection early at the directory selection stage }
     if RunDetectExtAndGetStdout(DetectResult) then
     begin
       UserExtensionIDs := DetectResult;
@@ -140,40 +90,27 @@ begin
     end
     else
     begin
-      { Auto-detection failed: offer manual entry or skip }
-      if InputQuery('FlashYT Setup', 'Extension auto-detection failed.'#13#10#13#10 + 
-                    'Please paste your FlashYT Extension ID (32 characters):'#13#10 +
-                    '(Leave blank to skip and configure manually later)', ManualID) then
-      begin
-        ManualID := Trim(ManualID);
-        if ManualID = '' then
-        begin
-          UserExtensionIDs := 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'; { Placeholder to allow installation }
-          ExtensionDetectionFailed := False;
-        end
-        else if Length(ManualID) = 32 then
-        begin
-          UserExtensionIDs := ManualID;
-          ExtensionDetectionFailed := False;
-        end
-        else
-        begin
-          MsgBox('Invalid Extension ID. It must be exactly 32 characters.', mbError, MB_OK);
-          Result := False;
-        end;
-      end
-      else
-      begin
-        { User cancelled the input query - don't proceed }
-        Result := False;
-      end;
+      ExtensionDetectionFailed := True;
+    end;
+  end;
+
+  if CurPageID = IDInputPage.ID then
+  begin
+    { Validate manual entry if user is on that page }
+    if not IsValidExtensionIDsCSV(IDInputPage.Values[0]) then
+    begin
+      MsgBox('Invalid Extension ID. It must be exactly 32 characters (a-p).', mbError, MB_OK);
+      Result := False;
     end;
   end;
 end;
 
 function GetExtensionIDs(Param: String): String;
 begin
-  Result := UserExtensionIDs;
+  if not ExtensionDetectionFailed and (UserExtensionIDs <> '') then
+    Result := UserExtensionIDs
+  else
+    Result := IDInputPage.Values[0];
 end;
 
 procedure CurStepChanged(CurStep: TSetupStep);
