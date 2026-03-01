@@ -116,7 +116,7 @@ echo "[*] Installing native host to $DEST_DIR..."
 mkdir -p "$DEST_DIR"
 cp -r "$WORKDIR/host/"* "$DEST_DIR/"
 cp "$WORKDIR/scripts/detect_extension_id.py" "$DEST_DIR/detect_extension_id.py"
-cp "$WORKDIR/scripts/constants.py" "$DEST_DIR/constants.py"
+cp "$WORKDIR/scripts/install_config.py" "$DEST_DIR/install_config.py"
 
 cat > "$DEST_DIR/host.sh" <<'EOF'
 #!/usr/bin/env bash

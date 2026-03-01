@@ -5,7 +5,7 @@ import sys
 from typing import Dict, Iterable, List, Optional
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from constants import EXTENSION_NAME, EXTENSION_NAME_ALIASES
+from install_config import EXTENSION_NAME, EXTENSION_NAME_ALIASES
 
 
 TARGET_NAMES = {EXTENSION_NAME.lower(), *(name.lower() for name in EXTENSION_NAME_ALIASES)}
