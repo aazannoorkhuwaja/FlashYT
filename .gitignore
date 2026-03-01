@@ -26,3 +26,6 @@ Thumbs.db
 # Sensitive / generated runtime files
 host/.cached_cookies.txt
 host/.flashyt_cache/
+.env
+.env.*
+!.env.example

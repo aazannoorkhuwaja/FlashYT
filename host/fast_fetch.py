@@ -102,7 +102,10 @@ INNERTUBE_CLIENTS = {
 
 # Optimized endpoints
 INNERTUBE_API_URL = "https://youtubei.googleapis.com/youtubei/v1/player"
-INNERTUBE_KEY     = "AIzaSyAO_FJ2SlqU8Q4STEHLGCilw_Y9_11qcW8"
+INNERTUBE_KEY     = os.environ.get('FLASHYT_INNERTUBE_KEY', '')
+
+if not INNERTUBE_KEY:
+    log.warning("[FastFetch] FLASHYT_INNERTUBE_KEY not found in environment. Some high-quality formats may be unavailable.")
 
 
 # Height → approximate combined bitrate estimate (kbps) for file size calc
