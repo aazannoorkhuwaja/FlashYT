@@ -532,6 +532,12 @@ function connectToHost() {
       return;
     }
 
+    if (response.type === "self_update_progress") {
+      sendToYouTubeTabs(response);
+      chrome.runtime.sendMessage(response, () => chrome.runtime.lastError);
+      return;
+    }
+
     const isDownloadError = response.type === "error" && (response.downloadId || response.videoId);
 
     if (response.type === "progress") manager.updateProgress(response);
@@ -710,6 +716,16 @@ function processMessage(request, sendResponse) {
     const guidance = getHostUpdateGuidance();
     const targetUrl = request.url || guidance.updateUrl || GITHUB_RELEASES_URL;
     chrome.tabs.create({ url: targetUrl }, () => chrome.runtime.lastError);
+    sendResponse({ ok: true });
+    return false;
+  }
+
+  if (request.type === "SELF_UPDATE") {
+    if (!nativePort || !hostConnected) {
+      sendResponse({ ok: false, message: "Host not connected" });
+      return false;
+    }
+    nativePort.postMessage({ type: "self_update" });
     sendResponse({ ok: true });
     return false;
   }

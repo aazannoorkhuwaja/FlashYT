@@ -412,8 +412,23 @@ document.addEventListener('DOMContentLoaded', () => {
             els.updateBannerOpenBtn.textContent = 'Open Latest Release';
         }
 
-        if (updateCopyCommand) els.updateBannerCopyBtn.classList.remove('hidden');
-        else els.updateBannerCopyBtn.classList.add('hidden');
+        if (updateCopyCommand) {
+            els.updateBannerCopyBtn.classList.remove('hidden');
+            // On Linux/Mac where we have an updateCommand, we can do one-click update
+            if (updateCopyCommand.includes('install.sh')) {
+                els.updateBannerCopyBtn.textContent = 'Update Now ▶';
+                els.updateBannerCopyBtn.classList.add('bg-emerald', 'text-white');
+                els.updateBannerCopyBtn.classList.remove('surface2-bg', 'text-brand');
+                els.updateBannerCopyBtn._isSelfUpdate = true;
+            } else {
+                els.updateBannerCopyBtn.textContent = 'Copy Update Command';
+                els.updateBannerCopyBtn.classList.remove('bg-emerald', 'text-white');
+                els.updateBannerCopyBtn.classList.add('surface2-bg', 'text-brand');
+                els.updateBannerCopyBtn._isSelfUpdate = false;
+            }
+        } else {
+            els.updateBannerCopyBtn.classList.add('hidden');
+        }
     }
 
     function applyUpdateStatus(payload) {
@@ -637,6 +652,23 @@ document.addEventListener('DOMContentLoaded', () => {
         if (message.type === 'HOST_NOT_INSTALLED') {
             setHostIndicator('not_installed');
         }
+        if (message.type === "self_update_progress") {
+            if (!els.updateBanner) return;
+            els.updateBanner.classList.remove('hidden');
+            els.updateBannerTitle.textContent = 'Updating FlashYT...';
+            els.updateBannerText.textContent = message.message || 'Please wait while we update your native host.';
+            if (els.updateBannerCopyBtn) {
+                els.updateBannerCopyBtn.disabled = message.status === 'started';
+                if (message.status === 'started') {
+                    els.updateBannerCopyBtn.textContent = 'Updating...';
+                } else if (message.status === 'done') {
+                    els.updateBannerCopyBtn.textContent = 'Done!';
+                } else if (message.status === 'error') {
+                    els.updateBannerCopyBtn.textContent = 'Retry Update';
+                    els.updateBannerCopyBtn.disabled = false;
+                }
+            }
+        }
     });
 
     if (els.updateBannerOpenBtn) {
@@ -647,6 +679,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (els.updateBannerCopyBtn) {
         els.updateBannerCopyBtn.addEventListener('click', async () => {
+            if (els.updateBannerCopyBtn._isSelfUpdate) {
+                els.updateBannerCopyBtn.disabled = true;
+                els.updateBannerCopyBtn.textContent = 'Starting...';
+                chrome.runtime.sendMessage({ type: "SELF_UPDATE" }, (res) => {
+                    if (chrome.runtime.lastError || !res?.ok) {
+                        els.updateBannerCopyBtn.disabled = false;
+                        els.updateBannerCopyBtn.textContent = 'Update Failed';
+                        setTimeout(() => { renderUpdateBanner(); }, 2000);
+                    }
+                });
+                return;
+            }
             const cmd = els.updateBannerCopyBtn._flashytCmd || updateCopyCommand || "";
             const ok = await copyText(cmd);
             const old = els.updateBannerCopyBtn.textContent;

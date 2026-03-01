@@ -246,6 +246,38 @@ def main():
                 ok, info = cancel_video(download_id)
                 send_message({'type': 'control_ack', 'action': 'cancel', 'downloadId': download_id, 'ok': ok, 'message': info})
 
+            elif action == 'self_update':
+                def _run_self_update():
+                    try:
+                        send_message({'type': 'self_update_progress', 'status': 'started',
+                                      'message': 'Downloading latest FlashYT update...'})
+                        if sys.platform == 'win32':
+                            # On Windows, open the releases page — bash not available
+                            import webbrowser
+                            webbrowser.open('https://github.com/aazannoorkhuwaja/FlashYT/releases/latest')
+                            send_message({'type': 'self_update_progress', 'status': 'done',
+                                          'message': 'Opened releases page. Download and run the new installer.'})
+                        else:
+                            result = subprocess.run(
+                                ['bash', '-c',
+                                 'curl -fsSL https://raw.githubusercontent.com/aazannoorkhuwaja/FlashYT/main/install.sh | bash'],
+                                capture_output=True, text=True, timeout=120
+                            )
+                            if result.returncode == 0:
+                                send_message({'type': 'self_update_progress', 'status': 'done',
+                                              'message': 'Update complete! Please reload the extension.'})
+                            else:
+                                err = (result.stderr or result.stdout or 'Unknown error')[-200:]
+                                send_message({'type': 'self_update_progress', 'status': 'error',
+                                              'message': f'Update failed: {err}'})
+                    except subprocess.TimeoutExpired:
+                        send_message({'type': 'self_update_progress', 'status': 'error',
+                                      'message': 'Update timed out. Check your internet connection.'})
+                    except Exception as exc:
+                        send_message({'type': 'self_update_progress', 'status': 'error',
+                                      'message': f'Update error: {exc}'})
+                threading.Thread(target=_run_self_update, daemon=True).start()
+
             else:
                 send_message({'type': 'error', 'message': f'Unhandled message type: {action}'})
     except KeyboardInterrupt:
