@@ -181,4 +181,4 @@ MIT — free to use, share, and modify.
 
 ---
 
-*Made with ❤️ by [Aazan Noor Khuwaja](https://www.linkedin.com/in/aazan-noor-khuwaja-cs/)*
+*Vibe Coded by [Aazan Noor Khuwaja](https://www.linkedin.com/in/aazan-noor-khuwaja-cs/)*
