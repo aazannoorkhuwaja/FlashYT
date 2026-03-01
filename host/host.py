@@ -11,7 +11,7 @@ import traceback
 from logger import log
 
 _stdout_lock = threading.Lock()
-DEFAULT_DOWNLOAD_WORKERS = max(1, int(os.environ.get('FLASHYT_MAX_CONCURRENT', '10')))
+DEFAULT_DOWNLOAD_WORKERS = max(1, int(os.environ.get('FLASHYT_MAX_CONCURRENT', '3')))
 DEFAULT_PREFETCH_WORKERS = max(1, int(os.environ.get('FLASHYT_PREFETCH_WORKERS', '2')))
 _resume_wait_lock = threading.Lock()
 _resume_waiting = set()

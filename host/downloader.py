@@ -644,12 +644,10 @@ def download_video(
             return {'type': 'error', 'downloadId': download_id, 'videoId': video_id, 'message': msg}
 
         if not last_filename:
-            return {
-                'type': 'error',
-                'downloadId': download_id,
-                'videoId': video_id,
-                'message': 'Finished, but output filename could not be determined.',
-            }
+            # Fallback for rare cases where yt-dlp emits no Destination line.
+            # Assume success if returncode is 0 and use videoId as basename.
+            last_filename = f"{video_id}.mp4"
+            log.warning('[Downloader] Success but filename not found. Using video_id as fallback: %s', last_filename)
 
         final_path = os.path.join(resolved_output, last_filename)
         with _active_lock:

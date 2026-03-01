@@ -1,4 +1,5 @@
-# Development / test dependencies only (not needed for end users)
--r requirements.txt
+# Development tools (NOT needed for runtime)
 pytest
 jsonschema
+flake8
+mypy
