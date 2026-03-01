@@ -33,6 +33,7 @@ import ssl
 import os
 import http.cookiejar
 from typing import Optional, List
+from constants import DEFAULT_USER_AGENT, FALLBACK_INNERTUBE_KEY
 from logger import log
 
 from cookies import COOKIE_FILE
@@ -56,7 +57,7 @@ if os.path.exists(COOKIE_FILE):
         log.warning(f"[FastFetch] Could not load cookies: {e}")
 
 _BASE_HEADERS = [
-    ("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"),
+    ("User-Agent", DEFAULT_USER_AGENT),
     ("Accept-Language", "en-US,en;q=0.9"),
     ("X-Goog-Api-Format-Version", "2"),
 ]
@@ -102,10 +103,10 @@ INNERTUBE_CLIENTS = {
 
 # Optimized endpoints
 INNERTUBE_API_URL = "https://youtubei.googleapis.com/youtubei/v1/player"
-INNERTUBE_KEY     = os.environ.get('FLASHYT_INNERTUBE_KEY', '')
+INNERTUBE_KEY     = os.environ.get('FLASHYT_INNERTUBE_KEY') or FALLBACK_INNERTUBE_KEY
 
-if not INNERTUBE_KEY:
-    log.warning("[FastFetch] FLASHYT_INNERTUBE_KEY not found in environment. Some high-quality formats may be unavailable.")
+if not os.environ.get('FLASHYT_INNERTUBE_KEY'):
+    log.debug("[FastFetch] Using public fallback InnerTube key (zero-config mode).")
 
 
 # Height → approximate combined bitrate estimate (kbps) for file size calc
@@ -141,7 +142,7 @@ def _innertube_request(video_id: str, client_name: str) -> Optional[dict]:
     if client_name == "WEB":
         url = f"https://www.youtube.com/watch?v={video_id}"
         headers = {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
+            "User-Agent": DEFAULT_USER_AGENT,
             "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
             "Accept-Language": "en-US,en;q=0.9"
         }

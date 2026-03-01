@@ -9,7 +9,8 @@ import threading
 import time
 from collections import deque
 
-from cookies import detect_browser, get_best_available_cookies
+from constants import DEFAULT_USER_AGENT
+from cookies import detect_browser, get_best_available_cookies, extract_cookies_to_file
 from fast_fetch import prefetch_qualities_fast
 from logger import log
 
@@ -357,6 +358,7 @@ def _build_download_cmd(url, itag, output_dir, download_id, real_itag, retry_sta
         '--no-warnings',
         '--no-update',
         '--no-check-certificate',
+        '--user-agent', DEFAULT_USER_AGENT,
         '--continue',
         '--part',
         '--progress',
@@ -618,6 +620,11 @@ def download_video(
 
             # If quality-specific paths fail, retry once with yt-dlp automatic best selection.
             if retry_stage < 2 and (_is_format_unavailable_error(msg) or _is_auth_or_access_error(msg)):
+                # If it looks like an auth/403 issue, attempt one cookie refresh before retrying
+                if _is_auth_or_access_error(msg):
+                    log.info('[Downloader] 403/Auth error detected. Refreshing cookies before retry...')
+                    extract_cookies_to_file()
+
                 progress_callback({'percent': '0%', 'speed': 'Retrying with universal compatibility mode', 'eta': ''})
                 log.warning('[Downloader] Falling back to universal selector for %s (reason: %s)', url, msg)
                 retry_result = download_video(
