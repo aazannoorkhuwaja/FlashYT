@@ -79,6 +79,13 @@ After the installer finishes:
 4. Download starts immediately with a live progress bar
 5. Open the FlashYT popup (click the extension icon) to see your queue
 
+> [!IMPORTANT]
+> **Sign in to YouTube in your browser before downloading.**
+> FlashYT uses your browser's YouTube cookies to access video formats.
+> Without being signed in, YouTube restricts which qualities are available and
+> some videos may fail to download entirely. Just open YouTube, sign in once,
+> and FlashYT will work automatically from that point on.
+
 ---
 
 ## 🔧 Troubleshooting
