@@ -58,17 +58,21 @@ jobs:
         run: cmd /c scripts\build_windows.bat
 
       - name: Sign Windows Binaries (optional)
-        if: ${{ secrets.WINDOWS_CERT_BASE64 != '' && secrets.WINDOWS_CERT_PASSWORD != '' }}
+        if: ${{ env.HAS_CERT == 'true' }}
+        env:
+          HAS_CERT: ${{ secrets.WINDOWS_CERT_BASE64 != '' && secrets.WINDOWS_CERT_PASSWORD != '' }}
+          CERT_B64: ${{ secrets.WINDOWS_CERT_BASE64 }}
+          CERT_PASS: ${{ secrets.WINDOWS_CERT_PASSWORD }}
         shell: pwsh
         run: |
           $pfxPath = "$env:RUNNER_TEMP\flashyt-codesign.pfx"
-          [IO.File]::WriteAllBytes($pfxPath, [Convert]::FromBase64String("${{ secrets.WINDOWS_CERT_BASE64 }}"))
+          [IO.File]::WriteAllBytes($pfxPath, [Convert]::FromBase64String($env:CERT_B64))
           $signtool = (Get-ChildItem "C:\Program Files (x86)\Windows Kits\10\bin\**\x64\signtool.exe" -ErrorAction SilentlyContinue | Sort-Object FullName -Descending | Select-Object -First 1).FullName
           if (-not $signtool) { throw "signtool.exe not found on runner" }
-          & $signtool sign /fd SHA256 /f $pfxPath /p "${{ secrets.WINDOWS_CERT_PASSWORD }}" /tr http://timestamp.digicert.com /td SHA256 "host\dist\host.exe"
-          & $signtool sign /fd SHA256 /f $pfxPath /p "${{ secrets.WINDOWS_CERT_PASSWORD }}" /tr http://timestamp.digicert.com /td SHA256 "scripts\dist\detect_ext.exe"
-          & $signtool sign /fd SHA256 /f $pfxPath /p "${{ secrets.WINDOWS_CERT_PASSWORD }}" /tr http://timestamp.digicert.com /td SHA256 "scripts\dist\register_host_windows.exe"
-          & $signtool sign /fd SHA256 /f $pfxPath /p "${{ secrets.WINDOWS_CERT_PASSWORD }}" /tr http://timestamp.digicert.com /td SHA256 "dist\FlashYT-setup.exe"
+          & $signtool sign /fd SHA256 /f $pfxPath /p $env:CERT_PASS /tr http://timestamp.digicert.com /td SHA256 "host\dist\host.exe"
+          & $signtool sign /fd SHA256 /f $pfxPath /p $env:CERT_PASS /tr http://timestamp.digicert.com /td SHA256 "scripts\dist\detect_ext.exe"
+          & $signtool sign /fd SHA256 /f $pfxPath /p $env:CERT_PASS /tr http://timestamp.digicert.com /td SHA256 "scripts\dist\register_host_windows.exe"
+          & $signtool sign /fd SHA256 /f $pfxPath /p $env:CERT_PASS /tr http://timestamp.digicert.com /td SHA256 "dist\FlashYT-setup.exe"
           Remove-Item $pfxPath -Force
 
       - name: Upload Windows Installer Payload
