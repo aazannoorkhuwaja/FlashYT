@@ -1,5 +1,6 @@
+# Runtime dependencies (install on all platforms)
 pystray
 Pillow
-secretstorage
-pytest
-jsonschema
+
+# Linux-only: keyring/secret storage integration
+# secretstorage — install manually on Linux: pip install secretstorage

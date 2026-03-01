@@ -5,6 +5,8 @@ import subprocess
 import shutil
 import time
 
+from logger import log
+
 COOKIE_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), '.cached_cookies.txt')
 
 BROWSER_PRIORITY = ['brave', 'chrome', 'chromium', 'firefox', 'edge', 'opera']
@@ -69,9 +71,11 @@ def extract_cookies_to_file():
     """
     browser = detect_browser()
     if not browser:
+        log.warning("[Cookies] No browser detected for cookie extraction")
         return False
 
     ytdlp_exe = _get_ytdlp_path()
+    log.info(f"[Cookies] Attempting to extract cookies from browser: {browser}")
 
     try:
         cmd = [
@@ -84,11 +88,21 @@ def extract_cookies_to_file():
             '--ignore-config',
             'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
         ]
-        subprocess.run(cmd, capture_output=True, text=True, timeout=40)
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=40)
+        if result.returncode != 0:
+            log.error(f"[Cookies] yt-dlp cookie extraction failed: {result.stderr[:200]}")
+        elif not os.path.exists(COOKIE_FILE):
+            log.error(f"[Cookies] Cookie file not created at {COOKIE_FILE}")
+        elif os.path.getsize(COOKIE_FILE) <= 100:
+            log.warning(f"[Cookies] Cookie file too small ({os.path.getsize(COOKIE_FILE)} bytes)")
+        else:
+            log.info(f"[Cookies] Successfully extracted cookies ({os.path.getsize(COOKIE_FILE)} bytes)")
         return os.path.exists(COOKIE_FILE) and os.path.getsize(COOKIE_FILE) > 100
     except subprocess.TimeoutExpired:
+        log.error("[Cookies] Cookie extraction timed out after 40 seconds")
         return False
-    except Exception:
+    except Exception as exc:
+        log.error(f"[Cookies] Cookie extraction failed with exception: {exc}")
         return False
 
 

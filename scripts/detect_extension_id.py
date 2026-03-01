@@ -39,12 +39,21 @@ def _candidate_user_data_roots() -> List[str]:
             ]
         )
     else:
+        home = os.path.expanduser("~")
         roots.extend(
             [
-                os.path.expanduser("~/.config/google-chrome"),
-                os.path.expanduser("~/.config/chromium"),
-                os.path.expanduser("~/.config/BraveSoftware/Brave-Browser"),
-                os.path.expanduser("~/.config/microsoft-edge"),
+                os.path.join(home, ".config", "google-chrome"),
+                os.path.join(home, ".config", "chromium"),
+                os.path.join(home, ".config", "BraveSoftware", "Brave-Browser"),
+                os.path.join(home, ".config", "microsoft-edge"),
+                # Snap-packaged browsers (Ubuntu 22+/24+)
+                os.path.join(home, "snap", "chromium", "current", ".config", "chromium"),
+                os.path.join(home, "snap", "brave", "current", ".config", "BraveSoftware", "Brave-Browser"),
+                os.path.join(home, "snap", "chromium", "common", ".config", "chromium"),
+                # Flatpak-packaged browsers
+                os.path.join(home, ".var", "app", "com.google.Chrome", "config", "google-chrome"),
+                os.path.join(home, ".var", "app", "com.brave.Browser", "config", "BraveSoftware", "Brave-Browser"),
+                os.path.join(home, ".var", "app", "org.chromium.Chromium", "config", "chromium"),
             ]
         )
     return roots

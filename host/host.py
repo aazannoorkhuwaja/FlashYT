@@ -68,10 +68,13 @@ def _progress_payload(update, download_id, video_id):
 def _queue_resume_when_ready(download_id, download_queue):
     from downloader import resume_video
 
+    # Thread safety fix: moved add operation inside the lock
     with _resume_wait_lock:
         if download_id in _resume_waiting:
+            log.warning(f"[Host] Resume already waiting for download_id={download_id}")
             return
         _resume_waiting.add(download_id)
+        log.debug(f"[Host] Added download_id={download_id} to resume waiting set")
 
     try:
         deadline = time.time() + 12

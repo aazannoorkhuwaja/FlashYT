@@ -1,0 +1,4 @@
+# Development / test dependencies only (not needed for end users)
+-r requirements.txt
+pytest
+jsonschema

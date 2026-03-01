@@ -1,140 +1,170 @@
-# FlashYT
+# FlashYT ⚡
 
-Fast, local-first YouTube downloader built as a browser extension + native host.
-Your video data stays on your machine.
+> **Free & open-source YouTube video downloader — browser extension + native desktop app.**
+> No cloud. No account. One click to download any video in full HD, 4K, or audio-only.
 
-![FlashYT](extension/icons/icon128.png)
+![FlashYT Icon](extension/icons/icon128.png)
 
-## Why FlashYT
+---
 
-- Real-time progress in both YouTube page button and popup queue
-- Cross-platform native host support for Windows, Linux, and macOS
-- No cloud relay for downloads
+## ✨ Features
 
-## Supported Browsers
+- **One-click download** — button appears directly on YouTube video pages
+- **Quality picker** — choose 360p → 4K UHD or Audio Only (MP3)
+- **Live progress** — real-time speed, percentage, and ETA in the popup
+- **Pause / Resume / Cancel** — full queue control
+- **Auto-updates yt-dlp** — silently keeps itself working when YouTube changes their API
+- **100% local** — your videos never leave your machine
+- **Free & open source** — MIT License
 
-- Google Chrome
-- Brave
-- Microsoft Edge
-- Chromium
+---
 
-## Important Before You Start
+## 🖥️ Supported Platforms & Browsers
 
-1. Install the browser extension first, then the native host.
-2. Keep the install path stable after setup.
-3. If you switch browser or browser profile, run setup again.
-4. For repeated format/prefetch failures, sign in to YouTube in the same browser profile.
+| OS | Chrome | Brave | Edge | Chromium |
+|---|---|---|---|---|
+| Windows | ✅ | ✅ | ✅ | ✅ |
+| macOS | ✅ | ✅ | ✅ | ✅ |
+| Linux | ✅ | ✅ | ✅ | ✅ |
 
-## 1) Install the Browser Extension
+---
 
-### Option A: Chrome Web Store (recommended when published)
-1. Install FlashYT from the store listing.
-2. Continue to OS setup below.
+## 📦 Requirements
 
-### Option B: Load from source (available now)
-1. Open extensions page:
-`chrome://extensions` or `brave://extensions` or `edge://extensions`
-2. Enable `Developer mode`.
-3. Click `Load unpacked`.
-4. Select the `extension/` folder from this repo.
-5. Keep extension enabled, then run setup script/installer.
+- **Python 3.8+** ([python.org](https://www.python.org/downloads/))
+- **ffmpeg** — required for merging audio and video
+  - Windows: [ffmpeg.org](https://ffmpeg.org/download.html) or `winget install ffmpeg`
+  - macOS: `brew install ffmpeg`
+  - Linux: `sudo apt install ffmpeg` or `sudo dnf install ffmpeg`
 
-## 2) Native Host Setup by OS
+---
 
-### Windows
-1. Download the latest installer:
-[Download Windows installer (.exe)](https://github.com/aazannoorkhuwaja/FlashYT/releases/latest)
-2. Run the installer.
-3. Installer auto-detects extension ID(s) and registers native host.
-4. Restart browser.
+## 🚀 Installation (3 Steps)
 
-### Linux
-1. Run:
+### Step 1 — Load the Extension
+
+1. Open your browser's extensions page:
+   - Chrome/Brave/Edge: `chrome://extensions` / `brave://extensions` / `edge://extensions`
+2. Enable **Developer mode** (top-right toggle)
+3. Click **Load unpacked**
+4. Select the `extension/` folder from this repo (or your downloaded copy)
+5. You should see the FlashYT icon appear in your toolbar
+
+### Step 2 — Run the one-line installer
+
+**Linux / macOS:**
 ```bash
 curl -fsSL https://raw.githubusercontent.com/aazannoorkhuwaja/FlashYT/main/install.sh | bash
 ```
-2. Setup auto-detects extension ID(s) and registers native host.
-3. Restart browser.
 
-### macOS
-1. Run:
+**Windows:**
+Download and run the latest `.exe` installer from [GitHub Releases](https://github.com/aazannoorkhuwaja/FlashYT/releases/latest)
+
+> The installer auto-detects your browser extension ID. If it can't find it automatically, it will prompt you to paste it manually — just copy it from `chrome://extensions` where it says "ID: xxxxxx..."
+
+### Step 3 — Reload the Extension
+
+After the installer finishes:
+1. Go back to your extensions page (`chrome://extensions`)
+2. Click the **🔄 refresh icon** on FlashYT
+3. Open any YouTube video — the ⚡ Download button should appear!
+
+---
+
+## 🎬 How to Use
+
+1. Go to any YouTube video: `https://www.youtube.com/watch?v=...`
+2. Click the **⚡ Download** button next to the video actions
+3. A quality picker appears — choose your resolution
+4. Download starts immediately with a live progress bar
+5. Open the FlashYT popup (click the extension icon) to see your queue
+
+---
+
+## 🔧 Troubleshooting
+
+### "Host not connected" / popup shows "Disconnected"
+The native host isn't running. Re-run the installer:
 ```bash
 curl -fsSL https://raw.githubusercontent.com/aazannoorkhuwaja/FlashYT/main/install.sh | bash
 ```
-2. Setup auto-detects extension ID(s) and registers native host.
-3. Restart browser.
+Then reload the extension (`chrome://extensions` → 🔄).
 
-## 3) Verify in 60 Seconds
+### "Failed to fetch qualities" or blank quality list
+1. Make sure you're on a real YouTube watch page (`youtube.com/watch?v=...`)
+2. Sign in to YouTube in the same browser profile
+3. Right-click the ⚡ button → refresh qualities (the 🔄 icon in the modal)
+4. If it persists, check the log file (see below)
 
-1. Open any YouTube watch page.
-2. Confirm FlashYT button appears near video actions.
-3. Start one download.
-4. Confirm progress updates live in:
-- YouTube button
-- Popup `Queue` row
-5. Test `pause`, `resume`, and `cancel`.
+### Download button doesn't appear on YouTube
+1. Refresh the YouTube tab (Ctrl+R)
+2. Make sure the extension is enabled on `chrome://extensions`
+3. If YouTube recently changed their page layout, update FlashYT from [Releases](https://github.com/aazannoorkhuwaja/FlashYT/releases/latest)
 
-## Common Issues and Solutions
+### Windows SmartScreen warning on installer
+This is normal for new/unsigned software. Click **"More info" → "Run anyway"**.
+Always download only from the [official GitHub Releases page](https://github.com/aazannoorkhuwaja/FlashYT/releases/latest).
 
-### 1) Button not visible on YouTube
-1. Refresh the tab.
-2. Confirm extension is enabled.
-3. Reload extension from browser extensions page.
-4. Re-run native host setup.
+---
 
-### 2) "Host not connected" error
-1. Re-run installer/setup for your OS.
-2. Confirm FlashYT extension is installed and enabled in your active browser profile.
-3. Restart browser after setup.
+## 📋 Checking the Log (for debugging)
 
-### 3) "Failed to fetch qualities" or prefetch timeout
-1. Sign in to YouTube and retry.
-2. Refresh the video page and reopen quality selector.
-3. Reduce heavy parallel activity and retry.
-4. If persistent, collect `host.log` and open an issue.
+If something goes wrong, the log file has all the details:
 
-### 4) Pause/resume feels out of sync under heavy concurrency
-1. Keep `Max Concurrent` at `2-4` for best stability.
-2. Pause one item, wait a moment, then resume.
-3. Reopen popup if queue UI looks stale.
+| OS | Log location |
+|---|---|
+| Linux / macOS | `~/.config/YouTubeNativeExt/host.log` |
+| Windows | `%APPDATA%\YouTubeNativeExt\host.log` |
 
-### 5) Linux popup asks to open external app for email
-This is fixed in current builds: email uses copy-to-clipboard in About section.
-If you still see prompt behavior, reload extension to latest code.
+**Quick command to tail the log:**
+```bash
+tail -f ~/.config/YouTubeNativeExt/host.log
+```
 
-### 6) Windows SmartScreen/Defender warns on installer
-1. Always download from official GitHub Releases.
-2. Use the latest signed release build (code-signing step in CI).
-3. If your org policy blocks unknown publishers, ask IT to trust your signing certificate thumbprint.
-4. Verify SHA256 checksum of release assets before install.
+When reporting a bug, always include the last 20 lines of this file.
 
-## Log File Locations
+---
 
-- Linux/macOS: `~/.config/YouTubeNativeExt/host.log`
-- Windows: `%APPDATA%\YouTubeNativeExt\host.log`
+## 🗑️ Uninstall
 
-## Feedback
+**Linux / macOS:**
+```bash
+curl -fsSL https://raw.githubusercontent.com/aazannoorkhuwaja/FlashYT/main/uninstall.sh | bash
+```
 
-Report bugs and suggestions:
-1. GitHub Issues: https://github.com/aazannoorkhuwaja/FlashYT/issues
-2. Include:
-- OS + browser + browser version
-- FlashYT extension version
-- Exact reproduction steps
-- Exact error text shown
-- Relevant lines from `host.log`
+Then go to `chrome://extensions` and remove FlashYT.
 
-## User Guidance (Recommended)
+**Windows:** Use Windows Add/Remove Programs → uninstall FlashYT.
 
-1. Set `Max Concurrent` to `2-4` for consistent behavior.
-2. Prefer local SSD save location for better merge speed.
-3. Stay signed in on YouTube for fewer format-fetch failures.
-4. Reload extension after pulling repo updates.
+---
 
-## Contributing
+## 🐛 Reporting Bugs
 
-PRs are welcome. If your change touches host protocol or queue states, run host tests and verify native messaging flows before submitting.
+Open an issue at [github.com/aazannoorkhuwaja/FlashYT/issues](https://github.com/aazannoorkhuwaja/FlashYT/issues)
 
-## License
+Please include:
+- Your OS, browser, and browser version
+- FlashYT version (shown in popup → About tab)
+- Exact steps to reproduce
+- The last 20 lines of `host.log`
 
-MIT
+---
+
+## 🤝 Contributing
+
+PRs are welcome! If your change touches the host protocol or download queue states, run the test suite before submitting:
+```bash
+cd host
+pip install -r requirements-dev.txt
+python -m pytest tests/ -v
+```
+
+---
+
+## 📄 License
+
+MIT — free to use, share, and modify.
+
+---
+
+*Made with ❤️ by [Aazan Noor Khuwaja](https://www.linkedin.com/in/aazan-noor-khuwaja-cs/)*

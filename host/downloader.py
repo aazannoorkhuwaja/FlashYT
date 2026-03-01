@@ -58,21 +58,41 @@ def _terminate_process_tree(proc, timeout_s=3):
 def get_ytdlp_path():
     sys_path = shutil.which('yt-dlp')
     if sys_path:
+        log.debug(f"[Downloader] Found yt-dlp at: {sys_path}")
         return sys_path
     if sys.platform == 'win32':
         base_dir = os.path.dirname(sys.executable) if getattr(sys, 'frozen', False) else os.path.dirname(__file__)
-        return os.path.join(base_dir, 'yt-dlp.exe')
-    return '/usr/local/bin/yt-dlp' if os.path.exists('/usr/local/bin/yt-dlp') else '/usr/bin/yt-dlp'
+        path = os.path.join(base_dir, 'yt-dlp.exe')
+        if os.path.exists(path):
+            log.debug(f"[Downloader] Found yt-dlp at (frozen): {path}")
+            return path
+    # Check common Linux paths
+    for candidate in ['/usr/local/bin/yt-dlp', '/usr/bin/yt-dlp']:
+        if os.path.exists(candidate):
+            log.debug(f"[Downloader] Found yt-dlp at: {candidate}")
+            return candidate
+    log.error("[Downloader] yt-dlp not found! Please install yt-dlp.")
+    return None
 
 
 def get_ffmpeg_path():
     sys_path = shutil.which('ffmpeg')
     if sys_path:
+        log.debug(f"[Downloader] Found ffmpeg at: {sys_path}")
         return sys_path
     if sys.platform == 'win32':
         base_dir = os.path.dirname(sys.executable) if getattr(sys, 'frozen', False) else os.path.dirname(__file__)
-        return os.path.join(base_dir, 'ffmpeg.exe')
-    return '/usr/local/bin/ffmpeg' if os.path.exists('/usr/local/bin/ffmpeg') else '/usr/bin/ffmpeg'
+        path = os.path.join(base_dir, 'ffmpeg.exe')
+        if os.path.exists(path):
+            log.debug(f"[Downloader] Found ffmpeg at (frozen): {path}")
+            return path
+    # Check common Linux paths
+    for candidate in ['/usr/local/bin/ffmpeg', '/usr/bin/ffmpeg']:
+        if os.path.exists(candidate):
+            log.debug(f"[Downloader] Found ffmpeg at: {candidate}")
+            return candidate
+    log.warning("[Downloader] ffmpeg not found! Merging may fail.")
+    return None
 
 
 def _build_video_format_string(max_height):
@@ -262,6 +282,19 @@ def _prefetch_with_ytdlp(url, timeout_s=20):
         return {'error': f'Fallback prefetch exception: {exc}'}
 
 
+_YOUTUBE_API_CHANGE_SIGNALS = [
+    'sign in', 'login', 'please sign', 'not available',
+    'update yt-dlp', 'outdated', 'nsig extraction',
+    'unable to extract', 'http error 403', 'http error 429',
+    'video unavailable', 'could not fetch', 'no formats',
+]
+
+def _looks_like_youtube_api_change(error_msg: str) -> bool:
+    """Return True if the error message suggests YouTube changed their API."""
+    t = (error_msg or '').lower()
+    return any(sig in t for sig in _YOUTUBE_API_CHANGE_SIGNALS)
+
+
 def prefetch_qualities(url):
     hint = 'If this persists, sign in to YouTube in your browser and restart FlashYT.'
 
@@ -271,13 +304,41 @@ def prefetch_qualities(url):
             return msg
         return f'{msg} {hint}'.strip()
 
+    # Stage 1: fast InnerTube (1-2s)
     fast_result = _prefetch_with_timeout(url, timeout_s=8)
     if fast_result and not fast_result.get('error') and fast_result.get('qualities'):
         return fast_result
 
+    # Stage 2: yt-dlp fallback (up to 25s)
     fallback = _prefetch_with_ytdlp(url, timeout_s=25)
     if fallback and not fallback.get('error') and fallback.get('qualities'):
         return fallback
+
+    # Stage 3: if everything failed and it looks like a YouTube API change,
+    # trigger an immediate yt-dlp self-update then retry once.
+    fast_err = (fast_result or {}).get('error', '')
+    fall_err = (fallback or {}).get('error', '')
+    combined_err = f'{fast_err} {fall_err}'
+
+    if _looks_like_youtube_api_change(combined_err):
+        log.warning('[Downloader] YouTube API change detected. Triggering yt-dlp self-update and retrying...')
+        import threading, time as _time
+        try:
+            from tray import _update_ytdlp_now, _ytdlp_update_state, _ytdlp_update_lock
+            done_event = threading.Event()
+            _update_ytdlp_now(on_finish=done_event.set)
+            # Wait up to 90s for update to finish
+            done_event.wait(timeout=90)
+        except Exception as upd_exc:
+            log.warning('[Downloader] Could not trigger yt-dlp update: %s', upd_exc)
+
+        # Retry yt-dlp now that it's (hopefully) updated
+        retry = _prefetch_with_ytdlp(url, timeout_s=35)
+        if retry and not retry.get('error') and retry.get('qualities'):
+            log.info('[Downloader] Retry after yt-dlp update succeeded.')
+            return retry
+        if retry and retry.get('error'):
+            return {'error': with_hint(f'YouTube may have changed their API. yt-dlp was auto-updated — please try again: {retry["error"]}')}
 
     if fallback and fallback.get('error'):
         return {'error': with_hint(fallback['error'])}
@@ -287,10 +348,10 @@ def prefetch_qualities(url):
 
 
 def _build_download_cmd(url, itag, output_dir, download_id, real_itag):
+    ffmpeg_path = get_ffmpeg_path()
     cmd = [
         get_ytdlp_path(),
         '--no-playlist',
-        '--ffmpeg-location', get_ffmpeg_path(),
         '--ignore-config',
         '--newline',
         '--no-warnings',
@@ -303,6 +364,8 @@ def _build_download_cmd(url, itag, output_dir, download_id, real_itag):
         '-o', os.path.join(output_dir, '%(title)s.%(ext)s'),
         '--extractor-args', 'youtube:player_client=web,ios,android',
     ]
+    if ffmpeg_path:
+        cmd[1:1] = ['--ffmpeg-location', ffmpeg_path]
 
     cookie_opts = get_best_available_cookies()
     if 'cookiefile' in cookie_opts:

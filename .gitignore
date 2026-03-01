@@ -22,3 +22,7 @@ Thumbs.db
 
 # Logs
 *.log
+
+# Sensitive / generated runtime files
+host/.cached_cookies.txt
+host/.flashyt_cache/

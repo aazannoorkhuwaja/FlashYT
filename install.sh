@@ -34,22 +34,80 @@ fi
 # 2) Python
 if ! command -v python3 >/dev/null 2>&1; then
     echo "[X] Python 3 is required but could not be found."
+    if [[ $IS_MAC -eq 1 ]]; then
+        echo "    Install via: brew install python3"
+    else
+        echo "    Install via: sudo apt install python3  (Ubuntu/Debian)"
+        echo "              or: sudo dnf install python3  (Fedora/RHEL)"
+    fi
     exit 1
 fi
 
 # 3) ffmpeg
 if ! command -v ffmpeg >/dev/null 2>&1; then
     echo "[X] ffmpeg is required but could not be found."
+    if [[ $IS_MAC -eq 1 ]]; then
+        echo "    Install via: brew install ffmpeg"
+    else
+        echo "    Install via: sudo apt install ffmpeg    (Ubuntu/Debian)"
+        echo "              or: sudo dnf install ffmpeg    (Fedora/RHEL)"
+    fi
     exit 1
 fi
 
-# 4) Dependencies
+# 4a) Linux: install libsecret system library (needed by secretstorage / keyring)
+if [[ $IS_MAC -eq 0 ]]; then
+    echo ""
+    echo "[*] Checking for libsecret system library..."
+    HAS_LIBSECRET=0
+    if python3 -c "import secretstorage" 2>/dev/null; then
+        HAS_LIBSECRET=1
+    elif python3 -c "import ctypes; ctypes.CDLL('libsecret-1.so.0')" 2>/dev/null; then
+        HAS_LIBSECRET=1
+    fi
+
+    if [[ $HAS_LIBSECRET -eq 0 ]]; then
+        echo "[*] libsecret not found. Attempting to install system package..."
+        if command -v apt-get >/dev/null 2>&1; then
+            sudo apt-get install -y -q libsecret-1-dev >/dev/null 2>&1 || true
+        elif command -v dnf >/dev/null 2>&1; then
+            sudo dnf install -y -q libsecret-devel >/dev/null 2>&1 || true
+        elif command -v pacman >/dev/null 2>&1; then
+            sudo pacman -S --noconfirm --quiet libsecret >/dev/null 2>&1 || true
+        else
+            echo "[!] Could not auto-install libsecret (unsupported package manager)."
+            echo "    Cookie-based downloads may not work. Install libsecret-1-dev manually if needed."
+        fi
+    else
+        echo "[✓] libsecret available."
+    fi
+fi
+
+# 4b) Python dependencies
 echo ""
 echo "[*] Installing Python dependencies (yt-dlp, pystray, Pillow, secretstorage)..."
-python3 -m pip install yt-dlp pystray Pillow secretstorage --break-system-packages >/dev/null || {
-    echo "[X] Dependency installation failed. Please re-run in an environment where pip installs are allowed."
-    exit 1
+
+_DEPS="yt-dlp pystray Pillow"
+[[ $IS_MAC -eq 0 ]] && _DEPS="$_DEPS secretstorage"   # Linux-only
+
+_pip_install() {
+    python3 -m pip install $_DEPS "$@" --quiet 2>&1
 }
+
+if _pip_install 2>/dev/null; then
+    echo "[✓] Dependencies installed."
+elif _pip_install --break-system-packages 2>/dev/null; then
+    echo "[✓] Dependencies installed (system pip with break-system-packages)."
+elif _pip_install --user 2>/dev/null; then
+    echo "[✓] Dependencies installed (--user mode)."
+else
+    echo "[X] Dependency installation failed."
+    echo "    Tip: create and activate a Python venv, then re-run this installer:"
+    echo "         python3 -m venv ~/.flashyt-venv"
+    echo "         source ~/.flashyt-venv/bin/activate"
+    echo "         bash install.sh"
+    exit 1
+fi
 
 # 5) Install host files
 DEST_DIR="$HOME/.local/share/YouTubeNativeDownloader"
@@ -68,15 +126,36 @@ exec "$(command -v python3)" "$DIR/host.py" "$@"
 EOF
 chmod +x "$DEST_DIR/host.sh"
 
-# 6) Detect extension IDs
+# 6) Detect extension IDs (with interactive fallback)
 echo ""
 echo "[*] Attempting to auto-detect FlashYT extension IDs..."
 EXT_IDS_CSV="$(python3 "$WORKDIR/scripts/detect_extension_id.py" --all-csv 2>/dev/null || true)"
 
 if [[ -z "${EXT_IDS_CSV:-}" ]]; then
-    echo "[X] Could not auto-detect any FlashYT extension ID."
-    echo "    Install/load the FlashYT extension first, then rerun this installer."
-    exit 1
+    echo ""
+    echo "  [!] Auto-detection failed. The FlashYT extension may not be loaded yet,"
+    echo "  or your browser stores profile data in a non-standard location."
+    echo ""
+    echo "  ► To find your extension ID manually:"
+    echo "      1. Open chrome://extensions (or brave://extensions)"
+    echo "      2. Enable 'Developer mode'"
+    echo "      3. Find 'FlashYT' and copy the 32-character ID shown below the name"
+    echo ""
+    # Prompt for manual input (only when running interactively)
+    if [[ -t 0 ]]; then
+        read -rp "  Paste the extension ID here (or press Enter to skip and re-run later): " MANUAL_ID
+        MANUAL_ID="$(echo "${MANUAL_ID:-}" | tr -d '[:space:]')"
+        if [[ ${#MANUAL_ID} -eq 32 ]]; then
+            EXT_IDS_CSV="$MANUAL_ID"
+            echo "  [✓] Using extension ID: $MANUAL_ID"
+        else
+            echo "  [X] Invalid or empty ID. Run the installer again after loading the extension."
+            exit 1
+        fi
+    else
+        echo "  [X] Running non-interactively. Load the extension first, then re-run: bash install.sh"
+        exit 1
+    fi
 fi
 
 IFS=',' read -r -a EXT_IDS <<< "$EXT_IDS_CSV"
@@ -89,11 +168,11 @@ for id in "${EXT_IDS[@]}"; do
 done
 
 if [[ ${#VALID_EXT_IDS[@]} -eq 0 ]]; then
-    echo "[X] Auto-detection returned no valid extension IDs."
+    echo "[X] No valid 32-character extension ID found."
     exit 1
 fi
 
-echo "[✓] Auto-detected ${#VALID_EXT_IDS[@]} extension ID(s)."
+echo "[✓] Using ${#VALID_EXT_IDS[@]} extension ID(s): ${VALID_EXT_IDS[*]}"
 
 # 7) Generate manifest
 TEMPLATE="$DEST_DIR/manifests/com.youtube.native.ext.json"
@@ -114,39 +193,47 @@ data = json.loads(template.read_text(encoding="utf-8"))
 data["path"] = str(host_sh)
 data["allowed_origins"] = [f"chrome-extension://{ext_id}/" for ext_id in dict.fromkeys(i.strip() for i in ext_ids)]
 target.write_text(json.dumps(data, indent=2), encoding="utf-8")
+print(f"[✓] Manifest written with {len(data['allowed_origins'])} allowed origin(s).")
 PY
 
 # 8) Register for browsers
 echo ""
 echo "[*] Registering native messaging host..."
+
+_register_browser() {
+    local dir="$1"
+    if mkdir -p "$dir" 2>/dev/null; then
+        cp "$TARGET_MANIFEST" "$dir/com.youtube.native.ext.json"
+        echo "    [✓] $(basename "$(dirname "$dir")")"
+    else
+        echo "    [!] Could not write to $dir (skipped)"
+    fi
+}
+
 if [[ $IS_MAC -eq 1 ]]; then
-    CHROME_DIR="$HOME/Library/Application Support/Google/Chrome/NativeMessagingHosts"
-    BRAVE_DIR="$HOME/Library/Application Support/BraveSoftware/Brave-Browser/NativeMessagingHosts"
-    EDGE_DIR="$HOME/Library/Application Support/Microsoft Edge/NativeMessagingHosts"
+    _register_browser "$HOME/Library/Application Support/Google/Chrome/NativeMessagingHosts"
+    _register_browser "$HOME/Library/Application Support/BraveSoftware/Brave-Browser/NativeMessagingHosts"
+    _register_browser "$HOME/Library/Application Support/Microsoft Edge/NativeMessagingHosts"
+    _register_browser "$HOME/Library/Application Support/Chromium/NativeMessagingHosts"
 else
-    CHROME_DIR="$HOME/.config/google-chrome/NativeMessagingHosts"
-    CHROMIUM_DIR="$HOME/.config/chromium/NativeMessagingHosts"
-    BRAVE_DIR="$HOME/.config/BraveSoftware/Brave-Browser/NativeMessagingHosts"
-    EDGE_DIR="$HOME/.config/microsoft-edge/NativeMessagingHosts"
+    _register_browser "$HOME/.config/google-chrome/NativeMessagingHosts"
+    _register_browser "$HOME/.config/chromium/NativeMessagingHosts"
+    _register_browser "$HOME/.config/BraveSoftware/Brave-Browser/NativeMessagingHosts"
+    _register_browser "$HOME/.config/microsoft-edge/NativeMessagingHosts"
+    # Snap-packaged browsers store NativeMessagingHosts in a different location
+    _register_browser "$HOME/snap/chromium/current/.config/chromium/NativeMessagingHosts"
+    _register_browser "$HOME/snap/brave/current/.config/BraveSoftware/Brave-Browser/NativeMessagingHosts"
 fi
-
-mkdir -p "$CHROME_DIR" "$BRAVE_DIR" "$EDGE_DIR"
-cp "$TARGET_MANIFEST" "$CHROME_DIR/com.youtube.native.ext.json"
-cp "$TARGET_MANIFEST" "$BRAVE_DIR/com.youtube.native.ext.json"
-cp "$TARGET_MANIFEST" "$EDGE_DIR/com.youtube.native.ext.json"
-
-if [[ $IS_MAC -eq 0 ]]; then
-    mkdir -p "$CHROMIUM_DIR"
-    cp "$TARGET_MANIFEST" "$CHROMIUM_DIR/com.youtube.native.ext.json"
-fi
-
-echo "[✓] Native messaging registration complete."
 
 echo ""
 echo "=================================================="
 echo " ✓ SETUP COMPLETE"
 echo "=================================================="
-echo " 1) Reload the FlashYT extension."
-echo " 2) Open YouTube and start downloading."
-echo " Logs: ~/.config/YouTubeNativeExt/host.log"
+echo " Next steps:"
+echo "  1) Reload the FlashYT extension:"
+echo "     chrome://extensions  →  click the 🔄 refresh icon on FlashYT"
+echo "  2) Open any YouTube video and click 'Download'."
+echo ""
+echo " Logs (if anything goes wrong):"
+echo "     ~/.config/YouTubeNativeExt/host.log"
 echo "=================================================="

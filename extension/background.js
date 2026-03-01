@@ -192,7 +192,7 @@ function clearPrefetchInflight(reason) {
     if (nativePort && entry.listener) nativePort.onMessage.removeListener(entry.listener);
     const payload = { type: "error", message: reason || "Prefetch failed." };
     (entry.responders || []).forEach((respond) => {
-      try { respond(payload); } catch (_) {}
+      try { respond(payload); } catch (_) { }
     });
   });
   prefetchInflight.clear();
@@ -263,7 +263,7 @@ class DownloadManager {
           slots -= 1;
         }
       },
-      () => {}
+      () => { }
     );
   }
 
@@ -645,9 +645,43 @@ chrome.alarms.onAlarm.addListener((alarm) => {
 
 chrome.contextMenus.onClicked.addListener((info) => {
   if (info.menuItemId !== "download_youtube") return;
+  const linkUrl = info.linkUrl || "";
+  const videoIdMatch = linkUrl.match(/[?&]v=([A-Za-z0-9_-]{11})/);
+  const videoId = videoIdMatch ? videoIdMatch[1] : null;
+  const downloadId = `dl_ctx_${Date.now()}`;
   executeWithHost(
     () => {
-      nativePort.postMessage({ type: "download", url: info.linkUrl, itag: "video_1080", title: "YouTube Video" });
+      chrome.storage.local.get({ save_location: "~/Downloads" }, (res) => {
+        nativePort.postMessage({
+          type: "download",
+          url: linkUrl,
+          itag: "video_1080",
+          real_itag: null,
+          title: "YouTube Video",
+          videoId: videoId || "",
+          downloadId,
+          save_location: res.save_location,
+        });
+        manager.downloads[downloadId] = {
+          id: downloadId,
+          videoId: videoId || "",
+          title: "YouTube Video",
+          thumbnail: videoId ? `https://i.ytimg.com/vi/${videoId}/mqdefault.jpg` : "",
+          quality: "video_1080",
+          real_itag: null,
+          format: "MP4",
+          totalSize: 0,
+          downloaded: 0,
+          progress: 0,
+          speed: 0,
+          status: "starting",
+          pendingAction: null,
+          url: linkUrl,
+          filename: "YouTube Video.mp4",
+        };
+        manager.saveState();
+        startKeepAlive();
+      });
     },
     () => {
       if (chrome.notifications) {
@@ -708,7 +742,7 @@ function processMessage(request, sendResponse) {
       if (nativePort && entry?.listener) nativePort.onMessage.removeListener(entry.listener);
       prefetchInflight.delete(url);
       responders.forEach((respond) => {
-        try { respond(payload); } catch (_) {}
+        try { respond(payload); } catch (_) { }
       });
     };
 
@@ -732,6 +766,11 @@ function processMessage(request, sendResponse) {
     }, PREFETCH_TIMEOUT_MS);
 
     prefetchInflight.set(url, { responders, listener, timer });
+
+    if (!nativePort) {
+      finalize({ type: "error", message: "Host not connected. Please wait a moment and try again." });
+      return true;
+    }
     nativePort.onMessage.addListener(listener);
     nativePort.postMessage({ type: "prefetch", url });
     return true;

@@ -157,9 +157,16 @@ function renderModalContent() {
         const item = document.createElement('button');
         item.className = 'flashyt-quality-item';
 
-        item.innerHTML =
-            '<span class="flashyt-quality-label">' + q.label + '</span>' +
-            '<span class="flashyt-quality-size">' + q.size_mb + ' MB</span>';
+        const labelSpan = document.createElement('span');
+        labelSpan.className = 'flashyt-quality-label';
+        labelSpan.textContent = String(q.label || '');
+
+        const sizeSpan = document.createElement('span');
+        sizeSpan.className = 'flashyt-quality-size';
+        sizeSpan.textContent = String(q.size_mb || 0) + ' MB';
+
+        item.appendChild(labelSpan);
+        item.appendChild(sizeSpan);
 
         item.onclick = () => {
             closeModal();
@@ -305,6 +312,7 @@ function triggerPrefetch(url, force = false) {
             return;
         }
         if (response.error === "HOST_NOT_CONNECTED") {
+            showToast("FlashYT host is starting up — please try again in a moment.", false, 3000);
             return;
         }
         if (response.error === "HOST_UPDATE_REQUIRED") {

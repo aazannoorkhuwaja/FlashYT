@@ -422,25 +422,26 @@ document.addEventListener('DOMContentLoaded', () => {
         renderUpdateBanner();
     }
 
-    function attachListeners(container) {
-        container.querySelectorAll('.dl-action-btn').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                const action = btn.getAttribute('data-action');
-                const id = btn.getAttribute('data-id');
-
-                if (action === 'pause') {
-                    chrome.runtime.sendMessage({ type: 'PAUSE_DOWNLOAD', id: id }, () => chrome.runtime.lastError);
-                } else if (action === 'resume') {
-                    chrome.runtime.sendMessage({ type: 'RESUME_DOWNLOAD', id: id }, () => chrome.runtime.lastError);
-                } else if (action === 'cancel') {
-                    chrome.runtime.sendMessage({ type: 'CANCEL_DOWNLOAD', id: id }, () => chrome.runtime.lastError);
-                }
-            });
+    // Use event delegation on the persistent container so re-renders don't destroy listeners
+    function attachDelegatedListeners(container) {
+        if (container._delegated) return; // only attach once
+        container._delegated = true;
+        container.addEventListener('click', (e) => {
+            const btn = e.target.closest('.dl-action-btn[data-action]');
+            if (!btn) return;
+            const action = btn.getAttribute('data-action');
+            const id = btn.getAttribute('data-id');
+            if (action === 'pause') {
+                chrome.runtime.sendMessage({ type: 'PAUSE_DOWNLOAD', id }, () => chrome.runtime.lastError);
+            } else if (action === 'resume') {
+                chrome.runtime.sendMessage({ type: 'RESUME_DOWNLOAD', id }, () => chrome.runtime.lastError);
+            } else if (action === 'cancel') {
+                chrome.runtime.sendMessage({ type: 'CANCEL_DOWNLOAD', id }, () => chrome.runtime.lastError);
+            }
         });
     }
 
     function renderState(downloads, history = []) {
-        console.log("rendering state", downloads, history);
         let activeHTML = '';
         let historyHTML = '';
 
@@ -481,14 +482,14 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         }
 
-        // Queue Tab (Active) Update
+        // Queue Tab (Active) Update — delegation is attached once, innerHTML can be replaced freely
+        attachDelegatedListeners(els.listQueue);
         if (activeHTML === '') {
             els.emptyQueue.classList.remove('hidden');
             els.listQueue.innerHTML = '';
         } else {
             els.emptyQueue.classList.add('hidden');
             els.listQueue.innerHTML = activeHTML;
-            attachListeners(els.listQueue);
         }
 
         // Badges and Text Updates
@@ -551,23 +552,51 @@ document.addEventListener('DOMContentLoaded', () => {
             if (els.hostStatusDot) els.hostStatusDot.className = "w-2 h-2 rounded-full bg-amber animate-pulse";
             return;
         }
+        if (status === "not_installed") {
+            els.hostStatusText.textContent = "Not Installed";
+            els.hostStatusText.className = "text-red";
+            if (els.hostStatusDot) els.hostStatusDot.className = "w-2 h-2 rounded-full bg-red";
+            // Show a banner pointing to the install guide
+            if (els.updateBanner) {
+                els.updateBanner.classList.remove('hidden');
+                els.updateBanner.style.background = 'rgba(239,68,68,0.08)';
+                els.updateBanner.style.borderColor = 'rgba(239,68,68,0.35)';
+                if (els.updateBannerTitle) els.updateBannerTitle.textContent = 'Native Host Not Installed';
+                if (els.updateBannerText) els.updateBannerText.textContent =
+                    'Run the one-line installer, then reload this extension.';
+                if (els.updateBannerOpenBtn) els.updateBannerOpenBtn.textContent = 'Open Install Guide';
+                if (els.updateBannerCopyBtn) {
+                    els.updateBannerCopyBtn.textContent = 'Copy Install Command';
+                    els.updateBannerCopyBtn.classList.remove('hidden');
+                    // Store the install command for copy
+                    els.updateBannerCopyBtn._flashytCmd =
+                        'curl -fsSL https://raw.githubusercontent.com/aazannoorkhuwaja/FlashYT/main/install.sh | bash';
+                }
+            }
+            return;
+        }
         els.hostStatusText.textContent = "Disconnected";
         els.hostStatusText.className = "text-red";
         if (els.hostStatusDot) els.hostStatusDot.className = "w-2 h-2 rounded-full bg-red";
     }
 
+    let _hostCheckInFlight = false;
     function checkHost() {
+        if (_hostCheckInFlight) return; // prevent overlapping concurrent calls
+        _hostCheckInFlight = true;
         let settled = false;
         const timer = setTimeout(() => {
             if (settled) return;
             settled = true;
+            _hostCheckInFlight = false;
             setHostIndicator("disconnected");
             renderUpdateBanner();
-        }, 1200);
+        }, 2000);
 
         chrome.runtime.sendMessage({ type: "CHECK_STATUS" }, (response) => {
             if (settled) return;
             settled = true;
+            _hostCheckInFlight = false;
             clearTimeout(timer);
             if (chrome.runtime.lastError || !response) {
                 setHostIndicator("disconnected");
@@ -605,6 +634,9 @@ document.addEventListener('DOMContentLoaded', () => {
             applyUpdateStatus(message);
             checkHost();
         }
+        if (message.type === 'HOST_NOT_INSTALLED') {
+            setHostIndicator('not_installed');
+        }
     });
 
     if (els.updateBannerOpenBtn) {
@@ -615,22 +647,26 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (els.updateBannerCopyBtn) {
         els.updateBannerCopyBtn.addEventListener('click', async () => {
-            const ok = await copyText(updateCopyCommand || "");
+            const cmd = els.updateBannerCopyBtn._flashytCmd || updateCopyCommand || "";
+            const ok = await copyText(cmd);
             const old = els.updateBannerCopyBtn.textContent;
-            els.updateBannerCopyBtn.textContent = ok ? "Copied" : "Copy Failed";
-            setTimeout(() => { els.updateBannerCopyBtn.textContent = old; }, 1200);
+            els.updateBannerCopyBtn.textContent = ok ? "Copied!" : "Copy Failed";
+            setTimeout(() => { els.updateBannerCopyBtn.textContent = old; }, 1400);
         });
-    });
+    }
 
     // Initial check
     fetchDownloads();
     checkHost();
     fetchUpdateStatus();
     let updateTick = 0;
+    // Downloads poll: every 1s for smooth progress bars
     setInterval(() => {
         fetchDownloads();
-        checkHost();
         updateTick += 1;
-        if (updateTick % 20 === 0) fetchUpdateStatus();
-    }, 1000); // Polling for progress bar smoothness and host status
+        // Host status: every 5s (it's slow, no need to thrash every second)
+        if (updateTick % 5 === 0) checkHost();
+        // Release update: every 100s (~1.5 min)
+        if (updateTick % 100 === 0) fetchUpdateStatus();
+    }, 1000);
 });

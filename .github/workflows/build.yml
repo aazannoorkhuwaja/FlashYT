@@ -9,7 +9,26 @@ on:
   workflow_dispatch:
 
 jobs:
+  test:
+    name: Run Python Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Test Dependencies
+        run: pip install -r host/requirements-dev.txt
+
+      - name: Run pytest
+        run: python -m pytest host/tests/ -v
+
   build-windows:
+    needs: [test]
     runs-on: windows-latest
     steps:
       - name: Checkout Code
@@ -59,6 +78,7 @@ jobs:
           path: dist/FlashYT-setup.exe
 
   build-mac-linux:
+    needs: [test]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
