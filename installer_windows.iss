@@ -1,6 +1,6 @@
 [Setup]
 AppName=FlashYT
-AppVersion=2.0.8
+AppVersion=2.0.9
 AppPublisher=Aazan Noor Khuwaja
 AppPublisherURL=https://github.com/aazannoorkhuwaja/FlashYT
 DefaultDirName={autopf}\FlashYT
