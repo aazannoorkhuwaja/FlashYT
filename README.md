@@ -39,28 +39,21 @@
 
 ---
 
-## 🚀 Installation (3 Steps)
+## Quick Start (Installation)
 
-### Step 1 — Load the Extension
+### 🪟 Windows (Recommended)
+1.  **Step 1**: Download the [latest FlashYT-setup.exe](https://github.com/aazannoorkhuwaja/FlashYT/releases/latest).
+2.  **Step 2**: Open Chrome, go to `chrome://extensions`, enable **Developer Mode**, and click **Load unpacked**. Select the `extension/` folder from this repo.
+3.  **Step 3**: Run the `FlashYT-setup.exe`.
+    > [!TIP]
+    > If the installer doesn't detect the extension, it will ask you to paste your **Extension ID** (found on the `chrome://extensions` page).
 
-1. Open your browser's extensions page:
-   - Chrome/Brave/Edge: `chrome://extensions` / `brave://extensions` / `edge://extensions`
-2. Enable **Developer mode** (top-right toggle)
-3. Click **Load unpacked**
-4. Select the `extension/` folder from this repo (or your downloaded copy)
-5. You should see the FlashYT icon appear in your toolbar
-
-### Step 2 — Run the one-line installer
-
-**Linux / macOS:**
-```bash
-curl -fsSL https://raw.githubusercontent.com/aazannoorkhuwaja/FlashYT/main/install.sh | bash
-```
-
-**Windows:**
-Download and run the latest `.exe` installer from [GitHub Releases](https://github.com/aazannoorkhuwaja/FlashYT/releases/latest)
-
-> The installer auto-detects your browser extension ID. If it can't find it automatically, it will prompt you to paste it manually — just copy it from `chrome://extensions` where it says "ID: xxxxxx..."
+### 🍎 macOS & 🐧 Linux
+1.  **Step 1**: Load the extension folder in your browser (Developer Mode).
+2.  **Step 2**: Open your terminal and run:
+    ```bash
+    curl -fsSL https://raw.githubusercontent.com/aazannoorkhuwaja/FlashYT/main/install.sh | bash
+    ```
 
 ### Step 3 — Reload the Extension
 

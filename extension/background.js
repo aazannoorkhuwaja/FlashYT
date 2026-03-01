@@ -93,6 +93,15 @@ function broadcastUpdateStatus() {
   chrome.runtime.sendMessage(payload, () => chrome.runtime.lastError);
 }
 
+function handleNativeMessage(response) {
+  if (response.type === "ping") {
+    if (!hostConnected || hostVersion !== response.version) {
+      markHostCompatibility(response.version);
+    }
+    return;
+  }
+}
+
 async function refreshUpdateState(force = false) {
   if (!force && Date.now() - (updateState.checkedAt || 0) < UPDATE_CACHE_MS) {
     return updateState;
@@ -101,40 +110,57 @@ async function refreshUpdateState(force = false) {
 
   updateFetchInFlight = (async () => {
     try {
-      const res = await fetch(GITHUB_RELEASE_API, {
-        headers: { Accept: "application/vnd.github+json" },
-        cache: "no-store",
-      });
-      if (!res.ok) throw new Error(`GitHub API ${res.status}`);
-      const data = await res.json();
-      const tag = (data.tag_name || "").toString().trim();
-      const latest = tag.replace(/^v/i, "");
-      const extVersion = chrome.runtime.getManifest().version || "0.0.0";
-      const hostVer = hostVersion || "0.0.0";
-      const isNewer = compareVersions(latest, extVersion) > 0 || compareVersions(latest, hostVer) > 0;
+      const resp = await fetch(GITHUB_RELEASE_API);
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      const data = await resp.json();
+      const latest = (data.tag_name || "").replace(/^v/i, "");
+      const current = chrome.runtime.getManifest().version;
+
       updateState = {
         checkedAt: Date.now(),
-        latestVersion: latest || null,
+        latestVersion: latest,
         releaseUrl: data.html_url || GITHUB_RELEASES_URL,
-        updateAvailable: !!latest && isNewer,
+        updateAvailable: compareVersions(current, latest) < 0,
         error: null,
       };
-      chrome.storage.local.set({ flashyt_update_state: updateState });
     } catch (err) {
-      updateState = {
-        ...updateState,
-        checkedAt: Date.now(),
-        error: err?.message || "Update check failed",
-      };
-      chrome.storage.local.set({ flashyt_update_state: updateState });
+      console.error("[Background] Update check failed:", err);
+      updateState.error = err.message;
+      updateState.checkedAt = Date.now();
     } finally {
-      broadcastUpdateStatus();
       updateFetchInFlight = null;
     }
+    broadcastUpdateStatus();
     return updateState;
   })();
 
   return updateFetchInFlight;
+}
+
+function connectToNativeHost() {
+  if (nativePort) return;
+  try {
+    nativePort = chrome.runtime.connectNative(HOST_NAME);
+    // CRITICAL: We don't set hostConnected = true here anymore.
+    // We wait for the first successful ping response.
+    nativePort.onMessage.addListener(handleNativeMessage);
+    nativePort.onDisconnect.addListener(() => {
+      console.warn("[Background] Native host disconnected.");
+      nativePort = null;
+      hostConnected = false;
+      hostVersion = null;
+      stopKeepAlive();
+      broadcastUpdateStatus();
+    });
+    // Immediately ping to verify the connection
+    nativePort.postMessage({ type: "ping" });
+    startKeepAlive();
+  } catch (err) {
+    console.error("[Background] Failed to connect to native host:", err);
+    nativePort = null;
+    hostConnected = false;
+    broadcastUpdateStatus();
+  }
 }
 
 function scheduleUpdateChecks() {

@@ -1,6 +1,6 @@
 [Setup]
 AppName=FlashYT
-AppVersion=2.0.7
+AppVersion=2.0.8
 AppPublisher=Aazan Noor Khuwaja
 AppPublisherURL=https://github.com/aazannoorkhuwaja/FlashYT
 DefaultDirName={autopf}\FlashYT
@@ -126,7 +126,7 @@ end;
 
 function NextButtonClick(CurPageID: Integer): Boolean;
 var
-  DetectResult: String;
+  DetectResult, ManualID: String;
 begin
   Result := True;
 
@@ -140,35 +140,40 @@ begin
     end
     else
     begin
-      ExtensionDetectionFailed := True;
-      UserExtensionIDs := '';
-      MsgBox(
-        'FlashYT extension was not auto-detected.'#13#10#13#10 +
-        'Install or enable FlashYT in Chrome/Brave/Edge first, then click Install again.',
-        mbError,
-        MB_OK
-      );
-      Result := False;
+      { Auto-detection failed: offer manual entry or skip }
+      if InputQuery('FlashYT Setup', 'Extension auto-detection failed.'#13#10#13#10 + 
+                    'Please paste your FlashYT Extension ID (32 characters):'#13#10 +
+                    '(Leave blank to skip and configure manually later)', ManualID) then
+      begin
+        ManualID := Trim(ManualID);
+        if ManualID = '' then
+        begin
+          UserExtensionIDs := 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'; { Placeholder to allow installation }
+          ExtensionDetectionFailed := False;
+        end
+        else if Length(ManualID) = 32 then
+        begin
+          UserExtensionIDs := ManualID;
+          ExtensionDetectionFailed := False;
+        end
+        else
+        begin
+          MsgBox('Invalid Extension ID. It must be exactly 32 characters.', mbError, MB_OK);
+          Result := False;
+        end;
+      end
+      else
+      begin
+        { User cancelled the input query - don't proceed }
+        Result := False;
+      end;
     end;
   end;
 end;
 
 function GetExtensionIDs(Param: String): String;
 begin
-  if not ExtensionDetectionFailed and IsValidExtensionIDsCSV(UserExtensionIDs) then
-  begin
-    Result := UserExtensionIDs;
-    Exit;
-  end;
-
-  MsgBox(
-    'FlashYT extension was not auto-detected.'#13#10#13#10 +
-    'Install or enable FlashYT in Chrome/Brave/Edge first, then rerun this installer.',
-    mbError,
-    MB_OK
-  );
-  Abort();
-  Result := '';
+  Result := UserExtensionIDs;
 end;
 
 procedure CurStepChanged(CurStep: TSetupStep);
