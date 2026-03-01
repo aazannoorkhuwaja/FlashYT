@@ -347,7 +347,7 @@ def prefetch_qualities(url):
     return {'error': with_hint('Failed to prefetch qualities.')}
 
 
-def _build_download_cmd(url, itag, output_dir, download_id, real_itag):
+def _build_download_cmd(url, itag, output_dir, download_id, real_itag, retry_stage=0):
     ffmpeg_path = get_ffmpeg_path()
     cmd = [
         get_ytdlp_path(),
@@ -362,21 +362,37 @@ def _build_download_cmd(url, itag, output_dir, download_id, real_itag):
         '--progress',
         '--cache-dir', os.path.join(os.path.expanduser('~'), '.flashyt_cache', download_id or 'default'),
         '-o', os.path.join(output_dir, '%(title)s.%(ext)s'),
-        '--extractor-args', 'youtube:player_client=web,ios,android',
     ]
     if ffmpeg_path:
         cmd[1:1] = ['--ffmpeg-location', ffmpeg_path]
 
+    # Only force specific extractor clients on non-universal fallback.
+    # On retry_stage=2 (universal), let yt-dlp pick its own client — forcing
+    # web,ios,android was causing YouTube to block some format requests.
+    if retry_stage < 2:
+        cmd.extend(['--extractor-args', 'youtube:player_client=web,ios,android'])
+
+    # Validate cookie file has real content before using it (>200 bytes).
+    # A stale/empty/header-only cookie file causes YouTube to deny all formats.
     cookie_opts = get_best_available_cookies()
-    if 'cookiefile' in cookie_opts:
-        cmd.extend(['--cookies', cookie_opts['cookiefile']])
+    cookie_file = cookie_opts.get('cookiefile')
+    use_cookiefile = (
+        cookie_file
+        and os.path.isfile(cookie_file)
+        and os.path.getsize(cookie_file) > 200
+    )
+
+    if use_cookiefile:
+        cmd.extend(['--cookies', cookie_file])
     elif cookie_opts.get('cookiesfrombrowser'):
         browser = cookie_opts['cookiesfrombrowser'][0]
         cmd.extend(['--cookies-from-browser', browser])
-    else:
+    elif retry_stage < 2:
+        # Only attempt live browser cookie extraction on non-universal retries
         browser = detect_browser()
         if browser:
             cmd.extend(['--cookies-from-browser', browser])
+    # On retry_stage=2 (universal): no cookies at all — cleanest fallback
 
     if itag == 'audio_only':
         if real_itag:
@@ -396,6 +412,7 @@ def _build_download_cmd(url, itag, output_dir, download_id, real_itag):
             '-f', _build_video_format_string(h),
             '--merge-output-format', 'mp4',
         ])
+    # For __auto_best__ (universal fallback): no -f flag, let yt-dlp decide
 
     cmd.append(url)
     return cmd
@@ -483,7 +500,7 @@ def download_video(
     download_id = download_id or f'dl_{int(time.time() * 1000)}'
     resolved_output = _resolve_output_dir(output_dir)
 
-    cmd = _build_download_cmd(url, itag, resolved_output, download_id, real_itag)
+    cmd = _build_download_cmd(url, itag, resolved_output, download_id, real_itag, retry_stage=retry_stage)
     log.debug('[Downloader] Starting: %s', ' '.join(cmd))
 
     process = subprocess.Popen(
