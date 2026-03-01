@@ -1,6 +1,6 @@
 {
     "name": "flashyt-extension",
-    "version": "2.0.0",
+    "version": "2.0.8",
     "description": "FlashYT Chrome Extension UI Test Suite",
     "scripts": {
         "test": "jest",
