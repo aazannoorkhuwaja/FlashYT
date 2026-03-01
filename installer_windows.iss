@@ -49,9 +49,81 @@ var
   IDInputPage: TInputQueryWizardPage;
 
 function IsValidExtensionIDsCSV(const Value: String): Boolean;
-{... implementation omitted for brevity, keeping existing ...}
+var
+  Work, Token: String;
+  PosComma, I: Integer;
+begin
+  Result := False;
+  Work := Trim(Value);
+  if Work = '' then
+    Exit;
 
-{ ... RunDetectExtAndGetStdout implementation keeping existing ... }
+  while Work <> '' do
+  begin
+    PosComma := Pos(',', Work);
+    if PosComma > 0 then
+    begin
+      Token := Trim(Copy(Work, 1, PosComma - 1));
+      Work := Trim(Copy(Work, PosComma + 1, MaxInt));
+    end
+    else
+    begin
+      Token := Trim(Work);
+      Work := '';
+    end;
+
+    if Length(Token) <> 32 then
+      Exit;
+
+    for I := 1 to 32 do
+    begin
+      if not ((Token[I] >= 'a') and (Token[I] <= 'p')) then
+        Exit;
+    end;
+  end;
+
+  Result := True;
+end;
+
+{ Utility to execute detect_ext.exe silently and read stdout }
+function RunDetectExtAndGetStdout(var StdOutStr: String): Boolean;
+var
+  TmpOutFile, TmpExeFile: String;
+  ResultCode: Integer;
+  Lines: TArrayOfString;
+begin
+  Result := False;
+  StdOutStr := '';
+  TmpOutFile := ExpandConstant('{tmp}\detect_out.txt');
+  TmpExeFile := ExpandConstant('{tmp}\detect_ext.exe');
+  
+  { Extract detect_ext.exe early purely for this Code step before main installation }
+  try
+    ExtractTemporaryFile('detect_ext.exe');
+  except
+    { If it fails to extract (e.g. missing from [Files]), abort early }
+    Exit;
+  end;
+  
+  if Exec(ExpandConstant('{cmd}'), '/c ""' + TmpExeFile + '"" --all-csv > ""' + TmpOutFile + '""', '', SW_HIDE, ewWaitUntilTerminated, ResultCode) then
+  begin
+    { detect_ext.exe returns 0 if found, 1 if missing }
+    if ResultCode = 0 then
+    begin
+      if LoadStringsFromFile(TmpOutFile, Lines) then
+      begin
+        if GetArrayLength(Lines) > 0 then
+        begin
+          StdOutStr := Trim(Lines[0]);
+          if IsValidExtensionIDsCSV(StdOutStr) then
+            Result := True;
+        end;
+      end;
+    end;
+  end;
+  
+  DeleteFile(TmpOutFile);
+end;
 
 procedure InitializeWizard;
 begin
