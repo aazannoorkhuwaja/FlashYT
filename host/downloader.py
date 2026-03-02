@@ -411,6 +411,9 @@ def _build_download_cmd(url, itag, output_dir, download_id, real_itag, retry_sta
         ])
     # For __auto_best__ (universal fallback): no -f flag, let yt-dlp decide
 
+    # Capture the actual downloaded resolution for the quality badge in the UI.
+    cmd.extend(['--print', '%(height)s'])
+
     cmd.append(url)
     return cmd
 
@@ -528,9 +531,11 @@ def download_video(
     already_downloaded_regex = re.compile(r'\[download\]\s+(.*)\s+has already been downloaded')
 
     last_filename = ''
+    actual_quality = ''
     already_exists = False
     last_progress = [time.time()]
     log_tail = deque(maxlen=200)
+    _re_print_height = re.compile(r'^(\d+)$')
 
     def monitor_hang(proc, stamp, timeout=90):
         while proc.poll() is None:
@@ -553,6 +558,13 @@ def download_video(
             if dest_match:
                 last_filename = os.path.basename(dest_match.group(1).strip().strip('"'))
                 continue
+
+            # yt-dlp --print %(height)s outputs the height on a line by itself before download starts.
+            if not actual_quality:
+                ph = _re_print_height.match(clean)
+                if ph:
+                    actual_quality = f'{ph.group(1)}p'
+                    continue
 
             already_match = already_downloaded_regex.search(clean)
             if already_match:
@@ -662,6 +674,7 @@ def download_video(
             'filename': last_filename,
             'path': final_path,
             'size_mb': size_mb,
+            'actual_quality': actual_quality,
             'already_exists': already_exists,
         }
     finally:

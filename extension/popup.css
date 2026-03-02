@@ -1,7 +1,8 @@
 /* Dynamic theme CSS custom properties corresponding to the React properties */
 :root {
-    /* LIGHT AND DARK THEME VARIABLES - DEFAULTS TO DARK */
+    color-scheme: dark;
 }
+
 
 /* Base Light Theme */
 .theme-light {
@@ -112,6 +113,18 @@ body::-webkit-scrollbar-thumb {
 
 .text-emerald {
     color: #34d399 !important;
+}
+
+.quality-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 1px 6px;
+    border-radius: 999px;
+    background: rgba(52, 211, 153, 0.15);
+    color: #34d399;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.03em;
 }
 
 .text-amber {
@@ -742,6 +755,7 @@ body::-webkit-scrollbar-thumb {
 .line-clamp-2 {
     display: -webkit-box;
     -webkit-line-clamp: 2;
+    line-clamp: 2;
     -webkit-box-orient: vertical;
     overflow: hidden;
 }

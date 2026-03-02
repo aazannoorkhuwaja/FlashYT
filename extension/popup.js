@@ -333,6 +333,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     <p class="text-sm font-semibold leading-tight mb-1-5 line-clamp-2 text-brand m-0">${item.title}</p>
                     <div class="flex items-center gap-2">
                         <span class="text-xs text-muted">${sizeDisp}</span>
+                        ${item.actual_quality ? `<span class="text-xs text-muted">•</span><span class="quality-badge">${item.actual_quality}</span>` : ''}
                         <span class="text-xs text-muted">•</span>
                         <span class="text-xs text-emerald flex items-center gap-1">${icons.check} Saved</span>
                     </div>

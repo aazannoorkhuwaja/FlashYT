@@ -418,6 +418,7 @@ class DownloadManager {
           thumbnail: dl.thumbnail,
           filename: payload.filename || dl.filename,
           size_mb: payload.size_mb || 0,
+          actual_quality: payload.actual_quality || '',
           path: payload.path || "",
           already_exists: !!payload.already_exists,
           time: Date.now(),
