@@ -1,21 +1,29 @@
 # FlashYT ⚡
 
-> **Free & open-source YouTube video downloader — browser extension + native desktop app.**
-> No cloud. No account. One click to download any video in full HD, 4K, or audio-only.
+> **The most reliable free YouTube downloader — right in your browser.**
+> No cloud. No account. No limits. One click and it's yours — in exactly the quality you chose.
 
 ![FlashYT Icon](extension/icons/icon128.png)
 
+[![Version](https://img.shields.io/badge/version-2.1.6-brightgreen)](https://github.com/aazannoorkhuwaja/FlashYT/releases/latest)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey)]()
+
 ---
 
-## ✨ Features
+## ✨ Why FlashYT?
 
-- **One-click download** — button appears directly on YouTube video pages
-- **Quality picker** — choose 360p → 4K UHD or Audio Only (MP3)
-- **Live progress** — real-time speed, percentage, and ETA in the popup
-- **Pause / Resume / Cancel** — full queue control
-- **Auto-updates yt-dlp** — silently keeps itself working when YouTube changes their API
-- **100% local** — your videos never leave your machine
-- **Free & open source** — MIT License
+FlashYT is built to **just work** — for everyone, on every machine, in every browser.
+
+- **⚡ One-click download** — Download button appears directly on YouTube, no copy-pasting URLs
+- **🎯 Exact quality every time** — Select 1080p, get exactly 1080p. Or 4K. Or 720p. Never a downgrade
+- **✅ Quality badge** — Every completed download shows the actual resolution downloaded (e.g. `1080p`)
+- **📊 Live progress** — Real-time speed, percentage, and ETA in the popup
+- **⏸️ Full queue control** — Pause, Resume, Cancel at any time
+- **🔄 Auto-healing** — Auto-refreshes cookies and retries if YouTube's API changes
+- **🔁 Auto-updates yt-dlp** — Stays working even when YouTube changes their internals
+- **🔒 100% local** — Videos stay on your machine. No servers. No tracking. No data collection
+- **🆓 Free & open source** — MIT License
 
 ---
 
@@ -23,119 +31,183 @@
 
 | OS | Chrome | Brave | Edge | Chromium |
 |---|---|---|---|---|
-| Windows | ✅ | ✅ | ✅ | ✅ |
-| macOS | ✅ | ✅ | ✅ | ✅ |
-| Linux | ✅ | ✅ | ✅ | ✅ |
+| 🪟 Windows | ✅ | ✅ | ✅ | ✅ |
+| 🍎 macOS | ✅ | ✅ | ✅ | ✅ |
+| 🐧 Linux | ✅ | ✅ | ✅ | ✅ |
 
 ---
 
 ## 📦 Requirements
 
-- **Python 3.8+** ([python.org](https://www.python.org/downloads/))
-- **ffmpeg** — required for merging audio and video
-  - Windows: [ffmpeg.org](https://ffmpeg.org/download.html) or `winget install ffmpeg`
+- **Python 3.8+** — [python.org](https://www.python.org/downloads/)
+- **ffmpeg** — needed to merge audio and video streams for HD/4K
+  - Windows: `winget install ffmpeg` or [ffmpeg.org](https://ffmpeg.org/download.html)
   - macOS: `brew install ffmpeg`
-  - Linux: `sudo apt install ffmpeg` or `sudo dnf install ffmpeg`
+  - Linux: `sudo apt install ffmpeg`
 
 ---
 
-## Quick Start (Installation)
+## 🚀 Quick Start — Fresh Install
 
-### 🪟 Windows (Step-by-Step for Everyone)
+### 🪟 Windows — 3 Steps (follow in order)
 
 > [!IMPORTANT]
-> To avoid errors, please follow these **3 steps in order**. **Do not run the installer first.**
+> Follow these 3 steps **in order**. Do not run the installer before loading the extension.
 
-1.  **Step 1: Download & Extract Source Code (MANDATORY)**
-    *   Click the green **Code** button at the top of this page and select **Download ZIP**.
-    *   **Crucial**: Extract the ZIP file into a dedicated folder (like your Desktop).
-    *   Open the extracted folder; you must see a folder named `extension` inside it.
+**Step 1 — Download & Extract the source code**
+- Click the green **Code** button → **Download ZIP**
+- Extract into a folder (e.g. your Desktop)
+- Make sure the extracted folder contains an `extension` subfolder
 
-2.  **Step 2: Load Extension from the `extension` Folder**
-    *   Open Chrome, Brave, or Edge and go to `chrome://extensions`.
-    *   Turn on **Developer Mode** (top right).
-    *   Click **Load unpacked** and specifically select the `extension` folder you found in Step 1.
-    *   _Once loaded, you should see the FlashYT icon. Keep this browser window open._
+**Step 2 — Load the extension**
+- Open Chrome/Brave/Edge → go to `chrome://extensions`
+- Enable **Developer Mode** (top-right toggle)
+- Click **Load unpacked** → select the `extension` folder from Step 1
+- The FlashYT icon should appear in your toolbar
 
-3.  **Step 3: Run the FlashYT Installer (.exe)**
-    *   Now, download and run the [latest FlashYT-setup.exe](https://github.com/aazannoorkhuwaja/FlashYT/releases/latest).
-    *   It will automatically detect your extension and link them together.
-    *   If it asks for an "Extension ID", copy it from your browser's extensions page.
+**Step 3 — Run the installer**
+- Download and run [FlashYT-setup.exe](https://github.com/aazannoorkhuwaja/FlashYT/releases/latest)
+- It auto-detects your extension and links them. If it asks for an Extension ID, copy it from `chrome://extensions`
+- After install: go to `chrome://extensions` → click **🔄 reload** on FlashYT
 
-### 🍎 macOS & 🐧 Linux
-1.  **Step 1**: Load the extension folder in your browser (Developer Mode).
-2.  **Step 2**: Open your terminal and run:
-    ```bash
-    curl -fsSL https://raw.githubusercontent.com/aazannoorkhuwaja/FlashYT/main/install.sh | bash
-    ```
+### 🍎 macOS & 🐧 Linux — 2 Steps
 
-### Step 3 — Reload the Extension
+**Step 1 — Load the extension** (same as Windows Steps 1–2 above)
 
-After the installer finishes:
-1. Go back to your extensions page (`chrome://extensions`)
-2. Click the **🔄 refresh icon** on FlashYT
-3. Open any YouTube video — the ⚡ Download button should appear!
+**Step 2 — Run the one-line installer:**
+```bash
+curl -fsSL https://raw.githubusercontent.com/aazannoorkhuwaja/FlashYT/main/install.sh | bash
+```
+
+Then reload the extension: `chrome://extensions` → 🔄 on FlashYT.
 
 ---
 
 ## 🎬 How to Use
 
-1. Go to any YouTube video: `https://www.youtube.com/watch?v=...`
-2. Click the **⚡ Download** button next to the video actions
-3. A quality picker appears — choose your resolution
-4. Download starts immediately with a live progress bar
-5. Open the FlashYT popup (click the extension icon) to see your queue
+1. Open any YouTube video: `https://www.youtube.com/watch?v=...`
+2. Click the red **⚡ Download** button that appears below the video
+3. Pick your quality — **1080p**, **4K**, **audio only**, etc.
+4. Download starts immediately. Watch progress live in the FlashYT popup
+5. When done, a **`✓ 1080p`** quality badge confirms the exact resolution saved
 
 > [!IMPORTANT]
-> **Sign in to YouTube in your browser before downloading.**
-> FlashYT uses your browser's YouTube cookies to access video formats.
-> Without being signed in, YouTube restricts which qualities are available and
-> some videos may fail to download entirely. Just open YouTube, sign in once,
-> and FlashYT will work automatically from that point on.
+> **Sign in to YouTube in your browser first.**
+> FlashYT uses your browser's YouTube session cookies to access full HD and 4K streams.
+> Without being signed in, YouTube restricts available qualities.
+> Just open YouTube, sign in once, and FlashYT handles everything automatically from there.
+
+---
+
+## 🔄 How to Update
+
+### 🐧 Linux & 🍎 macOS — one command
+```bash
+curl -fsSL https://raw.githubusercontent.com/aazannoorkhuwaja/FlashYT/main/install.sh | bash
+```
+
+### 🪟 Windows — one command (PowerShell)
+```powershell
+irm https://raw.githubusercontent.com/aazannoorkhuwaja/FlashYT/main/scripts/update_windows.ps1 | iex
+```
+
+### After updating on any platform:
+1. Go to `chrome://extensions`
+2. Click the **🔄 reload icon** on FlashYT
+3. The update notification in the popup will disappear automatically once the extension version matches the latest release
+
+> [!NOTE]
+> The **"Update Available"** banner in the popup disappears automatically once you:
+> 1. Run the update command above (updates the engine)
+> 2. Reload the extension in `chrome://extensions`
+> Both steps are required for the banner to clear.
 
 ---
 
 ## 🔧 Troubleshooting
 
 ### "Host not connected" / popup shows "Disconnected"
-The native host isn't running. Re-run the installer:
+The native engine isn't running or installed correctly. Fix with:
 ```bash
+# Linux / macOS
 curl -fsSL https://raw.githubusercontent.com/aazannoorkhuwaja/FlashYT/main/install.sh | bash
+
+# Windows (PowerShell)
+irm https://raw.githubusercontent.com/aazannoorkhuwaja/FlashYT/main/scripts/update_windows.ps1 | iex
 ```
 Then reload the extension (`chrome://extensions` → 🔄).
+
+### Download stuck at 0% or "Retrying with available quality"
+This was a bug in older versions. **Update to v2.1.6** using the commands above. The engine now handles format selection reliably without retries.
+
+### Got 144p/360p instead of the quality I selected
+Also fixed in v2.1.6. The format selector no longer falls back to pre-muxed streams. You will always get exactly the resolution you clicked.
 
 ### "Failed to fetch qualities" or blank quality list
 1. Make sure you're on a real YouTube watch page (`youtube.com/watch?v=...`)
 2. Sign in to YouTube in the same browser profile
-3. Right-click the ⚡ button → refresh qualities (the 🔄 icon in the modal)
-4. If it persists, check the log file (see below)
+3. Click the 🔄 refresh icon inside the quality picker modal
+4. If it still fails, check the log (see below)
 
 ### Download button doesn't appear on YouTube
 1. Refresh the YouTube tab (Ctrl+R)
-2. Make sure the extension is enabled on `chrome://extensions`
-3. If YouTube recently changed their page layout, update FlashYT from [Releases](https://github.com/aazannoorkhuwaja/FlashYT/releases/latest)
+2. Make sure FlashYT is enabled on `chrome://extensions`
+3. If the button stopped appearing after a YouTube layout change, update FlashYT
 
 ### Windows SmartScreen warning on installer
-This is normal for new/unsigned software. Click **"More info" → "Run anyway"**.
-Always download only from the [official GitHub Releases page](https://github.com/aazannoorkhuwaja/FlashYT/releases/latest).
+Normal for unsigned software. Click **"More info" → "Run anyway"**.
+Only download from [github.com/aazannoorkhuwaja/FlashYT/releases](https://github.com/aazannoorkhuwaja/FlashYT/releases/latest).
 
 ---
 
-## 📋 Checking the Log (for debugging)
+## 📋 Reading the Log (for debugging)
 
-If something goes wrong, the log file has all the details:
-
-| OS | Log location |
+| OS | Log file path |
 |---|---|
 | Linux / macOS | `~/.config/YouTubeNativeExt/host.log` |
 | Windows | `%APPDATA%\YouTubeNativeExt\host.log` |
 
-**Quick command to tail the log:**
 ```bash
+# Live-view the log
 tail -f ~/.config/YouTubeNativeExt/host.log
 ```
 
-When reporting a bug, always include the last 20 lines of this file.
+When reporting a bug, please include the last 20 lines of this file.
+
+---
+
+## 📓 Changelog
+
+### v2.1.6 — Quality Badge + Windows Auto-Update
+- 🎯 **Quality badge** in history: shows the actual downloaded resolution (e.g. `1080p`)
+- 🪟 **Windows one-command update** script: `update_windows.ps1`
+- 🛠️ CSS lint fixes and polish
+
+### v2.1.5 — Permanent Quality Fix
+- Removed stale `real_itag` from download command entirely
+- yt-dlp now resolves fresh format IDs itself on every download
+- Eliminated the root cause of 0% retry loops and quality mismatches
+
+### v2.1.4 — No More 144p Fallback
+- Removed `best[height<=h]` (pre-muxed progressive stream selector)
+- Format selector now exclusively uses adaptive `bestvideo+bestaudio` streams
+- Selecting 1080p always downloads 1080p — never 144p or 360p
+
+### v2.1.3 — CI Green
+- Fixed failing CI test assertion after v2.1.2 selector change
+
+### v2.1.2 — Retry Loop Fix
+- Fixed 0% "Retrying with available quality" loop
+- Stale itag tokens no longer cause download failures
+
+### v2.1.1 — Installer Fix
+- Fixed "Disconnected" status after manual install
+- Resolved `constants.py` name collision in `install.sh`
+
+### v2.1.0 — 403 Forbidden Fix
+- Synchronized User-Agent across all components
+- Zero-config API key fallback for new users
+- Auto cookie refresh on 403 errors
 
 ---
 
@@ -145,10 +217,9 @@ When reporting a bug, always include the last 20 lines of this file.
 ```bash
 curl -fsSL https://raw.githubusercontent.com/aazannoorkhuwaja/FlashYT/main/uninstall.sh | bash
 ```
-
 Then go to `chrome://extensions` and remove FlashYT.
 
-**Windows:** Use Windows Add/Remove Programs → uninstall FlashYT.
+**Windows:** Use Windows → Add/Remove Programs → uninstall FlashYT.
 
 ---
 
@@ -157,16 +228,16 @@ Then go to `chrome://extensions` and remove FlashYT.
 Open an issue at [github.com/aazannoorkhuwaja/FlashYT/issues](https://github.com/aazannoorkhuwaja/FlashYT/issues)
 
 Please include:
-- Your OS, browser, and browser version
-- FlashYT version (shown in popup → About tab)
-- Exact steps to reproduce
-- The last 20 lines of `host.log`
+- Your OS, browser, and version
+- FlashYT version (popup → **About** tab)
+- Steps to reproduce the issue
+- Last 20 lines of `host.log`
 
 ---
 
 ## 🤝 Contributing
 
-PRs are welcome! If your change touches the host protocol or download queue states, run the test suite before submitting:
+PRs are welcome! Run the test suite before submitting:
 ```bash
 cd host
 pip install -r requirements-dev.txt
