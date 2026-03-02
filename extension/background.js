@@ -239,8 +239,23 @@ class DownloadManager {
 
   restoreState() {
     chrome.storage.local.get(["active_downloads"], (result) => {
-      this.downloads = result.active_downloads || {};
-      this.processQueue();
+      const saved = result.active_downloads || {};
+
+      // On restore, any download that was mid-flight (queued/starting/downloading/resuming)
+      // is reset to 'paused' so it does NOT silently re-download without user action.
+      // Completed, error, cancelled, and paused entries are kept as-is.
+      const AUTO_START_STATUSES = new Set(["queued", "starting", "downloading", "pausing", "resuming", "cancelling"]);
+      for (const dl of Object.values(saved)) {
+        if (AUTO_START_STATUSES.has(dl.status)) {
+          dl.status = "paused";
+          dl.pendingAction = null;
+          dl.speed = 0;
+        }
+      }
+
+      this.downloads = saved;
+      this.saveState();
+      // Do NOT call processQueue() here — restored downloads require explicit resume.
     });
   }
 
