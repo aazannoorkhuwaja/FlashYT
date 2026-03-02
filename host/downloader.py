@@ -398,20 +398,20 @@ def _build_download_cmd(url, itag, output_dir, download_id, real_itag, retry_sta
 
     if itag == 'audio_only':
         if real_itag:
-            cmd.extend(['-f', f'{real_itag}/bestaudio/best', '--extract-audio', '--audio-format', 'mp3'])
+            cmd.extend(['-f', f'{real_itag}/bestaudio[ext=m4a]/bestaudio/best', '--extract-audio', '--audio-format', 'mp3'])
         else:
-            cmd.extend(['-f', 'bestaudio/best', '--extract-audio', '--audio-format', 'mp3'])
-    elif real_itag and real_itag != 'audio_only':
-        fallback_selector = _build_video_format_string(_parse_height_from_itag(itag))
-        selector = f'{real_itag}+bestaudio[ext=m4a]/{real_itag}/{fallback_selector}'
-        cmd.extend([
-            '-f', selector,
-            '--merge-output-format', 'mp4',
-        ])
+            cmd.extend(['-f', 'bestaudio[ext=m4a]/bestaudio/best', '--extract-audio', '--audio-format', 'mp3'])
     elif isinstance(itag, str) and itag.startswith('video_'):
         h = _parse_height_from_itag(itag)
+        height_selector = _build_video_format_string(h)
+        if real_itag and real_itag != 'audio_only':
+            # Use real_itag as first-priority hint, then fall back to height-based selector.
+            # This avoids the 0% retry loop when the itag expires within seconds.
+            selector = f'{real_itag}+bestaudio[ext=m4a]/{real_itag}/{height_selector}'
+        else:
+            selector = height_selector
         cmd.extend([
-            '-f', _build_video_format_string(h),
+            '-f', selector,
             '--merge-output-format', 'mp4',
         ])
     # For __auto_best__ (universal fallback): no -f flag, let yt-dlp decide
