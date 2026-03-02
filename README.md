@@ -101,26 +101,31 @@ Then reload the extension: `chrome://extensions` → 🔄 on FlashYT.
 
 ## 🔄 How to Update
 
-### 🐧 Linux & 🍎 macOS — one command
+When a new version is released, the FlashYT popup will show a red "Update Available" banner. **Updating is a two-step process:** you must update both the native background engine AND the browser extension.
+
+### Step 1: Update the Native Engine
+Run the installation command for your system to fetch the latest background scripts:
+
+**Linux & macOS:**
 ```bash
 curl -fsSL https://raw.githubusercontent.com/aazannoorkhuwaja/FlashYT/main/install.sh | bash
 ```
 
-### 🪟 Windows — one command (PowerShell)
+**Windows (PowerShell):**
 ```powershell
 irm https://raw.githubusercontent.com/aazannoorkhuwaja/FlashYT/main/scripts/update_windows.ps1 | iex
 ```
+*(Note: Windows users can simply download and run the latest `.exe` installer from the Releases page instead).*
 
-### After updating on any platform:
-1. Go to `chrome://extensions`
-2. Click the **🔄 reload icon** on FlashYT
-3. The update notification in the popup will disappear automatically once the extension version matches the latest release
+### Step 2: Update the Browser Extension
+The `curl` command does not automatically update the extension inside your browser. To clear the "Update Available" banner:
+1. Go to the [FlashYT Releases](https://github.com/aazannoorkhuwaja/FlashYT/releases/latest) page and download the latest `Source code (zip)`.
+2. Extract the zip file and overwrite your old FlashYT folder with the new files.
+3. Open `chrome://extensions` (or `brave://extensions`).
+4. Find the **FlashYT** card and click the **🔄 Reload icon** (or click Remove and load the new unpacked folder).
+5. **Completely close and reopen your browser** to ensure the new background engine connects.
 
-> [!NOTE]
-> The **"Update Available"** banner in the popup disappears automatically once you:
-> 1. Run the update command above (updates the engine)
-> 2. Reload the extension in `chrome://extensions`
-> Both steps are required for the banner to clear.
+The red update banner will permanently disappear once the extension's version number matches the latest release!
 
 ---
 
@@ -138,10 +143,10 @@ irm https://raw.githubusercontent.com/aazannoorkhuwaja/FlashYT/main/scripts/upda
 Then reload the extension (`chrome://extensions` → 🔄).
 
 ### Download stuck at 0% or "Retrying with available quality"
-This was a bug in older versions. **Update to v2.1.6** using the commands above. The engine now handles format selection reliably without retries.
+This was a bug in older versions. **Update to v2.1.9** using the steps above. The newest engine handles YouTube's latest encryption changes and format selection flawlessly.
 
 ### Got 144p/360p instead of the quality I selected
-Also fixed in v2.1.6. The format selector no longer falls back to pre-muxed streams. You will always get exactly the resolution you clicked.
+Also fixed in **v2.1.9**. The format selector ensures you get exactly the high-bitrate resolution and file size shown in the picker.
 
 ### "Failed to fetch qualities" or blank quality list
 1. Make sure you're on a real YouTube watch page (`youtube.com/watch?v=...`)
