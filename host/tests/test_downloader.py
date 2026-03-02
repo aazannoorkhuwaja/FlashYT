@@ -65,7 +65,7 @@ def test_build_cmd_audio_only_uses_audio_selector():
     )
     assert "-f" in cmd
     selector = cmd[cmd.index("-f") + 1]
-    assert selector == "140/bestaudio[ext=m4a]/bestaudio/best"
+    assert selector == "bestaudio[ext=m4a]/bestaudio/best"
     assert "--extract-audio" in cmd
 
 
@@ -78,8 +78,9 @@ def test_build_cmd_real_itag_has_adaptive_fallback_selector():
         137,
     )
     selector = cmd[cmd.index("-f") + 1]
-    assert "137+bestaudio[ext=m4a]/137/" in selector
+    # With real_itag removed, the selector is pure height-based — no stale token prefix
     assert "height<=720" in selector
+    assert not selector.startswith("137")
 
 
 def test_build_cmd_uses_cookies_from_browser_when_cookiefile_missing(monkeypatch):

@@ -399,21 +399,14 @@ def _build_download_cmd(url, itag, output_dir, download_id, real_itag, retry_sta
     # On retry_stage=2 (universal): no cookies at all — cleanest fallback
 
     if itag == 'audio_only':
-        if real_itag:
-            cmd.extend(['-f', f'{real_itag}/bestaudio[ext=m4a]/bestaudio/best', '--extract-audio', '--audio-format', 'mp3'])
-        else:
-            cmd.extend(['-f', 'bestaudio[ext=m4a]/bestaudio/best', '--extract-audio', '--audio-format', 'mp3'])
+        # Let yt-dlp resolve the best audio format fresh — no stale itag needed.
+        cmd.extend(['-f', 'bestaudio[ext=m4a]/bestaudio/best', '--extract-audio', '--audio-format', 'mp3'])
     elif isinstance(itag, str) and itag.startswith('video_'):
+        # Use a height-based selector so yt-dlp fetches a fresh format ID internally.
+        # real_itag tokens expire within seconds and cause the 0% retry loop — never use them.
         h = _parse_height_from_itag(itag)
-        height_selector = _build_video_format_string(h)
-        if real_itag and real_itag != 'audio_only':
-            # Use real_itag as first-priority hint, then fall back to height-based selector.
-            # This avoids the 0% retry loop when the itag expires within seconds.
-            selector = f'{real_itag}+bestaudio[ext=m4a]/{real_itag}/{height_selector}'
-        else:
-            selector = height_selector
         cmd.extend([
-            '-f', selector,
+            '-f', _build_video_format_string(h),
             '--merge-output-format', 'mp4',
         ])
     # For __auto_best__ (universal fallback): no -f flag, let yt-dlp decide
