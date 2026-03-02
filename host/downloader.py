@@ -103,9 +103,11 @@ def _build_video_format_string(max_height):
         h = 1080
     return (
         f"bestvideo[ext=mp4][height<={h}]+bestaudio[ext=m4a]/"
+        f"bestvideo[vcodec^=avc][height<={h}]+bestaudio[ext=m4a]/"
+        f"bestvideo[height<={h}]+bestaudio[ext=m4a]/"
         f"bestvideo[height<={h}]+bestaudio/"
-        f"best[height<={h}]/"
-        "bestvideo+bestaudio/best/bestvideo/bestaudio"
+        f"bestvideo[height<={h}]/"
+        "bestvideo+bestaudio/bestvideo"
     )
 
 

@@ -15,7 +15,7 @@ DEFAULT_DOWNLOAD_WORKERS = max(1, int(os.environ.get('FLASHYT_MAX_CONCURRENT', '
 DEFAULT_PREFETCH_WORKERS = max(1, int(os.environ.get('FLASHYT_PREFETCH_WORKERS', '2')))
 _resume_wait_lock = threading.Lock()
 _resume_waiting = set()
-HOST_VERSION = os.environ.get('FLASHYT_HOST_VERSION', '2.1.3')
+HOST_VERSION = os.environ.get('FLASHYT_HOST_VERSION', '2.1.4')
 
 
 def send_message(msg):
