@@ -65,7 +65,7 @@ def test_build_cmd_audio_only_uses_audio_selector():
     )
     assert "-f" in cmd
     selector = cmd[cmd.index("-f") + 1]
-    assert selector == "140/bestaudio/best"
+    assert selector == "140/bestaudio[ext=m4a]/bestaudio/best"
     assert "--extract-audio" in cmd
 
 
