@@ -186,41 +186,6 @@ When reporting a bug, please include the last 20 lines of this file.
 
 ---
 
-## 📓 Changelog
-
-### v2.1.6 — Quality Badge + Windows Auto-Update
-- 🎯 **Quality badge** in history: shows the actual downloaded resolution (e.g. `1080p`)
-- 🪟 **Windows one-command update** script: `update_windows.ps1`
-- 🛠️ CSS lint fixes and polish
-
-### v2.1.5 — Permanent Quality Fix
-- Removed stale `real_itag` from download command entirely
-- yt-dlp now resolves fresh format IDs itself on every download
-- Eliminated the root cause of 0% retry loops and quality mismatches
-
-### v2.1.4 — No More 144p Fallback
-- Removed `best[height<=h]` (pre-muxed progressive stream selector)
-- Format selector now exclusively uses adaptive `bestvideo+bestaudio` streams
-- Selecting 1080p always downloads 1080p — never 144p or 360p
-
-### v2.1.3 — CI Green
-- Fixed failing CI test assertion after v2.1.2 selector change
-
-### v2.1.2 — Retry Loop Fix
-- Fixed 0% "Retrying with available quality" loop
-- Stale itag tokens no longer cause download failures
-
-### v2.1.1 — Installer Fix
-- Fixed "Disconnected" status after manual install
-- Resolved `constants.py` name collision in `install.sh`
-
-### v2.1.0 — 403 Forbidden Fix
-- Synchronized User-Agent across all components
-- Zero-config API key fallback for new users
-- Auto cookie refresh on 403 errors
-
----
-
 ## 🗑️ Uninstall
 
 **Linux / macOS:**
