@@ -376,12 +376,6 @@ def _build_download_cmd(url, itag, output_dir, download_id, real_itag, retry_sta
     if ffmpeg_path:
         cmd[1:1] = ['--ffmpeg-location', ffmpeg_path]
 
-    # Only force specific extractor clients on non-universal fallback.
-    # On retry_stage=2 (universal), let yt-dlp pick its own client — forcing
-    # web,ios,android was causing YouTube to block some format requests.
-    if retry_stage < 2:
-        cmd.extend(['--extractor-args', 'youtube:player_client=web,ios,android'])
-
     # Validate cookie file has real content before using it (>200 bytes).
     # A stale/empty/header-only cookie file causes YouTube to deny all formats.
     cookie_opts = get_best_available_cookies()
@@ -418,7 +412,8 @@ def _build_download_cmd(url, itag, output_dir, download_id, real_itag, retry_sta
     # For __auto_best__ (universal fallback): no -f flag, let yt-dlp decide
 
     # Capture the actual downloaded resolution for the quality badge in the UI.
-    cmd.extend(['--print', '%(height)s'])
+    # --no-simulate is REQUIRED because --print otherwise suppresses the download.
+    cmd.extend(['--print', '%(height)s', '--no-simulate'])
 
     cmd.append(url)
     return cmd
