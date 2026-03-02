@@ -101,13 +101,19 @@ def _build_video_format_string(max_height):
         h = int(max_height)
     except (TypeError, ValueError):
         h = 1080
+    # Priority order matches fast_fetch.py size estimates (AVC H.264 is preferred):
+    # 1. AVC H.264 in mp4 container  ← the stream fast_fetch shows size for
+    # 2. Any AVC H.264 (any container, yt-dlp remuxes to mp4)
+    # 3. Any mp4 at this height (may include other codecs)
+    # 4. Best quality at this height regardless of codec (last resort VP9/webm)
     return (
-        f"bestvideo[ext=mp4][height<={h}]+bestaudio[ext=m4a]/"
+        f"bestvideo[ext=mp4][vcodec^=avc][height<={h}]+bestaudio[ext=m4a]/"
         f"bestvideo[vcodec^=avc][height<={h}]+bestaudio[ext=m4a]/"
+        f"bestvideo[ext=mp4][height<={h}]+bestaudio[ext=m4a]/"
         f"bestvideo[height<={h}]+bestaudio[ext=m4a]/"
         f"bestvideo[height<={h}]+bestaudio/"
         f"bestvideo[height<={h}]/"
-        "bestvideo+bestaudio/bestvideo"
+        "bestvideo+bestaudio/best/bestvideo/bestaudio"
     )
 
 

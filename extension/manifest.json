@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "FlashYT",
-  "version": "2.1.6",
+  "version": "2.1.7",
   "description": "Fast and reliable YouTube video downloader extension.",
   "permissions": [
     "downloads",
