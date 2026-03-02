@@ -120,10 +120,15 @@ irm https://raw.githubusercontent.com/aazannoorkhuwaja/FlashYT/main/scripts/upda
 ### Step 2: Update the Browser Extension
 The `curl` command does not automatically update the extension inside your browser. To clear the "Update Available" banner:
 1. Go to the [FlashYT Releases](https://github.com/aazannoorkhuwaja/FlashYT/releases/latest) page and download the latest `Source code (zip)`.
-2. Extract the zip file and overwrite your old FlashYT folder with the new files.
+2. Extract the zip file and **overwrite your old FlashYT folder** with the new files.
 3. Open `chrome://extensions` (or `brave://extensions`).
-4. Find the **FlashYT** card and click the **🔄 Reload icon** (or click Remove and load the new unpacked folder).
+4. Find the **FlashYT** card and click the **🔄 Reload icon**.
 5. **Completely close and reopen your browser** to ensure the new background engine connects.
+
+> [!CAUTION]
+> **NEVER DELETE YOUR OLD EXTENSION FOLDER!** 
+> If you delete the existing FlashYT folder instead of overwriting it, Chrome/Brave will generate a brand new internal Extension ID. The background host script is permanently locked to your original Extension ID. If the ID changes, your extension will say **"Disconnected"** entirely.
+> **Only copy/paste the new files *inside* your existing folder to overwrite them.**
 
 The red update banner will permanently disappear once the extension's version number matches the latest release!
 
