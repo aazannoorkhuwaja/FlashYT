@@ -175,7 +175,7 @@ def _canonicalize_youtube_url(url):
     return f"https://www.youtube.com/watch?v={m.group(1)}"
 
 
-def _prefetch_with_timeout(url, timeout_s=8):
+def _prefetch_with_timeout(url, timeout_s=15):
     result_box = {'result': None}
 
     def _runner():
@@ -192,7 +192,7 @@ def _prefetch_with_timeout(url, timeout_s=8):
     return result_box['result'] or {'error': 'Empty prefetch result.'}
 
 
-def _prefetch_with_ytdlp(url, timeout_s=20):
+def _prefetch_with_ytdlp(url, timeout_s=30):
     canonical_url = _canonicalize_youtube_url(url)
     base_cmd = [
         get_ytdlp_path(),
@@ -231,7 +231,7 @@ def _prefetch_with_ytdlp(url, timeout_s=20):
         if remaining <= 0:
             last_error = 'Fallback prefetch timed out.'
             break
-        profile_timeout = max(3, min(8, int(remaining)))
+        profile_timeout = max(3, min(15, int(remaining)))
         cmd = base_cmd + profile + cookie_args + [canonical_url]
         try:
             proc = subprocess.run(cmd, capture_output=True, text=True, timeout=profile_timeout)
@@ -313,13 +313,13 @@ def prefetch_qualities(url):
             return msg
         return f'{msg} {hint}'.strip()
 
-    # Stage 1: fast InnerTube (1-2s)
-    fast_result = _prefetch_with_timeout(url, timeout_s=8)
+    # Stage 1: fast InnerTube (1-2s typical, but allow up to 15s for large cookie jars)
+    fast_result = _prefetch_with_timeout(url, timeout_s=15)
     if fast_result and not fast_result.get('error') and fast_result.get('qualities'):
         return fast_result
 
-    # Stage 2: yt-dlp fallback (up to 25s)
-    fallback = _prefetch_with_ytdlp(url, timeout_s=25)
+    # Stage 2: yt-dlp fallback (up to 35s total for multiple profiles)
+    fallback = _prefetch_with_ytdlp(url, timeout_s=35)
     if fallback and not fallback.get('error') and fallback.get('qualities'):
         return fallback
 
