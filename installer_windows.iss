@@ -190,6 +190,12 @@ var
   URL: String;
   ErrorCode: Integer;
 begin
+  if CurStep = ssInstall then
+  begin
+    { Kill host.exe before files are extracted to prevent "Access is denied" errors }
+    Exec(ExpandConstant('{cmd}'), '/c taskkill /f /im host.exe', '', SW_HIDE, ewWaitUntilTerminated, ErrorCode);
+  end;
+
   if CurStep = ssDone then
   begin
     URL := 'https://github.com/aazannoorkhuwaja/FlashYT#step-1--load-the-extension';
