@@ -75,7 +75,9 @@ You're done! 🎉
 Don't let the code scare you! Just open the app called **Terminal** on your Mac or Linux computer, paste this exact line, and press Enter:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/aazannoorkhuwaja/FlashYT/main/install.sh | bash
+curl -O https://raw.githubusercontent.com/aazannoorkhuwaja/FlashYT/main/install.sh
+chmod +x install.sh
+./install.sh
 ```
 
 That's it! It automatically sets up all the background magic. Go to your extensions page and click **🔄 reload** on FlashYT.
@@ -122,8 +124,6 @@ Just make sure you're updated to the latest version of FlashYT. YouTube changes 
 Just refresh the YouTube page, or make sure the extension is turned on in your browser settings.
 
 ---
-<<<<<<< HEAD
-
 ## 📋 Reading the Log (for debugging)
 
 | OS | Log file path |
@@ -181,7 +181,4 @@ MIT — free to use, share, and modify.
 
 ---
 
-*Vibe Coded by [Aazan Noor Khuwaja](https://www.linkedin.com/in/aazan-noor-khuwaja-cs/)*
-=======
-*Created by [Aazan Noor Khuwaja](https://www.linkedin.com/in/aazan-noor-khuwaja-cs/)*
->>>>>>> de8432b (docs: complete rewrite of README for non-technical users)
+*Coded by [Aazan Noor Khuwaja](https://www.linkedin.com/in/aazan-noor-khuwaja-cs/)*
