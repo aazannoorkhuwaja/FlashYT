@@ -51,10 +51,14 @@ jobs:
           curl -L "https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.exe" -o vendor\yt-dlp.exe
 
       - name: Download ffmpeg.exe
+        shell: pwsh
         run: |
-          curl -L "https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-win64-gpl.zip" -o ffmpeg.zip
-          7z e ffmpeg.zip -ovendor ffmpeg-master-latest-win64-gpl/bin/ffmpeg.exe -r
-          del ffmpeg.zip
+          $url = "https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip"
+          Invoke-WebRequest $url -OutFile ffmpeg.zip
+          Expand-Archive ffmpeg.zip -DestinationPath ffmpeg_extracted -Force
+          $ffmpeg = Get-ChildItem ffmpeg_extracted -Recurse -Filter "ffmpeg.exe" | Select-Object -First 1
+          Copy-Item $ffmpeg.FullName vendor\ffmpeg.exe
+          Remove-Item ffmpeg.zip, ffmpeg_extracted -Recurse -Force
 
       - name: Install Inno Setup 6
         run: choco install innosetup --yes --no-progress
