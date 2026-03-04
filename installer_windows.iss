@@ -118,8 +118,10 @@ begin
   begin
     if LoadStringFromFile(PrefsPath, PrefsContent) then
     begin
-      StringChangeEx(PrefsContent, '"developer_mode":false', '"developer_mode":true', True);
-      SaveStringToFile(PrefsPath, PrefsContent, False);
+      if StringChangeEx(PrefsContent, '"developer_mode":false', '"developer_mode":true', True) > 0 then
+      begin
+        SaveStringToFile(PrefsPath, PrefsContent, False);
+      end;
     end;
   end;
   
@@ -129,8 +131,10 @@ begin
   begin
     if LoadStringFromFile(PrefsPath, PrefsContent) then
     begin
-      StringChangeEx(PrefsContent, '"developer_mode":false', '"developer_mode":true', True);
-      SaveStringToFile(PrefsPath, PrefsContent, False);
+      if StringChangeEx(PrefsContent, '"developer_mode":false', '"developer_mode":true', True) > 0 then
+      begin
+        SaveStringToFile(PrefsPath, PrefsContent, False);
+      end;
     end;
   end;
 end;

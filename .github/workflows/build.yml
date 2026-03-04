@@ -125,9 +125,8 @@ jobs:
         shell: pwsh
         run: |
           mkdir dist -ErrorAction SilentlyContinue
-          $iscc = "C:\Program Files (x86)\Inno Setup 6\iscc.exe"
-          if (-not (Test-Path $iscc)) { $iscc = "C:\Program Files\Inno Setup 6\iscc.exe" }
-          & $iscc /O"dist" /F"FlashYT-setup" installer_windows.iss
+          iscc --version
+          iscc /O"dist" /F"FlashYT-setup" installer_windows.iss
           if (-not $?) { exit 1 }
 
       - name: Sign Windows Binaries (optional)
