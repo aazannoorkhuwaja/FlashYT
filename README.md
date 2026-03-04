@@ -5,9 +5,7 @@
 
 ![FlashYT Icon](https://raw.githubusercontent.com/aazannoorkhuwaja/FlashYT/main/extension/icons/icon128.png)
 
-<a href="https://github.com/aazannoorkhuwaja/FlashYT/releases/tag/v2.2.0">
-  <img src="https://img.shields.io/github/v/release/aazannoorkhuwaja/FlashYT?label=version&color=FF0000" alt="Version 2.2.0">
-</a>
+[![Version](https://img.shields.io/github/v/release/aazannoorkhuwaja/FlashYT?label=version&color=FF0000)](https://github.com/aazannoorkhuwaja/FlashYT/releases/latest)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey)]()
 
