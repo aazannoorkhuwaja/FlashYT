@@ -26,7 +26,9 @@ pyinstaller --clean --onefile --noconsole --name host ^
     --hidden-import=PIL.Image ^
     --hidden-import=PIL.ImageDraw ^
     --hidden-import=PIL.ImageFont ^
+    --log-level WARN ^
     host\host.py
+echo PyInstaller host.exe exit code: %ERRORLEVEL%
 if %ERRORLEVEL% neq 0 (
     echo [ERROR] Failed to compile host.exe
     exit /b 1
