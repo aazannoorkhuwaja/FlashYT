@@ -41,49 +41,31 @@ Works perfectly on Windows, Mac, and Linux!
 
 ## 🚀 How to Install — Quick Setup
 
-### 🪟 Windows Setup
+### 🪟 Windows Setup — One-Click Install
 
-**Step 1: Download the Extension Folder**
-- Scroll to the top of this page and click the green **<> Code** button.
-- Click **Download ZIP**.
-- Extract this ZIP file into a permanent folder (like your Documents or Desktop).
+1. **Download the installer** from the [Releases page](https://github.com/aazannoorkhuwaja/FlashYT/releases/latest) → `FlashYT-setup.exe`
+2. **Run it** (double-click). If Windows shows a "Windows protected your PC" message, click **More info → Run anyway**. *(This is normal for open-source apps not yet recognized by Microsoft.)*
+3. Click **Next → Next → Install**.
+4. When installation completes: **close Chrome completely** and reopen it.
+5. FlashYT appears in your extensions automatically — no manual steps needed!
+6. Visit any YouTube video and click **⚡ Download**. That's it!
 
-**Step 2: Add it to your Browser**
-- Open Chrome, Brave, or Edge and go to your extensions settings (type `chrome://extensions` in the address bar).
-- Turn on **Developer mode** in the top right corner.
-  ![Visual Guide to Developer Mode](docs/images/developer-mode.png)
-- Click the **Load unpacked** button.
-- Find your extracted folder, go inside it, and select the folder named `extension`.
-- FlashYT is now in your browser! Note the long string of letters next to "ID:" under FlashYT — **copy that ID**, you will need it in the next step.
-
-**Step 3: Run the Setup Installer**
-- Head over to the [FlashYT Releases](https://github.com/aazannoorkhuwaja/FlashYT/releases/latest) page.
-- Download the **`FlashYT_Installer_v2.2.0.exe`** file and run it. *(This tiny installer automatically handles all the complicated background tech so you don't have to!)*
-- If Windows says "Windows protected your PC", just click **"More info" → "Run anyway"**.
-- Proceed through the installation. At the end, it will ask for your Extension ID. **Paste the ID you copied from Step 2**.
-- Finish the installation.
-- Finally, go back to your browser extensions page and click the little **🔄 reload icon** on the FlashYT card. 
-
-You're done! 🎉
+> **Note:** When you first reopen Chrome, it may show a bar at the top: *"Extensions in developer mode."* Click the **✕** to dismiss it. It will never appear again.
 
 ---
 
 ### 🍎 macOS & 🐧 Linux Setup
 
-**Step 1: Add it to your Browser**
-- Follow Windows Steps 1 and 2 above. Download the ZIP from the green Code button, extract it, and load the `extension` folder into your browser.
-- *(Note: On Mac and Linux, you do not need to copy the Extension ID. It will automatically detect it!)*
-
-**Step 2: Run the Setup Command**
-Don't let the code scare you! Just open the app called **Terminal** on your Mac or Linux computer, paste these exact line, and press Enter:
+1. **Open your Terminal** app.
+2. **Paste these exact lines** and press Enter:
 
 ```bash
-curl -O https://raw.githubusercontent.com/aazannoorkhuwaja/FlashYT/main/install.sh
+curl -L -o install.sh https://raw.githubusercontent.com/aazannoorkhuwaja/FlashYT/main/install.sh
 chmod +x install.sh
-./install.sh
+bash install.sh
 ```
 
-That's it! It automatically sets up all the background magic. Go to your extensions page and click **🔄 reload** on FlashYT.
+> **Why three lines?** The installer needs to ask you a question during setup. The single-line `curl | bash` method prevents it from doing that. These three lines take the same amount of time and work correctly.
 
 ---
 
@@ -105,41 +87,31 @@ FlashYT now features **Auto-Update Notifications**! 🚀
 
 1. When a new version is available, a **red "Update Available" banner** will appear inside the FlashYT extension popup.
 2. Simply click the **Update** button (or follow the link provided).
-3. Download the new `Source code (zip)` and **extract it directly over your existing FlashYT folder** (always choose "Replace All").
+3. Download the new installer (Windows) or re-run the setup command (Mac/Linux).
 4. Click the **🔄 Reload icon** in your browser's extension settings.
-
-That's it! No need to run the installer again unless explicitly asked.
 
 ---
 
 ## 🔧 Simple Troubleshooting
 
+### "Windows protected your PC" during installation
+Click **More info** then **Run anyway**. This message appears for all open-source software that hasn't yet been widely downloaded. FlashYT is safe and open source — you can read every line of code on GitHub.
+
+### Chrome shows "Extensions in developer mode" banner
+Click the **✕** on the right side of that bar to dismiss it. It will never appear again. This is a standard Chrome notice for extensions installed outside the Chrome Web Store.
+
 ### "Host not connected" or "Disconnected"
-This just means the background helper isn't running. 
-- **Windows:** Double-click your `.exe` installer again.
-- **Mac/Linux:** Open Terminal and run the install command from above.
-Then, reload the extension!
-
-### Download stuck at 0%
-Just make sure you're updated to the latest version of FlashYT. YouTube changes things often, and our updates fix them instantly!
-
-### Missing Download Button
-Just refresh the YouTube page, or make sure the extension is turned on in your browser settings.
+- **Windows:** Run the installer again or start `host.exe` from your installation folder.
+- **Mac/Linux:** Re-run the setup commands from above.
 
 ---
+
 ## 📋 Reading the Log (for debugging)
 
 | OS | Log file path |
 |---|---|
 | Linux / macOS | `~/.config/YouTubeNativeExt/host.log` |
 | Windows | `%APPDATA%\YouTubeNativeExt\host.log` |
-
-```bash
-# Live-view the log
-tail -f ~/.config/YouTubeNativeExt/host.log
-```
-
-When reporting a bug, please include the last 20 lines of this file.
 
 ---
 
@@ -151,32 +123,8 @@ curl -O https://raw.githubusercontent.com/aazannoorkhuwaja/FlashYT/main/uninstal
 chmod +x uninstall.sh
 ./uninstall.sh
 ```
-Then go to `chrome://extensions` and remove FlashYT.
 
 **Windows:** Use Windows → Add/Remove Programs → uninstall FlashYT.
-
----
-
-## 🐛 Reporting Bugs
-
-Open an issue at [github.com/aazannoorkhuwaja/FlashYT/issues](https://github.com/aazannoorkhuwaja/FlashYT/issues)
-
-Please include:
-- Your OS, browser, and version
-- FlashYT version (popup → **About** tab)
-- Steps to reproduce the issue
-- Last 20 lines of `host.log`
-
----
-
-## 🤝 Contributing
-
-PRs are welcome! Run the test suite before submitting:
-```bash
-cd host
-pip install -r requirements-dev.txt
-python -m pytest tests/ -v
-```
 
 ---
 
