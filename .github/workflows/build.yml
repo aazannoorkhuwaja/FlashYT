@@ -125,9 +125,12 @@ jobs:
         shell: pwsh
         run: |
           mkdir dist -ErrorAction SilentlyContinue
-          iscc --version
-          iscc /O"dist" /F"FlashYT-setup" installer_windows.iss
-          if (-not $?) { exit 1 }
+          iscc installer_windows.iss /O"dist" /F"FlashYT-setup" | Out-File -FilePath iscc_log.txt
+          if (-not $?) {
+            Get-Content iscc_log.txt
+            exit 1
+          }
+          Write-Host "Installer compiled successfully."
 
       - name: Sign Windows Binaries (optional)
         if: ${{ env.HAS_CERT == 'true' }}
