@@ -33,13 +33,16 @@ FlashYT is built to **just work** — for everyone, on every computer, in every 
 2. Run the installer. If prompted with "Windows protected your PC", click **More info → Run anyway**.
 3. Reopen Chrome/Brave/Edge. FlashYT is ready!
 
-### 🍎 macOS & 🐧 Linux — 3-Step Setup
-1. Open Terminal and Paste:
+### 🍎 macOS & 🐧 Linux — Easy Setup
+1. Open your **Terminal** app.
+2. **Copy and Paste** this single line and press Enter:
+
 ```bash
-curl -L -o install.sh https://raw.githubusercontent.com/aazannoorkhuwaja/FlashYT/main/install.sh
-chmod +x install.sh
-bash install.sh
+curl -L -o install.sh https://raw.githubusercontent.com/aazannoorkhuwaja/FlashYT/main/install.sh && chmod +x install.sh && ./install.sh
 ```
+
+> [!NOTE]
+> This command safely downloads the installer, prepares it, and runs it. It’s the recommended way to ensure FlashYT connects perfectly to your browser.
 
 ---
 
