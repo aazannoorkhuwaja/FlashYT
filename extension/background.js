@@ -27,7 +27,7 @@ const formatCache = new Map();
 const CACHE_MAX = 50;
 const CACHE_TTL_MS = 10 * 60 * 1000;
 const prefetchInflight = new Map();
-const PREFETCH_TIMEOUT_MS = 60000;
+const PREFETCH_TIMEOUT_MS = 120000;
 
 function normalizeVersion(raw) {
   const src = (raw || "").toString().trim().replace(/^v/i, "");

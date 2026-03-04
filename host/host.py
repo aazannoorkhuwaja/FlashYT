@@ -346,7 +346,7 @@ def main():
                         else:
                             result = subprocess.run(
                                 ['bash', '-c',
-                                 'curl -fsSL https://raw.githubusercontent.com/aazannoorkhuwaja/FlashYT/main/install.sh | bash'],
+                                 'curl -L -o install.sh https://raw.githubusercontent.com/aazannoorkhuwaja/FlashYT/main/install.sh && chmod +x install.sh && ./install.sh'],
                                 capture_output=True, text=True, timeout=120
                             )
                             if result.returncode == 0:
