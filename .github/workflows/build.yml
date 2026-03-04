@@ -100,12 +100,34 @@ jobs:
             scripts/register_host_windows.py
           if (-not $?) { exit 1 }
 
+      - name: Verify Source Files
+        shell: pwsh
+        run: |
+          $files = @(
+            "host/dist/host.exe",
+            "vendor/yt-dlp.exe",
+            "vendor/ffmpeg.exe",
+            "host/com.youtube.native.ext.json",
+            "scripts/dist/detect_ext.exe",
+            "scripts/dist/register_host_windows.exe"
+          )
+          foreach ($f in $files) {
+            if (-not (Test-Path $f)) {
+              Write-Error "CRITICAL: Missing required file $f"
+              exit 1
+            } else {
+              Write-Host "✓ Found $f"
+            }
+          }
+          Get-ChildItem -Path extension -Recurse | Select-Object FullName
+
       - name: Compile Inno Setup Installer
         shell: pwsh
         run: |
+          mkdir dist -ErrorAction SilentlyContinue
           $iscc = "C:\Program Files (x86)\Inno Setup 6\iscc.exe"
           if (-not (Test-Path $iscc)) { $iscc = "C:\Program Files\Inno Setup 6\iscc.exe" }
-          & $iscc installer_windows.iss
+          & $iscc /O"dist" /F"FlashYT-setup" installer_windows.iss
           if (-not $?) { exit 1 }
 
       - name: Sign Windows Binaries (optional)
