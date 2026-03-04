@@ -5,7 +5,7 @@
 
 ![FlashYT Icon](https://raw.githubusercontent.com/aazannoorkhuwaja/FlashYT/main/extension/icons/icon128.png)
 
-[![Version](https://img.shields.io/github/v/release/aazannoorkhuwaja/FlashYT?label=version&color=FF0000)](https://github.com/aazannoorkhuwaja/FlashYT/releases/latest)
+[![Version](https://img.shields.io/github/v/release/aazannoorkhuwaja/FlashYT?label=version&color=brightgreen)](https://github.com/aazannoorkhuwaja/FlashYT/releases/latest)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey)]()
 
@@ -63,7 +63,17 @@ chmod +x install.sh
 bash install.sh
 ```
 
-> **Why three lines?** The installer needs to ask you a question during setup. The single-line `curl | bash` method prevents it from doing that. These three lines take the same amount of time and work correctly.
+> **Why three lines?** The installer needs to ask technical questions about your environment. The single-line `curl | bash` method prevents it from doing that. These three lines take the same amount of time and work correctly.
+
+---
+
+## ⚙️ Configuration (.env)
+
+FlashYT supports advanced configuration via a `.env` file in the root directory. You can use `.env.example` as a template:
+
+- `FLASHYT_INNERTUBE_KEY`: Your YouTube API key (optimizes quality discovery).
+- `FLASHYT_VERIFY_SSL`: Toggle SSL verification (for specific network proxies).
+- `FLASHYT_MAX_CONCURRENT`: Limit the number of simultaneous download parts.
 
 ---
 
@@ -117,7 +127,7 @@ Click the **✕** on the right side of that bar to dismiss it. It will never app
 
 **Linux / macOS:**
 ```bash
-curl -O https://raw.githubusercontent.com/aazannoorkhuwaja/FlashYT/main/uninstall.sh
+curl -L -o uninstall.sh https://raw.githubusercontent.com/aazannoorkhuwaja/FlashYT/main/uninstall.sh
 chmod +x uninstall.sh
 ./uninstall.sh
 ```
@@ -132,4 +142,4 @@ MIT — free to use, share, and modify. See [LICENSE](LICENSE) for details.
 
 ---
 
-*Coded by [Aazan Noor Khuwaja](https://www.linkedin.com/in/aazan-noor-khuwaja-cs/)*
+*Vibe Coded by [Aazan Noor Khuwaja](https://www.linkedin.com/in/aazan-noor-khuwaja-cs/)*

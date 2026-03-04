@@ -1,7 +1,21 @@
 #!/usr/bin/env bash
 # FlashYT Uninstaller — removes native host, manifests, and state files.
-# Run with: curl -fsSL https://raw.githubusercontent.com/aazannoorkhuwaja/FlashYT/main/uninstall.sh | bash
+# Run with: bash uninstall.sh
 set -euo pipefail
+
+# Detect if running non-interactively (piped from curl)
+if [ ! -t 0 ]; then
+  echo ""
+  echo "⚠️  FlashYT detected it is running non-interactively (curl pipe mode)."
+  echo ""
+  echo "   Please download and run uninstall.sh directly instead:"
+  echo ""
+  echo "   curl -L -o uninstall.sh https://raw.githubusercontent.com/aazannoorkhuwaja/FlashYT/main/uninstall.sh"
+  echo "   chmod +x uninstall.sh"
+  echo "   ./uninstall.sh"
+  echo ""
+  exit 1
+fi
 
 echo "=================================================="
 echo " FlashYT - Uninstaller"

@@ -50,7 +50,7 @@ else
     exit 1
 fi
 
-# 2) Python
+# 2) Python & Version Check
 if ! command -v python3 >/dev/null 2>&1; then
     echo "[X] Python 3 is required but could not be found."
     if [[ $IS_MAC -eq 1 ]]; then
@@ -59,6 +59,13 @@ if ! command -v python3 >/dev/null 2>&1; then
         echo "    Install via: sudo apt install python3  (Ubuntu/Debian)"
         echo "              or: sudo dnf install python3  (Fedora/RHEL)"
     fi
+    exit 1
+fi
+
+# Check for Python 3.8+ specifically
+if ! python3 -c "import sys; sys.exit(0 if sys.version_info >= (3,8) else 1)" 2>/dev/null; then
+    echo "[X] Python 3.8 or higher is required."
+    python3 --version
     exit 1
 fi
 
@@ -190,14 +197,8 @@ if [[ -z "${EXT_IDS_CSV:-}" ]]; then
 fi
 
 # Always use the fixed extension ID instead of auto-discovered ones since we have a defined RSA keypair now.
-VALID_EXT_IDS=("epfpikjgfkpagepdhbancgmeganikbgo")
-
-if [[ ${#VALID_EXT_IDS[@]} -eq 0 ]]; then
-    echo "  [X] Could not find or validate any FlashYT extension IDs. Please ensure it's loaded as Unpacked."
-    exit 1
-fi
-
-echo "[✓] Using ${#VALID_EXT_IDS[@]} extension ID(s): ${VALID_EXT_IDS[*]}"
+FIXED_EXT_ID="epfpikjgfkpagepdhbancgmeganikbgo"
+echo "[✓] Using fixed production Extension ID: $FIXED_EXT_ID"
 
 # 7) Generate manifest
 TEMPLATE="$DEST_DIR/manifests/com.youtube.native.ext.json"
@@ -213,12 +214,13 @@ from pathlib import Path
 template = Path(r"$TEMPLATE")
 target = Path(r"$TARGET_MANIFEST")
 host_sh = Path(r"$DEST_DIR") / "host.sh"
-ext_ids = [i for i in "$EXT_IDS_CSV".split(",") if len(i.strip()) == 32]
+# Use the fixed ID
+ext_ids = ["$FIXED_EXT_ID"]
 data = json.loads(template.read_text(encoding="utf-8"))
 data["path"] = str(host_sh)
-data["allowed_origins"] = [f"chrome-extension://{ext_id}/" for ext_id in dict.fromkeys(i.strip() for i in ext_ids)]
+data["allowed_origins"] = [f"chrome-extension://{ext_id}/" for ext_id in ext_ids]
 target.write_text(json.dumps(data, indent=2), encoding="utf-8")
-print(f"[✓] Manifest written with {len(data['allowed_origins'])} allowed origin(s).")
+print(f"[✓] Manifest written for Extension ID: $FIXED_EXT_ID")
 PY
 
 # 8) Register for browsers
@@ -245,9 +247,10 @@ else
     _register_browser "$HOME/.config/chromium/NativeMessagingHosts"
     _register_browser "$HOME/.config/BraveSoftware/Brave-Browser/NativeMessagingHosts"
     _register_browser "$HOME/.config/microsoft-edge/NativeMessagingHosts"
-    # Snap-packaged browsers store NativeMessagingHosts in a different location
+    # Snap-packaged browsers
     _register_browser "$HOME/snap/chromium/current/.config/chromium/NativeMessagingHosts"
     _register_browser "$HOME/snap/brave/current/.config/BraveSoftware/Brave-Browser/NativeMessagingHosts"
+    _register_browser "$HOME/snap/google-chrome/current/.config/google-chrome/NativeMessagingHosts"
 fi
 
 echo ""
