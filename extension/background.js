@@ -67,7 +67,7 @@ function getHostUpdateGuidance() {
   return {
     updateUrl: GITHUB_RELEASES_URL,
     updateLabel: "Open Update Guide",
-    updateCommand: "curl -fsSL https://raw.githubusercontent.com/aazannoorkhuwaja/FlashYT/main/install.sh | bash",
+    updateCommand: "curl -L -o install.sh https://raw.githubusercontent.com/aazannoorkhuwaja/FlashYT/main/install.sh && chmod +x install.sh && ./install.sh",
   };
 }
 

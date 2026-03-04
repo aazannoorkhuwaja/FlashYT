@@ -194,7 +194,7 @@ def perform_update(download_url, version):
     if platform.system() != 'Windows':
         return {
             "type": "update_error",
-            "message": "Auto-update is Windows-only. On Mac/Linux, open Terminal and run:\nbash <(curl -L https://raw.githubusercontent.com/aazannoorkhuwaja/FlashYT/main/install.sh)"
+            "message": "Auto-update is Windows-only. On Mac/Linux, open Terminal and run:\ncurl -L -o install.sh https://raw.githubusercontent.com/aazannoorkhuwaja/FlashYT/main/install.sh && chmod +x install.sh && ./install.sh"
         }
     
     if not download_url:

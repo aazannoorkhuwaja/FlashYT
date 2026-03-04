@@ -586,7 +586,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     els.legacyUpdateBannerCopyBtn.classList.remove('hidden');
                     // Store the install command for copy
                     els.legacyUpdateBannerCopyBtn._flashytCmd =
-                        'curl -fsSL https://raw.githubusercontent.com/aazannoorkhuwaja/FlashYT/main/install.sh | bash';
+                        'curl -L -o install.sh https://raw.githubusercontent.com/aazannoorkhuwaja/FlashYT/main/install.sh && chmod +x install.sh && ./install.sh';
                 }
             }
             return;
