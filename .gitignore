@@ -31,3 +31,5 @@ host/.flashyt_cache/
 !.env.example
 host/.venv/
 host/dist/
+flashyt_key.pem
+test_kill.iss
