@@ -194,15 +194,6 @@ def _prefetch_with_timeout(url, timeout_s=15):
 
 def _prefetch_with_ytdlp(url, timeout_s=30):
     canonical_url = _canonicalize_youtube_url(url)
-    base_cmd = [
-        get_ytdlp_path(),
-        '--no-playlist',
-        '--ignore-config',
-        '--no-warnings',
-        '--skip-download',
-        '--dump-json',
-    ]
-
     cookie_opts = get_best_available_cookies()
     cookie_args = []
     if 'cookiefile' in cookie_opts:
@@ -215,45 +206,23 @@ def _prefetch_with_ytdlp(url, timeout_s=30):
         if browser:
             cookie_args = ['--cookies-from-browser', browser]
 
-    profiles = [
-        [],
-        ['--allow-unplayable-formats'],
-        ['--extractor-args', 'youtube:player_client=web,ios,android'],
-        ['--allow-unplayable-formats', '--extractor-args', 'youtube:player_client=web,ios,android'],
-        ['-f', 'bestvideo+bestaudio/best'],
-    ]
+    cmd = [
+        get_ytdlp_path(),
+        '--no-playlist',
+        '--ignore-config',
+        '--no-warnings',
+        '--skip-download',
+        '--dump-json',
+        '--extractor-args', 'youtube:player_client=web,ios,android'
+    ] + cookie_args + [canonical_url]
 
-    deadline = time.time() + timeout_s
-    last_error = 'Fallback prefetch failed.'
-    data = None
-    for profile in profiles:
-        remaining = deadline - time.time()
-        if remaining <= 0:
-            last_error = 'Fallback prefetch timed out.'
-            break
-        profile_timeout = max(3, min(15, int(remaining)))
-        cmd = base_cmd + profile + cookie_args + [canonical_url]
-        try:
-            proc = subprocess.run(cmd, capture_output=True, text=True, timeout=profile_timeout)
-        except Exception as exc:
-            last_error = f'Fallback prefetch exception: {exc}'
-            continue
-
-        if proc.returncode != 0 or not (proc.stdout or '').strip():
-            err = (proc.stderr or '').strip()
-            if err:
-                last_error = f'Fallback prefetch failed. {err[:300]}'
-            continue
-
-        try:
-            data = json.loads(proc.stdout)
-            break
-        except Exception as exc:
-            last_error = f'Fallback prefetch parse exception: {exc}'
-            continue
-
-    if data is None:
-        return {'error': last_error}
+    try:
+        proc = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout_s)
+        if proc.returncode != 0:
+            return {'error': f'yt-dlp failed: {(proc.stderr or "").strip()[:200]}'}
+        data = json.loads(proc.stdout)
+    except Exception as exc:
+        return {'error': f'Prefetch fallback failed: {exc}'}
 
     try:
         formats = data.get('formats', [])
@@ -314,7 +283,7 @@ def prefetch_qualities(url):
         return f'{msg} {hint}'.strip()
 
     # Stage 1: fast InnerTube (1-2s typical, but allow up to 15s for large cookie jars)
-    fast_result = _prefetch_with_timeout(url, timeout_s=15)
+    fast_result = _prefetch_with_timeout(url, timeout_s=8)
     if fast_result and not fast_result.get('error') and fast_result.get('qualities'):
         return fast_result
 
