@@ -4,7 +4,7 @@ const GITHUB_RELEASE_API = "https://api.github.com/repos/aazannoorkhuwaja/FlashY
 const GITHUB_RELEASES_URL = "https://github.com/aazannoorkhuwaja/FlashYT/releases/latest";
 const UPDATE_ALARM_NAME = "flashyt_update_check";
 const UPDATE_CHECK_INTERVAL_MIN = 180;
-const UPDATE_CACHE_MS = 15 * 60 * 1000;
+const UPDATE_CACHE_MS = 1 * 60 * 1000;
 
 const GITHUB_REPO = 'aazannoorkhuwaja/FlashYT';
 const UPDATE_CHECK_INTERVAL_HOURS = 6; // Check every 6 hours
@@ -773,7 +773,7 @@ chrome.runtime.onInstalled.addListener(() => {
   });
   scheduleUpdateChecks();
   refreshUpdateState(true);
-  setTimeout(checkForUpdates, 5000);
+  checkForUpdates();
   chrome.alarms.create('flashyt-update-check', {
     delayInMinutes: 360,        // First alarm: 6 hours from now
     periodInMinutes: 360        // Repeat every 6 hours
@@ -783,7 +783,7 @@ chrome.runtime.onInstalled.addListener(() => {
 chrome.runtime.onStartup.addListener(() => {
   scheduleUpdateChecks();
   refreshUpdateState(false);
-  setTimeout(checkForUpdates, 5000);
+  checkForUpdates();
 });
 
 chrome.alarms.onAlarm.addListener((alarm) => {
@@ -871,6 +871,11 @@ function processMessage(request, sendResponse) {
     }
     nativePort.postMessage({ type: "self_update" });
     sendResponse({ ok: true });
+    return false;
+  }
+
+  if (request.type === "RELOAD_EXTENSION") {
+    chrome.runtime.reload();
     return false;
   }
 

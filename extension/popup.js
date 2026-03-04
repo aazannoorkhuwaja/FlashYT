@@ -421,14 +421,26 @@ document.addEventListener('DOMContentLoaded', () => {
                 els.legacyUpdateBannerCopyBtn.classList.add('bg-emerald', 'text-white');
                 els.legacyUpdateBannerCopyBtn.classList.remove('surface2-bg', 'text-brand');
                 els.legacyUpdateBannerCopyBtn._isSelfUpdate = true;
+                els.legacyUpdateBannerCopyBtn._isReloadAction = false;
             } else {
                 els.legacyUpdateBannerCopyBtn.textContent = 'Copy Update Command';
                 els.legacyUpdateBannerCopyBtn.classList.remove('bg-emerald', 'text-white');
                 els.legacyUpdateBannerCopyBtn.classList.add('surface2-bg', 'text-brand');
                 els.legacyUpdateBannerCopyBtn._isSelfUpdate = false;
+                els.legacyUpdateBannerCopyBtn._isReloadAction = false;
             }
+        } else if (appUpdateAvailable && !hostNeedsUpdate) {
+            // Extension update available but host is fine (likely needs reload after update)
+            els.legacyUpdateBannerCopyBtn.classList.remove('hidden');
+            els.legacyUpdateBannerCopyBtn.textContent = 'Reload Extension ⟳';
+            els.legacyUpdateBannerCopyBtn.classList.add('bg-emerald', 'text-white');
+            els.legacyUpdateBannerCopyBtn.classList.remove('surface2-bg', 'text-brand');
+            els.legacyUpdateBannerCopyBtn._isReloadAction = true;
+            els.legacyUpdateBannerCopyBtn._isSelfUpdate = false;
         } else {
             els.legacyUpdateBannerCopyBtn.classList.add('hidden');
+            els.legacyUpdateBannerCopyBtn._isReloadAction = false;
+            els.legacyUpdateBannerCopyBtn._isSelfUpdate = false;
         }
     }
 
@@ -690,6 +702,10 @@ document.addEventListener('DOMContentLoaded', () => {
                         setTimeout(() => { renderUpdateBanner(); }, 2000);
                     }
                 });
+                return;
+            }
+            if (els.legacyUpdateBannerCopyBtn._isReloadAction) {
+                chrome.runtime.sendMessage({ type: "RELOAD_EXTENSION" });
                 return;
             }
             const cmd = els.legacyUpdateBannerCopyBtn._flashytCmd || updateCopyCommand || "";
