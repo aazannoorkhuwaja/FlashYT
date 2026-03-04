@@ -8,6 +8,11 @@ import threading
 import time
 import traceback
 
+import tempfile
+import urllib.request
+import urllib.error
+import platform
+
 from logger import log
 
 _stdout_lock = threading.Lock()
@@ -15,7 +20,7 @@ DEFAULT_DOWNLOAD_WORKERS = max(1, int(os.environ.get('FLASHYT_MAX_CONCURRENT', '
 DEFAULT_PREFETCH_WORKERS = max(1, int(os.environ.get('FLASHYT_PREFETCH_WORKERS', '2')))
 _resume_wait_lock = threading.Lock()
 _resume_waiting = set()
-HOST_VERSION = os.environ.get('FLASHYT_HOST_VERSION', '2.1.9')
+HOST_VERSION = os.environ.get('FLASHYT_HOST_VERSION', '2.2.0')
 
 
 def send_message(msg):
@@ -181,6 +186,87 @@ def download_worker(download_queue):
             download_queue.task_done()
 
 
+def perform_update(download_url, version):
+    """
+    Downloads the new installer and runs it silently.
+    Returns a dict: { "type": "update_done" } or { "type": "update_error", "message": "..." }
+    """
+    if platform.system() != 'Windows':
+        return {
+            "type": "update_error",
+            "message": "Auto-update is Windows-only. On Mac/Linux, open Terminal and run:\nbash <(curl -L https://raw.githubusercontent.com/aazannoorkhuwaja/FlashYT/main/install.sh)"
+        }
+    
+    if not download_url:
+        return {
+            "type": "update_error",
+            "message": "No installer URL found. Please download the update manually from GitHub."
+        }
+    
+    try:
+        log(f"[UPDATE] Starting update to v{version}")
+        log(f"[UPDATE] Download URL: {download_url}")
+        
+        temp_dir = tempfile.gettempdir()
+        installer_path = os.path.join(temp_dir, f'FlashYT_Update_{version}.exe')
+        
+        log(f"[UPDATE] Downloading to: {installer_path}")
+        
+        def download_progress(block_count, block_size, total_size):
+            if total_size > 0:
+                downloaded = block_count * block_size
+                percent = min(100, int(downloaded * 100 / total_size))
+                if percent % 20 == 0:
+                    log(f"[UPDATE] Download progress: {percent}%")
+        
+        opener = urllib.request.build_opener()
+        opener.addheaders = [('User-Agent', f'FlashYT/{version} auto-updater')]
+        urllib.request.install_opener(opener)
+        
+        urllib.request.urlretrieve(download_url, installer_path, reporthook=download_progress)
+        
+        if not os.path.exists(installer_path):
+            return {
+                "type": "update_error",
+                "message": "Download failed: file not found after download."
+            }
+        
+        file_size = os.path.getsize(installer_path)
+        if file_size < 100000:
+            os.remove(installer_path)
+            return {
+                "type": "update_error",
+                "message": f"Download blocked or corrupt (only {file_size} bytes). Try temporarily disabling AV and updating again, or download manually from GitHub."
+            }
+        
+        log(f"[UPDATE] Download complete: {file_size:,} bytes")
+        log(f"[UPDATE] Launching installer: {installer_path}")
+        
+        subprocess.Popen(
+            [installer_path, '/VERYSILENT', '/NORESTART', '/CLOSEAPPLICATIONS', '/RESTARTAPPLICATIONS'],
+            creationflags=subprocess.CREATE_NO_WINDOW if sys.platform == 'win32' else 0,
+            close_fds=True
+        )
+        
+        log("[UPDATE] Installer launched. Host will now exit to allow file replacement.")
+        return { "type": "update_done" }
+        
+    except urllib.error.URLError as e:
+        log(f"[UPDATE] Network error: {e}")
+        return {
+            "type": "update_error",
+            "message": f"Network error during download: {str(e)}. Check your internet connection."
+        }
+    except Exception as e:
+        log(f"[UPDATE] Unexpected error: {e}")
+        error_msg = str(e)
+        if isinstance(e, PermissionError):
+            error_msg = "Permission denied writing to temp folder. Please update manually."
+        return {
+            "type": "update_error",
+            "message": f"Update failed: {error_msg}. Please download manually from GitHub."
+        }
+
 def main():
     from downloader import cancel_video, pause_video, resume_video
     from tray import start_tray_icon
@@ -277,6 +363,15 @@ def main():
                         send_message({'type': 'self_update_progress', 'status': 'error',
                                       'message': f'Update error: {exc}'})
                 threading.Thread(target=_run_self_update, daemon=True).start()
+
+            elif action == 'update':
+                download_url = msg.get('download_url')
+                version = msg.get('version', 'unknown')
+                result = perform_update(download_url, version)
+                send_message(result)
+                if result.get('type') == 'update_done':
+                    log("[UPDATE] Exiting host process to allow installer to replace host.exe")
+                    sys.exit(0)
 
             else:
                 send_message({'type': 'error', 'message': f'Unhandled message type: {action}'})

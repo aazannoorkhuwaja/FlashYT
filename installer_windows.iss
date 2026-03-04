@@ -1,6 +1,6 @@
 [Setup]
 AppName=FlashYT
-AppVersion=2.1.9
+AppVersion=2.2.0
 AppPublisher=Aazan Noor Khuwaja
 AppPublisherURL=https://github.com/aazannoorkhuwaja/FlashYT
 DefaultDirName={autopf}\FlashYT
@@ -12,6 +12,9 @@ SolidCompression=yes
 PrivilegesRequired=lowest
 DisableWelcomePage=no
 
+[InstallDelete]
+Type: files; Name: "{app}\host.exe"
+
 [Files]
 Source: "host\dist\host.exe"; DestDir: "{app}"; Flags: ignoreversion
 Source: "vendor\yt-dlp.exe"; DestDir: "{app}"; Flags: ignoreversion
@@ -20,19 +23,30 @@ Source: "host\com.youtube.native.ext.json"; DestDir: "{app}"; Flags: ignoreversi
 Source: "scripts\dist\detect_ext.exe"; DestDir: "{tmp}"; Flags: dontcopy
 Source: "scripts\dist\detect_ext.exe"; DestDir: "{app}"; Flags: ignoreversion
 Source: "scripts\dist\register_host_windows.exe"; DestDir: "{app}"; Flags: ignoreversion
+Source: "extension\*"; DestDir: "{localappdata}\Programs\FlashYT\extension"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Icons]
 Name: "{group}\Start FlashYT"; Filename: "{app}\host.exe"; WorkingDir: "{app}"
 Name: "{group}\Uninstall FlashYT"; Filename: "{uninstallexe}"
 
+[Registry]
+; ── Chrome: Tell Chrome to load FlashYT extension from local folder ──
+Root: HKCU; Subkey: "Software\Google\Chrome\Extensions\epfpikjgfkpagepdhbancgmeganikbgo"; ValueType: string; ValueName: "path"; ValueData: "{localappdata}\Programs\FlashYT\extension"; Flags: createvalueifdoesntexist uninsdeletekey
+Root: HKCU; Subkey: "Software\Google\Chrome\Extensions\epfpikjgfkpagepdhbancgmeganikbgo"; ValueType: string; ValueName: "version"; ValueData: "2.2.0"; Flags: createvalueifdoesntexist uninsdeletekey
+
+; ── Brave: Same extension, different registry path ──
+Root: HKCU; Subkey: "Software\BraveSoftware\Brave-Browser\Extensions\epfpikjgfkpagepdhbancgmeganikbgo"; ValueType: string; ValueName: "path"; ValueData: "{localappdata}\Programs\FlashYT\extension"; Flags: createvalueifdoesntexist uninsdeletekey
+Root: HKCU; Subkey: "Software\BraveSoftware\Brave-Browser\Extensions\epfpikjgfkpagepdhbancgmeganikbgo"; ValueType: string; ValueName: "version"; ValueData: "2.2.0"; Flags: createvalueifdoesntexist uninsdeletekey
+
+; ── Edge: Same extension, different registry path ──
+Root: HKCU; Subkey: "Software\Microsoft\Edge\Extensions\epfpikjgfkpagepdhbancgmeganikbgo"; ValueType: string; ValueName: "path"; ValueData: "{localappdata}\Programs\FlashYT\extension"; Flags: createvalueifdoesntexist uninsdeletekey
+Root: HKCU; Subkey: "Software\Microsoft\Edge\Extensions\epfpikjgfkpagepdhbancgmeganikbgo"; ValueType: string; ValueName: "version"; ValueData: "2.2.0"; Flags: createvalueifdoesntexist uninsdeletekey
+
 [Run]
-; Step 1 + 2: Handle extension detection via Code section before registering
-; Step 3: Registration happens silently below
-Filename: "{app}\register_host_windows.exe"; Parameters: """{app}"" ""{code:GetExtensionIDs}"""; Flags: runhidden runasoriginaluser waituntilterminated; Description: "Registering Native Host Connection"
-; Step 4: Scheduled silent update task 
+; Registration happens silently below
+Filename: "{app}\register_host_windows.exe"; Parameters: """{app}"" ""epfpikjgfkpagepdhbancgmeganikbgo"""; Flags: runhidden runasoriginaluser waituntilterminated; Description: "Registering Native Host Connection"
+; Scheduled silent update task 
 Filename: "schtasks.exe"; Parameters: "/create /tn ""FlashYT-Update"" /tr ""{app}\yt-dlp.exe -U"" /sc weekly /d MON /st 10:00 /f"; Flags: runhidden runasoriginaluser waituntilterminated; Description: "Creating Update Scheduler"
-; Step 5: Start immediately
-Filename: "{app}\host.exe"; Flags: nowait postinstall runasoriginaluser; Description: "Start FlashYT Native Host"
 
 [UninstallRun]
 ; Kill process gracefully if running
@@ -43,170 +57,98 @@ Filename: "schtasks.exe"; Parameters: "/delete /tn ""FlashYT-Update"" /f"; Flags
 Filename: "{cmd}"; Parameters: "/c rmdir /s /q ""{userappdata}\YouTubeNativeExt"""; Flags: runhidden waituntilterminated
 
 [Code]
-var
-  UserExtensionIDs: String;
-  ExtensionDetectionFailed: Boolean;
-  IDInputPage: TInputQueryWizardPage;
 
-function IsValidExtensionIDsCSV(const Value: String): Boolean;
+function PrepareToInstall(var NeedsRestart: Boolean): String;
 var
-  Work, Token: String;
-  PosComma, I: Integer;
+  ResultCode: Integer;
 begin
-  Result := False;
-  Work := Trim(Value);
-  if Work = '' then
-    Exit;
-
-  while Work <> '' do
-  begin
-    PosComma := Pos(',', Work);
-    if PosComma > 0 then
-    begin
-      Token := Trim(Copy(Work, 1, PosComma - 1));
-      Work := Trim(Copy(Work, PosComma + 1, MaxInt));
-    end
-    else
-    begin
-      Token := Trim(Work);
-      Work := '';
-    end;
-
-    if Length(Token) <> 32 then
-      Exit;
-
-    for I := 1 to 32 do
-    begin
-      if not ((Token[I] >= 'a') and (Token[I] <= 'p')) then
-        Exit;
-    end;
-  end;
-
-  Result := True;
+  // Kill any running FlashYT host process before installation
+  // This prevents "MoveFile failed; code 5: Access is denied" on update/reinstall
+  Exec('taskkill.exe', '/F /IM host.exe /T', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
+  // ResultCode 0 = process killed, 128 = process not found (both are fine)
+  // Sleep 1 second to ensure Windows fully releases the file lock
+  Sleep(1000);
+  Result := ''; // Empty string = no error, proceed with installation
 end;
 
-{ Utility to execute detect_ext.exe silently and read stdout }
-function RunDetectExtAndGetStdout(var StdOutStr: String): Boolean;
+procedure LaunchHostSafely();
 var
-  TmpOutFile, TmpExeFile: String;
+  HostPath: String;
   ResultCode: Integer;
-  Lines: TArrayOfString;
 begin
-  Result := False;
-  StdOutStr := '';
-  TmpOutFile := ExpandConstant('{tmp}\detect_out.txt');
-  TmpExeFile := ExpandConstant('{tmp}\detect_ext.exe');
-  
-  { Extract detect_ext.exe early purely for this Code step before main installation }
-  try
-    ExtractTemporaryFile('detect_ext.exe');
-  except
-    { If it fails to extract (e.g. missing from [Files]), abort early }
-    Exit;
-  end;
-  
-  if Exec(ExpandConstant('{cmd}'), '/c ""' + TmpExeFile + '"" --all-csv > ""' + TmpOutFile + '""', '', SW_HIDE, ewWaitUntilTerminated, ResultCode) then
+  HostPath := ExpandConstant('{localappdata}\Programs\FlashYT\host.exe');
+  if FileExists(HostPath) then
   begin
-    { detect_ext.exe returns 0 if found, 1 if missing }
-    if ResultCode = 0 then
+    Exec(HostPath, '', '', SW_HIDE, ewNoWait, ResultCode);
+  end
+  else
+  begin
+    MsgBox(
+      'FlashYT installed but could not start automatically.' + #13#10 +
+      'Please restart your computer, or go to:' + #13#10 +
+      ExpandConstant('{localappdata}\Programs\FlashYT\') + #13#10 +
+      'and double-click host.exe to start it.' + #13#10#10 +
+      'If this problem persists, please reinstall FlashYT.',
+      mbInformation, MB_OK
+    );
+  end;
+end;
+
+procedure EnableChromeDeveloperMode();
+var
+  PrefsPath: String;
+  PrefsContent: String;
+begin
+  // Standard Chrome path
+  PrefsPath := ExpandConstant('{localappdata}\Google\Chrome\User Data\Default\Preferences');
+  if FileExists(PrefsPath) then
+  begin
+    if LoadStringFromFile(PrefsPath, PrefsContent) then
     begin
-      if LoadStringsFromFile(TmpOutFile, Lines) then
+      if StringChangeEx(PrefsContent, '"developer_mode":false', '"developer_mode":true', True) > 0 then
       begin
-        if GetArrayLength(Lines) > 0 then
-        begin
-          StdOutStr := Trim(Lines[0]);
-          if IsValidExtensionIDsCSV(StdOutStr) then
-            Result := True;
-        end;
+        SaveStringToFile(PrefsPath, PrefsContent, False);
       end;
     end;
   end;
   
-  DeleteFile(TmpOutFile);
+  // Brave browser path
+  PrefsPath := ExpandConstant('{localappdata}\BraveSoftware\Brave-Browser\User Data\Default\Preferences');
+  if FileExists(PrefsPath) then
+  begin
+    if LoadStringFromFile(PrefsPath, PrefsContent) then
+    begin
+      StringChangeEx(PrefsContent, '"developer_mode":false', '"developer_mode":true', True);
+      SaveStringToFile(PrefsPath, PrefsContent, False);
+    end;
+  end;
+  
+  // Edge browser path
+  PrefsPath := ExpandConstant('{localappdata}\Microsoft\Edge\User Data\Default\Preferences');
+  if FileExists(PrefsPath) then
+  begin
+    if LoadStringFromFile(PrefsPath, PrefsContent) then
+    begin
+      StringChangeEx(PrefsContent, '"developer_mode":false', '"developer_mode":true', True);
+      SaveStringToFile(PrefsPath, PrefsContent, False);
+    end;
+  end;
+end;
+
+procedure CurStepChanged(CurStep: TSetupStep);
+begin
+  if CurStep = ssPostInstall then
+  begin
+    EnableChromeDeveloperMode();
+    LaunchHostSafely();
+  end;
 end;
 
 procedure InitializeWizard;
 begin
-  { Create a manual ID entry page that appears after Select Directory if auto-detection fails }
-  IDInputPage := CreateInputQueryPage(wpSelectDir,
-    'FlashYT Extension Configuration', 
-    'The FlashYT extension was not found in your browser.',
-    'Please load the extension in Chrome (Developer Mode) first, then paste its 32-character ID below.'#13#10 +
-    'If you don''t have it yet, you can leave the default and fix it later in the extension settings.');
-
-  IDInputPage.Add('FlashYT Extension ID:', False);
-  IDInputPage.Values[0] := 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'; { Default fallback }
-end;
-
-function ShouldSkipPage(PageID: Integer): Boolean;
-begin
-  Result := False;
-  { Skip the manual ID page if auto-detection already succeeded }
-  if (PageID = IDInputPage.ID) and (not ExtensionDetectionFailed) then
-    Result := True;
-end;
-
-function NextButtonClick(CurPageID: Integer): Boolean;
-var
-  DetectResult: String;
-begin
-  Result := True;
-
-  if CurPageID = wpSelectDir then
-  begin
-    { Attempt auto-detection early at the directory selection stage }
-    if RunDetectExtAndGetStdout(DetectResult) then
-    begin
-      UserExtensionIDs := DetectResult;
-      ExtensionDetectionFailed := False;
-    end
-    else
-    begin
-      ExtensionDetectionFailed := True;
-    end;
-  end;
-
-  if CurPageID = IDInputPage.ID then
-  begin
-    { Validate manual entry if user is on that page }
-    if not IsValidExtensionIDsCSV(IDInputPage.Values[0]) then
-    begin
-      MsgBox('Invalid Extension ID. It must be exactly 32 characters (a-p).', mbError, MB_OK);
-      Result := False;
-    end;
-  end;
-end;
-
-function GetExtensionIDs(Param: String): String;
-begin
-  if not ExtensionDetectionFailed and (UserExtensionIDs <> '') then
-    Result := UserExtensionIDs
-  else
-    Result := IDInputPage.Values[0];
-end;
-
-procedure CurStepChanged(CurStep: TSetupStep);
-var
-  URL: String;
-  ErrorCode: Integer;
-begin
-  if CurStep = ssInstall then
-  begin
-    { Kill host.exe before files are extracted to prevent "Access is denied" errors }
-    Exec(ExpandConstant('{cmd}'), '/c taskkill /f /im host.exe', '', SW_HIDE, ewWaitUntilTerminated, ErrorCode);
-  end;
-
-  if CurStep = ssDone then
-  begin
-    URL := 'https://github.com/aazannoorkhuwaja/FlashYT#step-1--load-the-extension';
-    if MsgBox(
-      'FlashYT installed successfully!'#13#10#13#10 +
-      'Next: reload the FlashYT extension in Chrome/Brave/Edge.'#13#10 +
-      'Would you like to open the setup guide?',
-      mbInformation, MB_YESNO
-    ) = idYes then
-    begin
-      ShellExec('open', URL, '', '', SW_SHOWNORMAL, ewNoWait, ErrorCode);
-    end;
-  end;
+  WizardForm.FinishedLabel.Caption :=
+    '✅ FlashYT is installed!' + #13#10 + #13#10 +
+    'One last step: Please close Chrome completely and reopen it.' + #13#10 +
+    'FlashYT will appear in your extensions automatically.' + #13#10 + #13#10 +
+    'Then visit any YouTube video and click the ⚡ Download button!';
 end;

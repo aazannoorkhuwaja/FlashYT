@@ -374,61 +374,61 @@ document.addEventListener('DOMContentLoaded', () => {
 
         hostStatusText: document.getElementById('host-status-text'),
         hostStatusDot: document.getElementById('host-status-dot'),
-        updateBanner: document.getElementById('update-banner'),
-        updateBannerTitle: document.getElementById('update-banner-title'),
-        updateBannerText: document.getElementById('update-banner-text'),
-        updateBannerOpenBtn: document.getElementById('update-banner-open-btn'),
-        updateBannerCopyBtn: document.getElementById('update-banner-copy-btn')
+        legacyUpdateBanner: document.getElementById('legacy-update-banner'),
+        legacyUpdateBannerTitle: document.getElementById('legacy-update-banner-title'),
+        legacyUpdateBannerText: document.getElementById('legacy-update-banner-text'),
+        legacyUpdateBannerOpenBtn: document.getElementById('legacy-update-banner-open-btn'),
+        legacyUpdateBannerCopyBtn: document.getElementById('legacy-update-banner-copy-btn')
     };
 
     function renderUpdateBanner() {
-        if (!els.updateBanner) return;
+        if (!els.legacyUpdateBanner) return;
 
         const hostNeedsUpdate = !!(hostStatusInfo && hostStatusInfo.update_required);
         const appUpdateAvailable = !!(releaseInfo && releaseInfo.updateAvailable);
         if (!hostNeedsUpdate && !appUpdateAvailable) {
-            els.updateBanner.classList.add('hidden');
+            els.legacyUpdateBanner.classList.add('hidden');
             return;
         }
 
-        els.updateBanner.classList.remove('hidden');
+        els.legacyUpdateBanner.classList.remove('hidden');
         if (hostNeedsUpdate) {
             const installed = hostStatusInfo.host_version || "unknown";
             const required = hostStatusInfo.min_required_host_version || "latest";
             updateOpenUrl = hostStatusInfo.updateUrl || updateOpenUrl;
             updateCopyCommand = hostStatusInfo.updateCommand || null;
 
-            els.updateBanner.style.background = 'rgba(239,68,68,0.08)';
-            els.updateBanner.style.borderColor = 'rgba(239,68,68,0.35)';
-            els.updateBannerTitle.textContent = 'Host Update Required';
-            els.updateBannerText.textContent = `Installed host ${installed} is outdated. Required ${required}+ for reliable downloads.`;
-            els.updateBannerOpenBtn.textContent = hostStatusInfo.updateLabel || 'Update Host';
+            els.legacyUpdateBanner.style.background = 'rgba(239,68,68,0.08)';
+            els.legacyUpdateBanner.style.borderColor = 'rgba(239,68,68,0.35)';
+            els.legacyUpdateBannerTitle.textContent = 'Host Update Required';
+            els.legacyUpdateBannerText.textContent = `Installed host ${installed} is outdated. Required ${required}+ for reliable downloads.`;
+            els.legacyUpdateBannerOpenBtn.textContent = hostStatusInfo.updateLabel || 'Update Host';
         } else {
             updateOpenUrl = (releaseInfo && releaseInfo.releaseUrl) || updateOpenUrl;
             updateCopyCommand = null;
-            els.updateBanner.style.background = 'rgba(255,0,0,0.08)';
-            els.updateBanner.style.borderColor = 'rgba(255,0,0,0.28)';
-            els.updateBannerTitle.textContent = 'FlashYT Update Available';
-            els.updateBannerText.textContent = `A newer FlashYT release ${releaseInfo.latestVersion || ''} is available.`;
-            els.updateBannerOpenBtn.textContent = 'Open Latest Release';
+            els.legacyUpdateBanner.style.background = 'rgba(255,0,0,0.08)';
+            els.legacyUpdateBanner.style.borderColor = 'rgba(255,0,0,0.28)';
+            els.legacyUpdateBannerTitle.textContent = 'FlashYT Update Available';
+            els.legacyUpdateBannerText.textContent = `A newer FlashYT release ${releaseInfo.latestVersion || ''} is available.`;
+            els.legacyUpdateBannerOpenBtn.textContent = 'Open Latest Release';
         }
 
         if (updateCopyCommand) {
-            els.updateBannerCopyBtn.classList.remove('hidden');
+            els.legacyUpdateBannerCopyBtn.classList.remove('hidden');
             // On Linux/Mac where we have an updateCommand, we can do one-click update
             if (updateCopyCommand.includes('install.sh')) {
-                els.updateBannerCopyBtn.textContent = 'Update Now ▶';
-                els.updateBannerCopyBtn.classList.add('bg-emerald', 'text-white');
-                els.updateBannerCopyBtn.classList.remove('surface2-bg', 'text-brand');
-                els.updateBannerCopyBtn._isSelfUpdate = true;
+                els.legacyUpdateBannerCopyBtn.textContent = 'Update Now ▶';
+                els.legacyUpdateBannerCopyBtn.classList.add('bg-emerald', 'text-white');
+                els.legacyUpdateBannerCopyBtn.classList.remove('surface2-bg', 'text-brand');
+                els.legacyUpdateBannerCopyBtn._isSelfUpdate = true;
             } else {
-                els.updateBannerCopyBtn.textContent = 'Copy Update Command';
-                els.updateBannerCopyBtn.classList.remove('bg-emerald', 'text-white');
-                els.updateBannerCopyBtn.classList.add('surface2-bg', 'text-brand');
-                els.updateBannerCopyBtn._isSelfUpdate = false;
+                els.legacyUpdateBannerCopyBtn.textContent = 'Copy Update Command';
+                els.legacyUpdateBannerCopyBtn.classList.remove('bg-emerald', 'text-white');
+                els.legacyUpdateBannerCopyBtn.classList.add('surface2-bg', 'text-brand');
+                els.legacyUpdateBannerCopyBtn._isSelfUpdate = false;
             }
         } else {
-            els.updateBannerCopyBtn.classList.add('hidden');
+            els.legacyUpdateBannerCopyBtn.classList.add('hidden');
         }
     }
 
@@ -573,19 +573,19 @@ document.addEventListener('DOMContentLoaded', () => {
             els.hostStatusText.className = "text-red";
             if (els.hostStatusDot) els.hostStatusDot.className = "w-2 h-2 rounded-full bg-red";
             // Show a banner pointing to the install guide
-            if (els.updateBanner) {
-                els.updateBanner.classList.remove('hidden');
-                els.updateBanner.style.background = 'rgba(239,68,68,0.08)';
-                els.updateBanner.style.borderColor = 'rgba(239,68,68,0.35)';
-                if (els.updateBannerTitle) els.updateBannerTitle.textContent = 'Native Host Not Installed';
-                if (els.updateBannerText) els.updateBannerText.textContent =
+            if (els.legacyUpdateBanner) {
+                els.legacyUpdateBanner.classList.remove('hidden');
+                els.legacyUpdateBanner.style.background = 'rgba(239,68,68,0.08)';
+                els.legacyUpdateBanner.style.borderColor = 'rgba(239,68,68,0.35)';
+                if (els.legacyUpdateBannerTitle) els.legacyUpdateBannerTitle.textContent = 'Native Host Not Installed';
+                if (els.legacyUpdateBannerText) els.legacyUpdateBannerText.textContent =
                     'Run the one-line installer, then reload this extension.';
-                if (els.updateBannerOpenBtn) els.updateBannerOpenBtn.textContent = 'Open Install Guide';
-                if (els.updateBannerCopyBtn) {
-                    els.updateBannerCopyBtn.textContent = 'Copy Install Command';
-                    els.updateBannerCopyBtn.classList.remove('hidden');
+                if (els.legacyUpdateBannerOpenBtn) els.legacyUpdateBannerOpenBtn.textContent = 'Open Install Guide';
+                if (els.legacyUpdateBannerCopyBtn) {
+                    els.legacyUpdateBannerCopyBtn.textContent = 'Copy Install Command';
+                    els.legacyUpdateBannerCopyBtn.classList.remove('hidden');
                     // Store the install command for copy
-                    els.updateBannerCopyBtn._flashytCmd =
+                    els.legacyUpdateBannerCopyBtn._flashytCmd =
                         'curl -fsSL https://raw.githubusercontent.com/aazannoorkhuwaja/FlashYT/main/install.sh | bash';
                 }
             }
@@ -654,51 +654,162 @@ document.addEventListener('DOMContentLoaded', () => {
             setHostIndicator('not_installed');
         }
         if (message.type === "self_update_progress") {
-            if (!els.updateBanner) return;
-            els.updateBanner.classList.remove('hidden');
-            els.updateBannerTitle.textContent = 'Updating FlashYT...';
-            els.updateBannerText.textContent = message.message || 'Please wait while we update your native host.';
-            if (els.updateBannerCopyBtn) {
-                els.updateBannerCopyBtn.disabled = message.status === 'started';
+            if (!els.legacyUpdateBanner) return;
+            els.legacyUpdateBanner.classList.remove('hidden');
+            els.legacyUpdateBannerTitle.textContent = 'Updating FlashYT...';
+            els.legacyUpdateBannerText.textContent = message.message || 'Please wait while we update your native host.';
+            if (els.legacyUpdateBannerCopyBtn) {
+                els.legacyUpdateBannerCopyBtn.disabled = message.status === 'started';
                 if (message.status === 'started') {
-                    els.updateBannerCopyBtn.textContent = 'Updating...';
+                    els.legacyUpdateBannerCopyBtn.textContent = 'Updating...';
                 } else if (message.status === 'done') {
-                    els.updateBannerCopyBtn.textContent = 'Done!';
+                    els.legacyUpdateBannerCopyBtn.textContent = 'Done!';
                 } else if (message.status === 'error') {
-                    els.updateBannerCopyBtn.textContent = 'Retry Update';
-                    els.updateBannerCopyBtn.disabled = false;
+                    els.legacyUpdateBannerCopyBtn.textContent = 'Retry Update';
+                    els.legacyUpdateBannerCopyBtn.disabled = false;
                 }
             }
         }
     });
 
-    if (els.updateBannerOpenBtn) {
-        els.updateBannerOpenBtn.addEventListener('click', () => {
+    if (els.legacyUpdateBannerOpenBtn) {
+        els.legacyUpdateBannerOpenBtn.addEventListener('click', () => {
             chrome.runtime.sendMessage({ type: "OPEN_UPDATE_LINK", url: updateOpenUrl }, () => chrome.runtime.lastError);
         });
     }
 
-    if (els.updateBannerCopyBtn) {
-        els.updateBannerCopyBtn.addEventListener('click', async () => {
-            if (els.updateBannerCopyBtn._isSelfUpdate) {
-                els.updateBannerCopyBtn.disabled = true;
-                els.updateBannerCopyBtn.textContent = 'Starting...';
+    if (els.legacyUpdateBannerCopyBtn) {
+        els.legacyUpdateBannerCopyBtn.addEventListener('click', async () => {
+            if (els.legacyUpdateBannerCopyBtn._isSelfUpdate) {
+                els.legacyUpdateBannerCopyBtn.disabled = true;
+                els.legacyUpdateBannerCopyBtn.textContent = 'Starting...';
                 chrome.runtime.sendMessage({ type: "SELF_UPDATE" }, (res) => {
                     if (chrome.runtime.lastError || !res?.ok) {
-                        els.updateBannerCopyBtn.disabled = false;
-                        els.updateBannerCopyBtn.textContent = 'Update Failed';
+                        els.legacyUpdateBannerCopyBtn.disabled = false;
+                        els.legacyUpdateBannerCopyBtn.textContent = 'Update Failed';
                         setTimeout(() => { renderUpdateBanner(); }, 2000);
                     }
                 });
                 return;
             }
-            const cmd = els.updateBannerCopyBtn._flashytCmd || updateCopyCommand || "";
+            const cmd = els.legacyUpdateBannerCopyBtn._flashytCmd || updateCopyCommand || "";
             const ok = await copyText(cmd);
-            const old = els.updateBannerCopyBtn.textContent;
-            els.updateBannerCopyBtn.textContent = ok ? "Copied!" : "Copy Failed";
-            setTimeout(() => { els.updateBannerCopyBtn.textContent = old; }, 1400);
+            const old = els.legacyUpdateBannerCopyBtn.textContent;
+            els.legacyUpdateBannerCopyBtn.textContent = ok ? "Copied!" : "Copy Failed";
+            setTimeout(() => { els.legacyUpdateBannerCopyBtn.textContent = old; }, 1400);
         });
     }
+
+    // ── Update Banner Logic ──────────────────────────────────────
+    async function initUpdateBanner() {
+        const stored = await chrome.storage.local.get([
+            'update_available',
+            'update_version',
+            'update_release_url'
+        ]);
+
+        if (!stored.update_available) {
+            // No update — keep banner hidden, nothing to do
+            return;
+        }
+
+        // Show the banner
+        const banner = document.getElementById('update-banner');
+        if (banner) banner.style.display = 'block';
+
+        // Fill in the version label
+        const versionLabel = document.getElementById('update-version-label');
+        if (versionLabel && stored.update_version) {
+            versionLabel.textContent = 'v' + stored.update_version;
+        }
+
+        // Set the manual download fallback link
+        const manualLink = document.getElementById('update-manual-link');
+        if (manualLink && stored.update_release_url) {
+            manualLink.href = stored.update_release_url;
+        }
+
+        // Wire up the Update button
+        const updateBtn = document.getElementById('update-btn');
+        if (updateBtn) {
+            updateBtn.addEventListener('click', handleUpdateClick);
+        }
+    }
+
+    async function handleUpdateClick() {
+        // Disable button immediately to prevent double-clicks
+        const updateBtn = document.getElementById('update-btn');
+        if (updateBtn) {
+            updateBtn.disabled = true;
+            updateBtn.textContent = 'Starting...';
+        }
+
+        // Switch to "installing" state
+        showUpdateState('installing');
+
+        try {
+            // Send update command to background.js, which forwards to host.exe
+            const response = await chrome.runtime.sendMessage({ type: 'TRIGGER_UPDATE' });
+
+            if (response && response.type === 'update_done') {
+                // Success — show done state
+                showUpdateState('done');
+                // Clear the update flag from storage so banner doesn't show on next open
+                await chrome.storage.local.set({ update_available: false });
+            } else if (response && response.type === 'update_error') {
+                // Host reported an error
+                showUpdateState('error', response.message || 'Update failed. Please download manually.');
+            } else if (!response) {
+                // No response — host may have exited. Treat as success.
+                showUpdateState('done');
+                await chrome.storage.local.set({ update_available: false });
+            } else {
+                showUpdateState('error', 'Unexpected response. Please download manually.');
+            }
+        } catch (error) {
+            // chrome.runtime.sendMessage throws if background disconnects
+            if (error.message && error.message.includes('disconnected')) {
+                showUpdateState('done');
+                await chrome.storage.local.set({ update_available: false });
+            } else {
+                showUpdateState('error', 'Could not reach update service. Please download manually.');
+            }
+        }
+    }
+
+    function showUpdateState(state, errorMessage) {
+        // Hide all states first
+        const states = ['available', 'installing', 'done', 'error'];
+        states.forEach(s => {
+            const el = document.getElementById('update-' + s);
+            if (el) el.style.display = 'none';
+        });
+
+        // Show the requested state
+        const target = document.getElementById('update-' + state);
+        if (target) {
+            target.style.display = 'flex';
+        }
+
+        // Set error message if provided
+        if (state === 'error' && errorMessage) {
+            const errorText = document.getElementById('update-error-text');
+            if (errorText) {
+                errorText.textContent = errorMessage;
+            }
+        }
+    }
+    // ── End Update Banner Logic ──────────────────────────────────
+
+    chrome.storage.local.get(['banner_dismissed_notice_shown'], function (result) {
+        if (!result.banner_dismissed_notice_shown) {
+            const notice = document.getElementById('banner-notice');
+            if (notice) notice.style.display = 'block';
+            chrome.storage.local.set({ banner_dismissed_notice_shown: true });
+        }
+    });
+
+    initUpdateBanner();
 
     // Initial check
     fetchDownloads();

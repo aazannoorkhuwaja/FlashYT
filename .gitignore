@@ -29,3 +29,5 @@ host/.flashyt_cache/
 .env
 .env.*
 !.env.example
+host/.venv/
+host/dist/

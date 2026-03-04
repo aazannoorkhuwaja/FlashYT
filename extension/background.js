@@ -6,6 +6,9 @@ const UPDATE_ALARM_NAME = "flashyt_update_check";
 const UPDATE_CHECK_INTERVAL_MIN = 180;
 const UPDATE_CACHE_MS = 15 * 60 * 1000;
 
+const GITHUB_REPO = 'aazannoorkhuwaja/FlashYT';
+const UPDATE_CHECK_INTERVAL_HOURS = 6; // Check every 6 hours
+
 let nativePort = null;
 let hostConnected = false;
 let keepAliveTimer = null;
@@ -135,6 +138,96 @@ async function refreshUpdateState(force = false) {
   })();
 
   return updateFetchInFlight;
+}
+
+async function checkForUpdates() {
+  try {
+    // Get current version from manifest
+    const manifest = chrome.runtime.getManifest();
+    const currentVersion = manifest.version; // e.g. "2.2.0"
+
+    // Fetch latest release from GitHub API
+    // Use a timeout so slow networks don't hang the extension
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000); // 10s timeout
+
+    const response = await fetch(
+      `https://api.github.com/repos/${GITHUB_REPO}/releases/latest`,
+      {
+        signal: controller.signal,
+        headers: { 'Accept': 'application/vnd.github.v3+json' }
+      }
+    );
+    clearTimeout(timeoutId);
+
+    if (!response.ok) {
+      if (response.status === 403) {
+        console.log('[FlashYT] GitHub API rate limited — will retry later');
+        return;
+      }
+      // GitHub API returned an error — silently ignore, try again next interval
+      console.log('[FlashYT] Update check failed: GitHub API returned', response.status);
+      return;
+    }
+
+    const release = await response.json();
+
+    // Skip pre-release versions (tags containing -, e.g. v2.2.0-beta)
+    if (release.prerelease || release.tag_name.includes('-')) {
+      console.log('[FlashYT] Latest is a pre-release, skipping:', release.tag_name);
+      return;
+    }
+
+    // tag_name is like "v2.2.0" — strip the "v" prefix
+    const latestVersion = release.tag_name.replace(/^v/, ''); // "2.2.0"
+
+    // Compare versions using numeric comparison (not string comparison)
+    // String comparison would make "2.10.0" < "2.9.0" which is wrong
+    if (isNewerVersion(latestVersion, currentVersion)) {
+      // Find the Windows installer download URL from release assets
+      const installerAsset = release.assets.find(asset =>
+        asset.name.endsWith('.exe') && asset.name.toLowerCase().includes('installer')
+      );
+
+      await chrome.storage.local.set({
+        update_available: true,
+        update_version: latestVersion,
+        update_download_url: installerAsset ? installerAsset.browser_download_url : null,
+        update_release_url: release.html_url,
+        update_checked_at: Date.now()
+      });
+
+      console.log(`[FlashYT] Update available: v${currentVersion} → v${latestVersion}`);
+    } else {
+      // Up to date — clear any stale update flag
+      await chrome.storage.local.set({
+        update_available: false,
+        update_checked_at: Date.now()
+      });
+      console.log(`[FlashYT] Up to date: v${currentVersion}`);
+    }
+  } catch (error) {
+    if (error.name === 'AbortError') {
+      console.log('[FlashYT] Update check timed out — will retry later');
+    } else {
+      console.log('[FlashYT] Update check error (non-fatal):', error.message);
+    }
+    // Never crash or throw — update check failure is always silent
+  }
+}
+
+function isNewerVersion(latest, current) {
+  // Parse "2.10.3" into [2, 10, 3] and compare element by element
+  const latestParts = latest.split('.').map(Number);
+  const currentParts = current.split('.').map(Number);
+
+  for (let i = 0; i < Math.max(latestParts.length, currentParts.length); i++) {
+    const l = latestParts[i] || 0;
+    const c = currentParts[i] || 0;
+    if (l > c) return true;
+    if (l < c) return false;
+  }
+  return false; // Equal versions = not newer
 }
 
 function connectToNativeHost() {
@@ -680,15 +773,24 @@ chrome.runtime.onInstalled.addListener(() => {
   });
   scheduleUpdateChecks();
   refreshUpdateState(true);
+  setTimeout(checkForUpdates, 5000);
+  chrome.alarms.create('flashyt-update-check', {
+    delayInMinutes: 360,        // First alarm: 6 hours from now
+    periodInMinutes: 360        // Repeat every 6 hours
+  });
 });
 
 chrome.runtime.onStartup.addListener(() => {
   scheduleUpdateChecks();
   refreshUpdateState(false);
+  setTimeout(checkForUpdates, 5000);
 });
 
 chrome.alarms.onAlarm.addListener((alarm) => {
   if (alarm.name === UPDATE_ALARM_NAME) refreshUpdateState(true);
+  if (alarm.name === 'flashyt-update-check') {
+    checkForUpdates();
+  }
 });
 
 chrome.contextMenus.onClicked.addListener((info) => {
@@ -770,6 +872,37 @@ function processMessage(request, sendResponse) {
     nativePort.postMessage({ type: "self_update" });
     sendResponse({ ok: true });
     return false;
+  }
+
+  if (request.type === 'TRIGGER_UPDATE') {
+    chrome.storage.local.get(['update_download_url', 'update_version'], (stored) => {
+      if (!nativePort || !hostConnected) {
+        sendResponse({ type: 'update_error', message: "Host not connected" });
+        return;
+      }
+
+      const payload = {
+        type: 'update',
+        download_url: stored.update_download_url,
+        version: stored.update_version
+      };
+
+      // To capture the response from the native host for this specific message, 
+      // we need to set up a one-time listener or rely on the main listener.
+      // Since native host messaging is async and there's no native callback,
+      // we'll listen for a short time for the 'update_done'/'update_error' response
+      // and send it back to the popup.
+      const updateResponseListener = (response) => {
+        if (response.type === 'update_done' || response.type === 'update_error') {
+          nativePort.onMessage.removeListener(updateResponseListener);
+          sendResponse(response);
+        }
+      };
+
+      nativePort.onMessage.addListener(updateResponseListener);
+      nativePort.postMessage(payload);
+    });
+    return true; // Keep message channel open for async response
   }
 
   if (request.type === "PREFETCH") {

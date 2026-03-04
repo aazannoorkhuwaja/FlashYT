@@ -1,6 +1,25 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# Detect if running non-interactively (piped from curl)
+INTERACTIVE=true
+if [ ! -t 0 ]; then
+  INTERACTIVE=false
+  echo ""
+  echo "⚠️  FlashYT detected it is running non-interactively (curl pipe mode)."
+  echo ""
+  echo "   This mode cannot prompt you for your Extension ID."
+  echo "   Please run install.sh directly instead:"
+  echo ""
+  echo "   curl -L -o install.sh https://raw.githubusercontent.com/aazannoorkhuwaja/FlashYT/main/install.sh"
+  echo "   chmod +x install.sh"
+  echo "   bash install.sh"
+  echo ""
+  echo "   This will allow the installer to ask for your Extension ID properly."
+  echo ""
+  exit 1
+fi
+
 echo "=================================================="
 echo " FlashYT - Mac/Linux Setup"
 echo "=================================================="
@@ -143,32 +162,38 @@ if [[ -z "${EXT_IDS_CSV:-}" ]]; then
     echo ""
     # Prompt for manual input (only when running interactively)
     if [[ -t 0 ]]; then
-        read -rp "  Paste the extension ID here (or press Enter to skip and re-run later): " MANUAL_ID
-        MANUAL_ID="$(echo "${MANUAL_ID:-}" | tr -d '[:space:]')"
-        if [[ ${#MANUAL_ID} -eq 32 ]]; then
-            EXT_IDS_CSV="$MANUAL_ID"
-            echo "  [✓] Using extension ID: $MANUAL_ID"
-        else
-            echo "  [X] Invalid or empty ID. Run the installer again after loading the extension."
-            exit 1
-        fi
+        while true; do
+            echo ""
+            echo "Paste your FlashYT Extension ID (32 characters, letters only):"
+            echo "(Find it at chrome://extensions under the FlashYT card)"
+            read -r EXTENSION_ID
+            
+            # Strip any whitespace the user may have accidentally included
+            EXTENSION_ID=$(echo "$EXTENSION_ID" | tr -d '[:space:]')
+            
+            # Validate: must be exactly 32 lowercase alphabetic characters
+            if echo "$EXTENSION_ID" | grep -qE '^[a-z]{32}$'; then
+                echo "✓ Extension ID accepted: $EXTENSION_ID"
+                EXT_IDS_CSV="$EXTENSION_ID"
+                break
+            else
+                echo ""
+                echo "❌ That doesn't look right. Extension IDs are exactly 32 lowercase letters."
+                echo "   Example: abcdefghijklmnopabcdefghijklmnop"
+                echo "   Please try again."
+            fi
+        done
     else
         echo "  [X] Running non-interactively. Load the extension first, then re-run: bash install.sh"
         exit 1
     fi
 fi
 
-IFS=',' read -r -a EXT_IDS <<< "$EXT_IDS_CSV"
-VALID_EXT_IDS=()
-for id in "${EXT_IDS[@]}"; do
-    id="$(echo "$id" | tr -d '[:space:]')"
-    if [[ ${#id} -eq 32 ]]; then
-        VALID_EXT_IDS+=("$id")
-    fi
-done
+# Always use the fixed extension ID instead of auto-discovered ones since we have a defined RSA keypair now.
+VALID_EXT_IDS=("epfpikjgfkpagepdhbancgmeganikbgo")
 
 if [[ ${#VALID_EXT_IDS[@]} -eq 0 ]]; then
-    echo "[X] No valid 32-character extension ID found."
+    echo "  [X] Could not find or validate any FlashYT extension IDs. Please ensure it's loaded as Unpacked."
     exit 1
 fi
 

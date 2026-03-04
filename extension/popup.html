@@ -10,6 +10,40 @@
 </head>
 
 <body class="theme-dark">
+    <!-- DEVELOPER MODE BANNER NOTICE -->
+    <div id="banner-notice" style="display:none; background:#2a2a2a; border-left:3px solid #f59e0b; padding:10px 12px; margin-bottom:10px; border-radius:4px; font-size:12px; color:#e2e8f0;">
+      <strong style="color:#fbbf24;">Chrome notice:</strong> You may see a bar at the top of Chrome saying "Extensions in developer mode." Click the <strong>✕</strong> to dismiss it — it will never appear again. This is normal for apps installed outside the Chrome Web Store.
+    </div>
+
+    <!-- ── UPDATE BANNER ── hidden by default, shown by popup.js ── -->
+    <div id="update-banner" style="display:none;">
+        <!-- State 1: Update available, waiting for user click -->
+        <div id="update-available" class="update-state">
+            <span class="update-icon">⚡</span>
+            <span class="update-text">
+                FlashYT <span id="update-version-label"></span> is available
+            </span>
+            <button id="update-btn" class="update-action-btn">Update now</button>
+        </div>
+        <!-- State 2: Downloading / installing -->
+        <div id="update-installing" class="update-state" style="display:none;">
+            <span class="update-spinner">⟳</span>
+            <span class="update-text">Updating in background... (may take a minute on slow connections)</span>
+        </div>
+        <!-- State 3: Done -->
+        <div id="update-done" class="update-state" style="display:none;">
+            <span class="update-icon">✓</span>
+            <span class="update-text">Update installed! Restart Chrome to finish.</span>
+        </div>
+        <!-- State 4: Error -->
+        <div id="update-error" class="update-state" style="display:none;">
+            <span class="update-icon">⚠</span>
+            <span class="update-text" id="update-error-text">Update failed.</span>
+            <a id="update-manual-link" href="#" class="update-action-link" target="_blank">Download manually</a>
+        </div>
+    </div>
+    <!-- ── END UPDATE BANNER ── -->
+
     <!-- Header -->
     <div class="header relative z-40 border-b">
         <div class="max-w-2xl mx-auto px-4 py-3 flex items-center justify-between">
@@ -97,15 +131,15 @@
 
     <!-- Content -->
     <div class="max-w-2xl mx-auto px-4 py-5 content-area">
-        <div id="update-banner" class="rounded-xl p-3 mb-3 border hidden">
-            <div id="update-banner-title" class="font-bold text-sm text-brand mb-1">Update Available</div>
-            <div id="update-banner-text" class="text-xs text-sub mb-2"></div>
+        <div id="legacy-update-banner" class="rounded-xl p-3 mb-3 border hidden">
+            <div id="legacy-update-banner-title" class="font-bold text-sm text-brand mb-1">Update Available</div>
+            <div id="legacy-update-banner-text" class="text-xs text-sub mb-2"></div>
             <div class="flex items-center gap-2">
-                <button id="update-banner-open-btn"
+                <button id="legacy-update-banner-open-btn"
                     class="bg-red text-white px-3 py-1 rounded-lg text-xs font-bold border hover-opacity-90 transition-all">
                     Open Update
                 </button>
-                <button id="update-banner-copy-btn"
+                <button id="legacy-update-banner-copy-btn"
                     class="surface2-bg border2 text-brand px-3 py-1 rounded-lg text-xs font-bold hover-opacity-90 transition-all hidden">
                     Copy Update Command
                 </button>
