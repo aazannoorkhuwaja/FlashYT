@@ -43,7 +43,7 @@ jobs:
           python-version: '3.11'
           
       - name: Install Python Tools
-        run: pip install pyinstaller pystray Pillow setuptools
+        run: pip install pyinstaller pystray Pillow setuptools pywin32
 
       - name: Download yt-dlp.exe
         run: |
