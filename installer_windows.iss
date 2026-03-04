@@ -97,7 +97,8 @@ end;
 procedure EnableChromeDeveloperMode();
 var
   PrefsPath: String;
-  PrefsContent: String;
+  PrefsContent: AnsiString;
+  S: String;
 begin
   // Standard Chrome path
   PrefsPath := ExpandConstant('{localappdata}\Google\Chrome\User Data\Default\Preferences');
@@ -105,9 +106,10 @@ begin
   begin
     if LoadStringFromFile(PrefsPath, PrefsContent) then
     begin
-      if StringChangeEx(PrefsContent, '"developer_mode":false', '"developer_mode":true', True) > 0 then
+      S := String(PrefsContent);
+      if StringChangeEx(S, '"developer_mode":false', '"developer_mode":true', True) > 0 then
       begin
-        SaveStringToFile(PrefsPath, PrefsContent, False);
+        SaveStringToFile(PrefsPath, AnsiString(S), False);
       end;
     end;
   end;
@@ -118,9 +120,10 @@ begin
   begin
     if LoadStringFromFile(PrefsPath, PrefsContent) then
     begin
-      if StringChangeEx(PrefsContent, '"developer_mode":false', '"developer_mode":true', True) > 0 then
+      S := String(PrefsContent);
+      if StringChangeEx(S, '"developer_mode":false', '"developer_mode":true', True) > 0 then
       begin
-        SaveStringToFile(PrefsPath, PrefsContent, False);
+        SaveStringToFile(PrefsPath, AnsiString(S), False);
       end;
     end;
   end;
@@ -131,9 +134,10 @@ begin
   begin
     if LoadStringFromFile(PrefsPath, PrefsContent) then
     begin
-      if StringChangeEx(PrefsContent, '"developer_mode":false', '"developer_mode":true', True) > 0 then
+      S := String(PrefsContent);
+      if StringChangeEx(S, '"developer_mode":false', '"developer_mode":true', True) > 0 then
       begin
-        SaveStringToFile(PrefsPath, PrefsContent, False);
+        SaveStringToFile(PrefsPath, AnsiString(S), False);
       end;
     end;
   end;
