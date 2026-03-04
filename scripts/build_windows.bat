@@ -26,9 +26,7 @@ pyinstaller --clean --onefile --noconsole --name host ^
     --hidden-import=PIL.Image ^
     --hidden-import=PIL.ImageDraw ^
     --hidden-import=PIL.ImageFont ^
-    --log-level WARN ^
     host\host.py
-echo PyInstaller host.exe exit code: %ERRORLEVEL%
 if %ERRORLEVEL% neq 0 (
     echo [ERROR] Failed to compile host.exe
     exit /b 1
@@ -36,7 +34,7 @@ if %ERRORLEVEL% neq 0 (
 
 echo.
 echo [3/4] Building detect_ext.exe and register_host_windows.exe (Installer Utils)...
-pyinstaller --clean --onefile --console --noupx --name detect_ext --distpath scripts\dist --workpath scripts\build scripts\detect_extension_id.py
+pyinstaller --clean --onefile --console --noupx --name detect_ext --paths scripts --distpath scripts\dist --workpath scripts\build scripts\detect_extension_id.py
 if %ERRORLEVEL% neq 0 (
     echo [ERROR] Failed to compile detect_ext.exe
     exit /b 1
