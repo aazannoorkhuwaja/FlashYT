@@ -3,7 +3,7 @@
 > **The easiest, most reliable free YouTube downloader — right in your browser.**
 > No cloud. No accounts. No limits. One click and it's yours — in exactly the quality you want.
 
-![FlashYT Icon](extension/icons/icon128.png)
+![FlashYT Icon](https://raw.githubusercontent.com/aazannoorkhuwaja/FlashYT/main/extension/icons/icon128.png)
 
 <a href="https://github.com/aazannoorkhuwaja/FlashYT/releases/tag/v2.2.0">
   <img src="https://img.shields.io/github/v/release/aazannoorkhuwaja/FlashYT?label=version&color=FF0000" alt="Version 2.2.0">
@@ -50,14 +50,14 @@ Works perfectly on Windows, Mac, and Linux!
 **Step 2: Add it to your Browser**
 - Open Chrome, Brave, or Edge and go to your extensions settings (type `chrome://extensions` in the address bar).
 - Turn on **Developer mode** in the top right corner.
-  ![Visual Guide to Developer Mode](https://developer.chrome.com/docs/extensions/mv3/getstarted/development-basics/image/chrome-extensions-developer-mode-toggle.png)
+  ![Visual Guide to Developer Mode](docs/images/developer-mode.png)
 - Click the **Load unpacked** button.
 - Find your extracted folder, go inside it, and select the folder named `extension`.
 - FlashYT is now in your browser! Note the long string of letters next to "ID:" under FlashYT — **copy that ID**, you will need it in the next step.
 
 **Step 3: Run the Setup Installer**
 - Head over to the [FlashYT Releases](https://github.com/aazannoorkhuwaja/FlashYT/releases/latest) page.
-- Download the **`FlashYT_Installer_v2.1.9.exe`** file and run it. *(This tiny installer automatically handles all the complicated background tech so you don't have to!)*
+- Download the **`FlashYT_Installer_v2.2.0.exe`** file and run it. *(This tiny installer automatically handles all the complicated background tech so you don't have to!)*
 - If Windows says "Windows protected your PC", just click **"More info" → "Run anyway"**.
 - Proceed through the installation. At the end, it will ask for your Extension ID. **Paste the ID you copied from Step 2**.
 - Finish the installation.
@@ -74,7 +74,7 @@ You're done! 🎉
 - *(Note: On Mac and Linux, you do not need to copy the Extension ID. It will automatically detect it!)*
 
 **Step 2: Run the Setup Command**
-Don't let the code scare you! Just open the app called **Terminal** on your Mac or Linux computer, paste this exact line, and press Enter:
+Don't let the code scare you! Just open the app called **Terminal** on your Mac or Linux computer, paste these exact line, and press Enter:
 
 ```bash
 curl -O https://raw.githubusercontent.com/aazannoorkhuwaja/FlashYT/main/install.sh
@@ -146,7 +146,9 @@ When reporting a bug, please include the last 20 lines of this file.
 
 **Linux / macOS:**
 ```bash
-curl -fsSL https://raw.githubusercontent.com/aazannoorkhuwaja/FlashYT/main/uninstall.sh | bash
+curl -O https://raw.githubusercontent.com/aazannoorkhuwaja/FlashYT/main/uninstall.sh
+chmod +x uninstall.sh
+./uninstall.sh
 ```
 Then go to `chrome://extensions` and remove FlashYT.
 
@@ -179,7 +181,7 @@ python -m pytest tests/ -v
 
 ## 📄 License
 
-MIT — free to use, share, and modify.
+MIT — free to use, share, and modify. See [LICENSE](LICENSE) for details.
 
 ---
 
