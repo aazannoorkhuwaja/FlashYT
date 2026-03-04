@@ -3,6 +3,7 @@
 ## [2.2.2] - 2026-03-04
 ### Fixed
 - **Emergency Patch**: Successfully landed all missing surgical fixes in `install.sh` and `uninstall.sh` (Python 3.8 check, Snap Chrome path, Fixed ID registration).
+- **Prefetch Restoration**: Reverted the quality fetching logic to the snappy v2.1.9 flow, eliminating the "Still fetching formats" delay while keeping v2.2.2 stability features.
 - **Cleanup**: Verified absolute removal of any potential merge conflict remnants.
 
 ## [2.2.1] - 2026-03-04
