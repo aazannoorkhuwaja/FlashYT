@@ -59,9 +59,50 @@ jobs:
       - name: Install Inno Setup 6
         run: choco install innosetup --yes --no-progress
 
-      - name: Build Executable Binaries (PyInstaller)
+      - name: Install Python Requirements
+        run: pip install -r host/requirements.txt pyinstaller pywin32
+
+      - name: Build host.exe (PyInstaller)
         shell: pwsh
-        run: cmd /c scripts\build_windows.bat
+        run: |
+          pyinstaller --clean --onefile --noconsole --name host `
+            --noupx `
+            --paths host `
+            --distpath host/dist `
+            --workpath host/build `
+            --hidden-import=pystray._win32 `
+            --hidden-import=pystray._base `
+            --hidden-import=PIL.Image `
+            --collect-all pystray `
+            host/host.py
+          if (-not $?) { exit 1 }
+
+      - name: Build detect_ext.exe (PyInstaller)
+        shell: pwsh
+        run: |
+          pyinstaller --clean --onefile --console --noupx --name detect_ext `
+            --paths scripts `
+            --distpath scripts/dist `
+            --workpath scripts/build `
+            scripts/detect_extension_id.py
+          if (-not $?) { exit 1 }
+
+      - name: Build register_host_windows.exe (PyInstaller)
+        shell: pwsh
+        run: |
+          pyinstaller --clean --onefile --console --noupx --name register_host_windows `
+            --distpath scripts/dist `
+            --workpath scripts/build `
+            scripts/register_host_windows.py
+          if (-not $?) { exit 1 }
+
+      - name: Compile Inno Setup Installer
+        shell: pwsh
+        run: |
+          $iscc = "C:\Program Files (x86)\Inno Setup 6\iscc.exe"
+          if (-not (Test-Path $iscc)) { $iscc = "C:\Program Files\Inno Setup 6\iscc.exe" }
+          & $iscc installer_windows.iss
+          if (-not $?) { exit 1 }
 
       - name: Sign Windows Binaries (optional)
         if: ${{ env.HAS_CERT == 'true' }}
