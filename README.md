@@ -18,11 +18,12 @@
 FlashYT is built to **just work** — for everyone, on every computer, in every browser.
 
 - **⚡ One-click download** — A friendly Download button appears directly under YouTube videos! No copying and pasting links.
-- **🎯 Exact quality over promises** — If you select 1080p, you get exactly 1080p.
+- **🎯 Exact quality over promises** — Get exactly what you pick, from **1080p to 4K/8K Ultra HD** and high-bitrate Audio.
 - **✅ Quality badge** — Every completed download shows you the actual resolution you received.
 - **📊 Live progress** — See real-time speeds, percentages, and time remaining right in your browser corner.
 - **⏸️ Full control** — Pause, Resume, or Cancel your downloads at any time.
 - **🔄 Auto-healing** — Behind the scenes, we automatically handle YouTube's tricky updates so your video always downloads.
+- **🖥️ System Tray** — A lightweight tray icon (on Windows) gives you quick access to logs and status.
 - **🔒 100% private** — Videos save straight to your computer. No servers. No tracking. No data collection.
 - **🆓 Free & open source** — Yours to use forever!
 
@@ -88,26 +89,26 @@ That's it! It automatically sets up all the background magic. Go to your extensi
 
 ## 🎬 How to Use
 
-1. Open any YouTube video!
+1. **Open any YouTube video!**
 2. Click the friendly red **⚡ Download** button right beneath the video.
 3. Pick your quality — **1080p**, **4K**, or **audio only**.
-4. Your download starts instantly. Click the FlashYT icon in your browser to watch it download!
+4. Your download starts instantly. Click the **FlashYT icon** (top right of browser) to watch it download!
 
-> **Friendly Tip:** Sign into YouTube first! Being logged into your account lets FlashYT grab the highest 4K and HD qualities without YouTube blocking them.
+> [!TIP]
+> **Windows Users:** Check your System Tray (near the clock) for the FlashYT icon! You can right-click it to check connectivity or view logs.
 
 ---
 
 ## 🔄 How to Update
 
-When a new version comes out, you'll see a red "Update Available" banner in FlashYT.
+FlashYT now features **Auto-Update Notifications**! 🚀
 
-To update, just follow this one foolproof rule:
-1. Download the new `Source code (zip)` from our releases page.
-2. Extract it, and **copy/paste the new files directly over your existing FlashYT folder**. 
-3. When your computer asks, choose **"Replace All"**.
-4. IMPORTANT: **Never delete your old folder first!** Always overwrite the files.
+1. When a new version is available, a **red "Update Available" banner** will appear inside the FlashYT extension popup.
+2. Simply click the **Update** button (or follow the link provided).
+3. Download the new `Source code (zip)` and **extract it directly over your existing FlashYT folder** (always choose "Replace All").
+4. Click the **🔄 Reload icon** in your browser's extension settings.
 
-Then, just click the **🔄 Reload icon** in your extensions page and completely restart your browser. The red banner will vanish!
+That's it! No need to run the installer again unless explicitly asked.
 
 ---
 
