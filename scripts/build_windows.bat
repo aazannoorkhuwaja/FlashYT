@@ -19,6 +19,7 @@ echo.
 echo [2/4] Building host.exe (Native Messaging Target)...
 pyinstaller --clean --onefile --noconsole --name host ^
     --noupx ^
+    --paths host ^
     --distpath host\dist ^
     --workpath host\build ^
     --hidden-import=pystray._win32 ^
