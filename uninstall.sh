@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
-# FlashYT Uninstaller — removes native host, manifests, and state files.
-# Run with: bash uninstall.sh
+# FlashYT Uninstaller — removes native host and manifests.
 set -euo pipefail
 
 # Detect if running non-interactively (piped from curl)
@@ -20,7 +19,6 @@ fi
 echo "=================================================="
 echo " FlashYT - Uninstaller"
 echo "=================================================="
-echo ""
 
 OS_NAME="$(uname -s)"
 IS_MAC=0
@@ -28,22 +26,13 @@ IS_MAC=0
 
 # 1) Remove host installation directory
 DEST_DIR="$HOME/.local/share/YouTubeNativeDownloader"
-if [[ -d "$DEST_DIR" ]]; then
-    rm -rf "$DEST_DIR"
-    echo "[✓] Removed host files: $DEST_DIR"
-else
-    echo "[~] Host dir not found (already removed?): $DEST_DIR"
-fi
+rm -rf "$DEST_DIR"
+echo "[✓] Removed host files."
 
-# 2) Remove native messaging manifests from all browsers
-
+# 2) Remove native messaging manifests
 _remove_manifest() {
     local dir="$1"
-    local manifest="$dir/com.youtube.native.ext.json"
-    if [[ -f "$manifest" ]]; then
-        rm -f "$manifest"
-        echo "[✓] Removed manifest from: $dir"
-    fi
+    rm -f "$dir/com.youtube.native.ext.json"
 }
 
 if [[ $IS_MAC -eq 1 ]]; then
@@ -58,19 +47,13 @@ else
     _remove_manifest "$HOME/.config/microsoft-edge/NativeMessagingHosts"
     _remove_manifest "$HOME/snap/chromium/current/.config/chromium/NativeMessagingHosts"
     _remove_manifest "$HOME/snap/brave/current/.config/BraveSoftware/Brave-Browser/NativeMessagingHosts"
+    _remove_manifest "$HOME/snap/google-chrome/current/.config/google-chrome/NativeMessagingHosts"
 fi
 
-# 3) Remove log and config files
-LOG_DIR="$HOME/.config/YouTubeNativeExt"
-if [[ -d "$LOG_DIR" ]]; then
-    rm -rf "$LOG_DIR"
-    echo "[✓] Removed log directory: $LOG_DIR"
-fi
+# 3) Remove log directory
+rm -rf "$HOME/.config/YouTubeNativeExt"
+echo "[✓] Removed logs and config."
 
-echo ""
 echo "=================================================="
-echo " ✓ FlashYT native host fully uninstalled."
-echo "=================================================="
-echo " To finish: go to chrome://extensions and"
-echo " click 'Remove' on the FlashYT extension."
+echo " ✓ FlashYT uninstalled successfully."
 echo "=================================================="
