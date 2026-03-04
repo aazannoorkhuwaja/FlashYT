@@ -1,12 +1,11 @@
 # Changelog
 
-## [2.2.1] - 2026-03-04
+## [2.2.2] - 2026-03-04
 ### Fixed
-- **MacOS/Linux**: Fixed "dead code" in `install.sh` that was ignoring the fixed Extension ID.
-- **MacOS/Linux**: Added Python 3.8+ version check to prevent cryptic pip failures.
-- **Linux**: Added Snap-packaged Google Chrome support path.
-- **Documentation**: Removed merge conflict markers and aligned instructions with v2.2.0 features.
-- **Documentation**: Replaced hardcoded version badge with dynamic GitHub Release badge.
+- **Emergency Patch**: Successfully landed all missing surgical fixes in `install.sh` and `uninstall.sh` (Python 3.8 check, Snap Chrome path, Fixed ID registration).
+- **Cleanup**: Verified absolute removal of any potential merge conflict remnants.
+
+## [2.2.1] - 2026-03-04
 
 ## [2.2.0] - 2026-03-04 - The "One-Click" Update
 ### Added

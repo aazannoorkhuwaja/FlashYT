@@ -1,4 +1,4 @@
-# FlashYT ⚡
+# FlashYT ⚡ v2.2.2
 
 > **The easiest, most reliable free YouTube downloader — right in your browser.**
 > No cloud. No accounts. No limits. One click and it's yours — in exactly the quality you want.
