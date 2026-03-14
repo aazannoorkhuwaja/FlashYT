@@ -1,6 +1,6 @@
 [Setup]
 AppName=FlashYT
-AppVersion=2.2.0
+AppVersion=2.2.3
 AppPublisher=Aazan Noor Khuwaja
 AppPublisherURL=https://github.com/aazannoorkhuwaja/FlashYT
 DefaultDirName={autopf}\FlashYT
@@ -32,15 +32,15 @@ Name: "{group}\Uninstall FlashYT"; Filename: "{uninstallexe}"
 [Registry]
 ; ── Chrome: Tell Chrome to load FlashYT extension from local folder ──
 Root: HKCU; Subkey: "Software\Google\Chrome\Extensions\epfpikjgfkpagepdhbancgmeganikbgo"; ValueType: string; ValueName: "path"; ValueData: "{localappdata}\Programs\FlashYT\extension"; Flags: createvalueifdoesntexist uninsdeletekey
-Root: HKCU; Subkey: "Software\Google\Chrome\Extensions\epfpikjgfkpagepdhbancgmeganikbgo"; ValueType: string; ValueName: "version"; ValueData: "2.2.0"; Flags: createvalueifdoesntexist uninsdeletekey
+Root: HKCU; Subkey: "Software\Google\Chrome\Extensions\epfpikjgfkpagepdhbancgmeganikbgo"; ValueType: string; ValueName: "version"; ValueData: "2.2.3"; Flags: createvalueifdoesntexist uninsdeletekey
 
 ; ── Brave: Same extension, different registry path ──
 Root: HKCU; Subkey: "Software\BraveSoftware\Brave-Browser\Extensions\epfpikjgfkpagepdhbancgmeganikbgo"; ValueType: string; ValueName: "path"; ValueData: "{localappdata}\Programs\FlashYT\extension"; Flags: createvalueifdoesntexist uninsdeletekey
-Root: HKCU; Subkey: "Software\BraveSoftware\Brave-Browser\Extensions\epfpikjgfkpagepdhbancgmeganikbgo"; ValueType: string; ValueName: "version"; ValueData: "2.2.0"; Flags: createvalueifdoesntexist uninsdeletekey
+Root: HKCU; Subkey: "Software\BraveSoftware\Brave-Browser\Extensions\epfpikjgfkpagepdhbancgmeganikbgo"; ValueType: string; ValueName: "version"; ValueData: "2.2.3"; Flags: createvalueifdoesntexist uninsdeletekey
 
 ; ── Edge: Same extension, different registry path ──
 Root: HKCU; Subkey: "Software\Microsoft\Edge\Extensions\epfpikjgfkpagepdhbancgmeganikbgo"; ValueType: string; ValueName: "path"; ValueData: "{localappdata}\Programs\FlashYT\extension"; Flags: createvalueifdoesntexist uninsdeletekey
-Root: HKCU; Subkey: "Software\Microsoft\Edge\Extensions\epfpikjgfkpagepdhbancgmeganikbgo"; ValueType: string; ValueName: "version"; ValueData: "2.2.0"; Flags: createvalueifdoesntexist uninsdeletekey
+Root: HKCU; Subkey: "Software\Microsoft\Edge\Extensions\epfpikjgfkpagepdhbancgmeganikbgo"; ValueType: string; ValueName: "version"; ValueData: "2.2.3"; Flags: createvalueifdoesntexist uninsdeletekey
 
 [Run]
 ; Registration happens silently below
@@ -76,7 +76,9 @@ var
   HostPath: String;
   ResultCode: Integer;
 begin
-  HostPath := ExpandConstant('{localappdata}\Programs\FlashYT\host.exe');
+  // {app} is the actual install directory (e.g. C:\Program Files\FlashYT)
+  // This MUST match where the [Files] section installs host.exe (DestDir: "{app}")
+  HostPath := ExpandConstant('{app}\host.exe');
   if FileExists(HostPath) then
   begin
     Exec(HostPath, '', '', SW_HIDE, ewNoWait, ResultCode);
@@ -84,70 +86,23 @@ begin
   else
   begin
     MsgBox(
-      'FlashYT installed but could not start automatically.' + #13#10 +
-      'Please restart your computer, or go to:' + #13#10 +
-      ExpandConstant('{localappdata}\Programs\FlashYT\') + #13#10 +
-      'and double-click host.exe to start it.' + #13#10#10 +
+      'FlashYT installed but host.exe was not found at:' + #13#10 +
+      HostPath + #13#10#10 +
+      'Please restart your computer, or double-click host.exe from the install folder.' + #13#10 +
       'If this problem persists, please reinstall FlashYT.',
       mbInformation, MB_OK
     );
   end;
 end;
 
-procedure EnableChromeDeveloperMode();
-var
-  PrefsPath: String;
-  PrefsContent: AnsiString;
-  S: String;
-begin
-  // Standard Chrome path
-  PrefsPath := ExpandConstant('{localappdata}\Google\Chrome\User Data\Default\Preferences');
-  if FileExists(PrefsPath) then
-  begin
-    if LoadStringFromFile(PrefsPath, PrefsContent) then
-    begin
-      S := String(PrefsContent);
-      if StringChangeEx(S, '"developer_mode":false', '"developer_mode":true', True) > 0 then
-      begin
-        SaveStringToFile(PrefsPath, AnsiString(S), False);
-      end;
-    end;
-  end;
-  
-  // Brave browser path
-  PrefsPath := ExpandConstant('{localappdata}\BraveSoftware\Brave-Browser\User Data\Default\Preferences');
-  if FileExists(PrefsPath) then
-  begin
-    if LoadStringFromFile(PrefsPath, PrefsContent) then
-    begin
-      S := String(PrefsContent);
-      if StringChangeEx(S, '"developer_mode":false', '"developer_mode":true', True) > 0 then
-      begin
-        SaveStringToFile(PrefsPath, AnsiString(S), False);
-      end;
-    end;
-  end;
-  
-  // Edge browser path
-  PrefsPath := ExpandConstant('{localappdata}\Microsoft\Edge\User Data\Default\Preferences');
-  if FileExists(PrefsPath) then
-  begin
-    if LoadStringFromFile(PrefsPath, PrefsContent) then
-    begin
-      S := String(PrefsContent);
-      if StringChangeEx(S, '"developer_mode":false', '"developer_mode":true', True) > 0 then
-      begin
-        SaveStringToFile(PrefsPath, AnsiString(S), False);
-      end;
-    end;
-  end;
-end;
+// EnableChromeDeveloperMode() was removed — editing Chrome Preferences at install
+// time is unreliable because Chrome overwrites the file when it exits.
+// Developer mode is now handled via clear user instructions in the finish page.
 
 procedure CurStepChanged(CurStep: TSetupStep);
 begin
   if CurStep = ssPostInstall then
   begin
-    EnableChromeDeveloperMode();
     LaunchHostSafely();
   end;
 end;
@@ -156,7 +111,14 @@ procedure InitializeWizard;
 begin
   WizardForm.FinishedLabel.Caption :=
     '✅ FlashYT is installed!' + #13#10 + #13#10 +
-    'One last step: Please close Chrome completely and reopen it.' + #13#10 +
-    'FlashYT will appear in your extensions automatically.' + #13#10 + #13#10 +
-    'Then visit any YouTube video and click the ⚡ Download button!';
+    'STEP 1 — Close your browser completely (all windows), then reopen it.' + #13#10 +
+    'The FlashYT extension should appear automatically.' + #13#10 + #13#10 +
+    '— If the extension does NOT appear —' + #13#10 +
+    '1. Open chrome://extensions in your browser' + #13#10 +
+    '2. Turn ON "Developer mode" (top-right toggle)' + #13#10 +
+    '3. Click "Load unpacked"' + #13#10 +
+    '4. Select this folder: ' + ExpandConstant('{localappdata}\Programs\FlashYT\extension') + #13#10 +
+    '5. Reload any YouTube page' + #13#10 + #13#10 +
+    'Then visit any YouTube video and click the ⚡ Download button!' + #13#10 +
+    'Need help? github.com/aazannoorkhuwaja/FlashYT/issues';
 end;

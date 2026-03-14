@@ -1,4 +1,4 @@
-# ⚡ FlashYT — Installation Guide (v2.2.2)
+# ⚡ FlashYT — Installation Guide (v2.2.3)
 
 > **Download YouTube videos in any quality, directly from your browser. No accounts. No cloud. Completely free.**
 
@@ -67,14 +67,9 @@ Go back to `chrome://extensions` and click the **🔄 reload icon** on FlashYT. 
 
 ---
 
-## 🎬 Proof of Work
+## 🎬 See It in Action
 
-| Feature | Preview |
-|---|---|
-| **One-Click Button** | ![Download Button](docs/images/yt_download_button.png) |
-| **Quality Selector** | ![Quality Selector](docs/images/quality_selector.png) |
-| **Pin for Quick Access** | ![Extension Pin](docs/images/extension_pin.png) |
-| **Active Queue** | ![Active Queue](docs/images/active_queue.png) |
+![FlashYT Demo](docs/images/flashyt_demo.gif)
 
 ---
 
@@ -92,6 +87,26 @@ Re-run the installer/script and reload the browser extension.
 
 ### Download Stuck at 0%
 YouTube update detected! Simply re-run the `install.sh` or `setup.exe` to get the latest fix instantly.
+
+### 🪟 Extension doesn't appear after Windows install
+
+This can happen if your browser didn't pick up the registry-based auto-load. Fix it in 5 steps:
+
+1. Open your browser and go to `chrome://extensions`
+2. Turn on **Developer mode** (toggle in the top-right corner)
+3. Click **Load unpacked**
+4. Navigate to and select: `C:\Users\<YourName>\AppData\Local\Programs\FlashYT\extension`
+   *(Replace `<YourName>` with your Windows username)*
+5. Reload any YouTube page — the ⚡ button will appear!
+
+> **Tip:** After loading it unpacked, right-click the puzzle icon in Chrome → **Pin** FlashYT for easy access.
+
+### 🪟 Extension loads but downloads don't work (Windows)
+
+The native host may not have started. Check:
+1. Press `Ctrl+Shift+Esc` → look for `host.exe` in Task Manager
+2. If it's not there, navigate to your FlashYT install folder (usually `C:\Program Files\FlashYT\`) and double-click `host.exe`
+3. If issues persist, reinstall using the latest `FlashYT-setup.exe` from the [Releases page](https://github.com/aazannoorkhuwaja/FlashYT/releases/latest)
 
 ---
 
