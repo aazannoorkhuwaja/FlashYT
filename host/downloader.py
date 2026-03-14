@@ -31,7 +31,13 @@ def _terminate_process_tree(proc, timeout_s=3):
 
     try:
         if sys.platform == 'win32':
-            proc.terminate()
+            # taskkill /T kills the entire process tree (yt-dlp + ffmpeg children).
+            # proc.terminate() only kills yt-dlp, leaving ffmpeg orphaned on Windows.
+            import subprocess as _sp
+            _sp.run(
+                ['taskkill', '/F', '/T', '/PID', str(proc.pid)],
+                capture_output=True,
+            )
         else:
             try:
                 os.killpg(os.getpgid(proc.pid), signal.SIGTERM)
@@ -54,6 +60,7 @@ def _terminate_process_tree(proc, timeout_s=3):
     except Exception as exc:
         log.warning('[Downloader] terminate process tree failed: %s', exc)
         return False
+
 
 
 def get_ytdlp_path():

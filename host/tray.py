@@ -9,7 +9,7 @@ from urllib.request import Request, urlopen
 
 from logger import log
 
-HOST_VERSION = os.environ.get('FLASHYT_HOST_VERSION', '2.0.4')
+HOST_VERSION = os.environ.get('FLASHYT_HOST_VERSION', '2.2.3')
 RELEASE_API_URL = "https://api.github.com/repos/aazannoorkhuwaja/FlashYT/releases/latest"
 RELEASES_URL = "https://github.com/aazannoorkhuwaja/FlashYT/releases/latest"
 UPDATE_CHECK_INTERVAL_S = 6 * 60 * 60

@@ -20,7 +20,7 @@ DEFAULT_DOWNLOAD_WORKERS = max(1, int(os.environ.get('FLASHYT_MAX_CONCURRENT', '
 DEFAULT_PREFETCH_WORKERS = max(1, int(os.environ.get('FLASHYT_PREFETCH_WORKERS', '2')))
 _resume_wait_lock = threading.Lock()
 _resume_waiting = set()
-HOST_VERSION = os.environ.get('FLASHYT_HOST_VERSION', '2.2.0')
+HOST_VERSION = os.environ.get('FLASHYT_HOST_VERSION', '2.2.3')
 
 
 def send_message(msg):
@@ -204,20 +204,20 @@ def perform_update(download_url, version):
         }
     
     try:
-        log(f"[UPDATE] Starting update to v{version}")
-        log(f"[UPDATE] Download URL: {download_url}")
+        log.info(f"[UPDATE] Starting update to v{version}")
+        log.info(f"[UPDATE] Download URL: {download_url}")
         
         temp_dir = tempfile.gettempdir()
         installer_path = os.path.join(temp_dir, f'FlashYT_Update_{version}.exe')
         
-        log(f"[UPDATE] Downloading to: {installer_path}")
+        log.info(f"[UPDATE] Downloading to: {installer_path}")
         
         def download_progress(block_count, block_size, total_size):
             if total_size > 0:
                 downloaded = block_count * block_size
                 percent = min(100, int(downloaded * 100 / total_size))
                 if percent % 20 == 0:
-                    log(f"[UPDATE] Download progress: {percent}%")
+                    log.debug(f"[UPDATE] Download progress: {percent}%")
         
         opener = urllib.request.build_opener()
         opener.addheaders = [('User-Agent', f'FlashYT/{version} auto-updater')]
@@ -239,8 +239,8 @@ def perform_update(download_url, version):
                 "message": f"Download blocked or corrupt (only {file_size} bytes). Try temporarily disabling AV and updating again, or download manually from GitHub."
             }
         
-        log(f"[UPDATE] Download complete: {file_size:,} bytes")
-        log(f"[UPDATE] Launching installer: {installer_path}")
+        log.info(f"[UPDATE] Download complete: {file_size:,} bytes")
+        log.info(f"[UPDATE] Launching installer: {installer_path}")
         
         subprocess.Popen(
             [installer_path, '/VERYSILENT', '/NORESTART', '/CLOSEAPPLICATIONS', '/RESTARTAPPLICATIONS'],
@@ -248,7 +248,7 @@ def perform_update(download_url, version):
             close_fds=True
         )
         
-        log("[UPDATE] Installer launched. Host will now exit to allow file replacement.")
+        log.info("[UPDATE] Installer launched. Host will now exit to allow file replacement.")
         return { "type": "update_done" }
         
     except urllib.error.URLError as e:
@@ -370,7 +370,7 @@ def main():
                 result = perform_update(download_url, version)
                 send_message(result)
                 if result.get('type') == 'update_done':
-                    log("[UPDATE] Exiting host process to allow installer to replace host.exe")
+                    log.info("[UPDATE] Exiting host process to allow installer to replace host.exe")
                     sys.exit(0)
 
             else:

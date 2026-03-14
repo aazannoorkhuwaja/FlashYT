@@ -42,6 +42,10 @@ Root: HKCU; Subkey: "Software\BraveSoftware\Brave-Browser\Extensions\epfpikjgfkp
 Root: HKCU; Subkey: "Software\Microsoft\Edge\Extensions\epfpikjgfkpagepdhbancgmeganikbgo"; ValueType: string; ValueName: "path"; ValueData: "{localappdata}\Programs\FlashYT\extension"; Flags: createvalueifdoesntexist uninsdeletekey
 Root: HKCU; Subkey: "Software\Microsoft\Edge\Extensions\epfpikjgfkpagepdhbancgmeganikbgo"; ValueType: string; ValueName: "version"; ValueData: "2.2.3"; Flags: createvalueifdoesntexist uninsdeletekey
 
+; ── Auto-start host.exe on Windows login ──
+; Without this, host.exe dies on reboot and the extension loses its connection.
+Root: HKCU; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run"; ValueType: string; ValueName: "FlashYT"; ValueData: """{app}\host.exe"""; Flags: uninsdeletevalue
+
 [Run]
 ; Registration happens silently below
 Filename: "{app}\register_host_windows.exe"; Parameters: """{app}"" ""epfpikjgfkpagepdhbancgmeganikbgo"""; Flags: runhidden runasoriginaluser waituntilterminated; Description: "Registering Native Host Connection"
@@ -49,12 +53,16 @@ Filename: "{app}\register_host_windows.exe"; Parameters: """{app}"" ""epfpikjgfk
 Filename: "schtasks.exe"; Parameters: "/create /tn ""FlashYT-Update"" /tr ""{app}\yt-dlp.exe -U"" /sc weekly /d MON /st 10:00 /f"; Flags: runhidden runasoriginaluser waituntilterminated; Description: "Creating Update Scheduler"
 
 [UninstallRun]
-; Kill process gracefully if running
-Filename: "taskkill.exe"; Parameters: "/f /im host.exe"; Flags: runhidden waituntilterminated
+; Kill process gracefully if running (including full process tree)
+Filename: "taskkill.exe"; Parameters: "/f /t /im host.exe"; Flags: runhidden waituntilterminated
 ; Delete scheduled task
 Filename: "schtasks.exe"; Parameters: "/delete /tn ""FlashYT-Update"" /f"; Flags: runhidden
-; Extra cleanup
+; Extra cleanup: remove native host manifest
 Filename: "{cmd}"; Parameters: "/c rmdir /s /q ""{userappdata}\YouTubeNativeExt"""; Flags: runhidden waituntilterminated
+
+[UninstallDelete]
+; Remove extension files copied to LocalAppData
+Type: filesandordirs; Name: "{localappdata}\Programs\FlashYT"
 
 [Code]
 
