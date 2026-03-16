@@ -30,21 +30,6 @@ Name: "{group}\Start FlashYT"; Filename: "{app}\host.exe"; WorkingDir: "{app}"
 Name: "{group}\Uninstall FlashYT"; Filename: "{uninstallexe}"
 
 [Registry]
-; ── Chrome: Tell Chrome to load FlashYT extension from local folder ──
-Root: HKCU; Subkey: "Software\Google\Chrome\Extensions\epfpikjgfkpagepdhbancgmeganikbgo"; ValueType: string; ValueName: "path"; ValueData: "{localappdata}\Programs\FlashYT\extension"; Flags: createvalueifdoesntexist uninsdeletekey
-Root: HKCU; Subkey: "Software\Google\Chrome\Extensions\epfpikjgfkpagepdhbancgmeganikbgo"; ValueType: string; ValueName: "version"; ValueData: "2.2.3"; Flags: createvalueifdoesntexist uninsdeletekey
-
-; ── Brave: Same extension, different registry path ──
-Root: HKCU; Subkey: "Software\BraveSoftware\Brave-Browser\Extensions\epfpikjgfkpagepdhbancgmeganikbgo"; ValueType: string; ValueName: "path"; ValueData: "{localappdata}\Programs\FlashYT\extension"; Flags: createvalueifdoesntexist uninsdeletekey
-Root: HKCU; Subkey: "Software\BraveSoftware\Brave-Browser\Extensions\epfpikjgfkpagepdhbancgmeganikbgo"; ValueType: string; ValueName: "version"; ValueData: "2.2.3"; Flags: createvalueifdoesntexist uninsdeletekey
-
-; ── Edge: Same extension, different registry path ──
-Root: HKCU; Subkey: "Software\Microsoft\Edge\Extensions\epfpikjgfkpagepdhbancgmeganikbgo"; ValueType: string; ValueName: "path"; ValueData: "{localappdata}\Programs\FlashYT\extension"; Flags: createvalueifdoesntexist uninsdeletekey
-Root: HKCU; Subkey: "Software\Microsoft\Edge\Extensions\epfpikjgfkpagepdhbancgmeganikbgo"; ValueType: string; ValueName: "version"; ValueData: "2.2.3"; Flags: createvalueifdoesntexist uninsdeletekey
-
-; ── Auto-start host.exe on Windows login ──
-; Without this, host.exe dies on reboot and the extension loses its connection.
-Root: HKCU; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run"; ValueType: string; ValueName: "FlashYT"; ValueData: """{app}\host.exe"""; Flags: uninsdeletevalue
 
 [Run]
 ; Registration happens silently below
@@ -77,42 +62,6 @@ begin
   // Sleep 1 second to ensure Windows fully releases the file lock
   Sleep(1000);
   Result := ''; // Empty string = no error, proceed with installation
-end;
-
-procedure LaunchHostSafely();
-var
-  HostPath: String;
-  ResultCode: Integer;
-begin
-  // {app} is the actual install directory (e.g. C:\Program Files\FlashYT)
-  // This MUST match where the [Files] section installs host.exe (DestDir: "{app}")
-  HostPath := ExpandConstant('{app}\host.exe');
-  if FileExists(HostPath) then
-  begin
-    Exec(HostPath, '', '', SW_HIDE, ewNoWait, ResultCode);
-  end
-  else
-  begin
-    MsgBox(
-      'FlashYT installed but host.exe was not found at:' + #13#10 +
-      HostPath + #13#10#10 +
-      'Please restart your computer, or double-click host.exe from the install folder.' + #13#10 +
-      'If this problem persists, please reinstall FlashYT.',
-      mbInformation, MB_OK
-    );
-  end;
-end;
-
-// EnableChromeDeveloperMode() was removed — editing Chrome Preferences at install
-// time is unreliable because Chrome overwrites the file when it exits.
-// Developer mode is now handled via clear user instructions in the finish page.
-
-procedure CurStepChanged(CurStep: TSetupStep);
-begin
-  if CurStep = ssPostInstall then
-  begin
-    LaunchHostSafely();
-  end;
 end;
 
 procedure InitializeWizard;

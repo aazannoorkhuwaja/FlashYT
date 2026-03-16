@@ -7,7 +7,18 @@ import time
 
 from logger import log
 
-COOKIE_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), '.cached_cookies.txt')
+import platform
+
+def _get_config_dir():
+    if platform.system() == 'Windows':
+        base = os.environ.get('APPDATA', os.path.expanduser('~'))
+    else:
+        base = os.path.expanduser('~/.config')
+    config_dir = os.path.join(base, 'YouTubeNativeExt')
+    os.makedirs(config_dir, exist_ok=True)
+    return config_dir
+
+COOKIE_FILE = os.path.join(_get_config_dir(), '.cached_cookies.txt')
 
 BROWSER_PRIORITY = ['brave', 'chrome', 'chromium', 'firefox', 'edge', 'opera']
 
