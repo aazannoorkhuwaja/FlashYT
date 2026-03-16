@@ -58,11 +58,13 @@ if ! command -v python3 >/dev/null 2>&1; then
 fi
 
 # Check for Python 3.8+ specifically
-if ! python3 -c "import sys; sys.exit(0 if sys.version_info >= (3,8) else 1)" 2>/dev/null; then
+python3 -c "import sys; sys.exit(0 if sys.version_info >= (3, 8) else 1)" || {
     echo "[X] Python 3.8 or higher is required."
-    python3 --version
+    echo "    Your version: $(python3 --version)"
+    echo "    Upgrade via: sudo apt install python3.10  (Ubuntu)"
+    echo "              or: brew install python3         (macOS)"
     exit 1
-fi
+}
 
 # 3) ffmpeg
 if ! command -v ffmpeg >/dev/null 2>&1; then

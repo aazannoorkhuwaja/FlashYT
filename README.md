@@ -30,51 +30,25 @@ FlashYT puts a **⚡ Download button** right under every YouTube video. Pick you
 
 ## 🪟 Windows — How to Install
 
-### ✅ Method 1 — One-Click Installer *(Easiest — try this first)*
-
+### 📥 1. Install the Native Host
 1. Go to the **[Releases page](https://github.com/aazannoorkhuwaja/FlashYT/releases/latest)** and download **`FlashYT-setup.exe`**
 2. Double-click it. If Windows shows a blue warning → click **"More info"** → **"Run anyway"** *(safe to do)*
-3. Click **Next** through the installer
-4. **Close your browser completely** (all windows), then reopen it
-5. Open any YouTube video — you'll see the **⚡ Download** button!
+3. Click **Next** through the installer until finished.
 
-> **Didn't work? 👇 Try Method 2**
-
----
-
-### 🔄 Method 2 — Manual Extension Load *(if the button didn't appear)*
-
-The installer sets Chrome up automatically, but sometimes Chrome needs a nudge:
-
-1. Open your browser and go to: **`chrome://extensions`**
-2. Turn on **"Developer mode"** — it's a toggle in the **top-right corner**
+### 🧩 2. Load the Extension
+Modern browsers block silent extension installations for security reasons, so you must load it manually:
+1. Open your browser's extensions page:
+   - Chrome: **`chrome://extensions`**
+   - Brave: **`brave://extensions`**
+   - Edge: **`edge://extensions`**
+2. Turn ON **"Developer mode"** (usually a toggle in the top-right corner)
 3. Click **"Load unpacked"**
-4. Navigate to this folder and select it:
+4. Navigate to this exact folder and select it:
    ```
    C:\Users\YourName\AppData\Local\Programs\FlashYT\extension
    ```
-   *(Replace `YourName` with your actual Windows username — you can find it by opening File Explorer)*
-5. Go to YouTube and refresh the page — the ⚡ button appears!
-
-> **Still not working? 👇 Try Method 3**
-
----
-
-### 🛠️ Method 3 — Manual Start of Background Service *(if downloads don't work)*
-
-FlashYT needs a small background program (`host.exe`) running to do downloads:
-
-1. Press **`Ctrl + Shift + Esc`** to open Task Manager
-2. Look for **`host.exe`** in the list — if it's there, FlashYT is running fine
-3. If it's **NOT there**, open File Explorer and go to:
-   ```
-   C:\Program Files\FlashYT\
-   ```
-4. Double-click **`host.exe`** to start it
-5. A FlashYT icon will appear in your **system tray** (bottom-right of taskbar)
-6. Try downloading again!
-
-> **Still stuck? 👇 See General Troubleshooting at the bottom**
+   *(Hint: Replace `YourName` with your Windows username. To find it quickly: press `Win + R`, type `%localappdata%\Programs\FlashYT\extension`, and copy the folder path!)*
+5. **Open any YouTube video and click the ⚡ Download button!**
 
 ---
 
@@ -190,9 +164,8 @@ If `curl` or the script isn't available on your system:
 | Problem | Fix |
 |---|---|
 | **"Host not connected"** in extension | Re-run the installer (Windows) or `bash install.sh` (Mac/Linux), then reload the extension |
-| **Extension doesn't appear** in browser | Go to `chrome://extensions` → Enable Developer mode → Load unpacked → select `extension` folder |
-| **Download stuck at 0%** | YouTube API changed — re-run `install.sh` or reinstall to get the latest version |
-| **host.exe not running** (Windows) | Go to `C:\Program Files\FlashYT\` and double-click `host.exe` |
+| **Extension doesn't appear** in browser | Go to `chrome://extensions` → Enable Developer mode → Load unpacked → select `...AppData\Local\Programs\FlashYT\extension` |
+| **Download stuck at 0%** | YouTube API changed — re-run `install.sh` or reinstall to get the latest yt-dlp version |
 | **Button not showing** after extension loaded | Hard-refresh the YouTube page: `Ctrl+Shift+R` (Windows/Linux) or `Cmd+Shift+R` (Mac) |
 | **AV / antivirus blocking** | Temporarily disable antivirus, reinstall, then add FlashYT to AV exceptions |
 

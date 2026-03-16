@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "FlashYT",
-  "version": "2.2.3",
+  "version": "2.2.5",
   "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAvilJSo7ckxGXgKDA1Y4xpOTN+lHSdV7b1H+pCW5jmzSodbe5XfcKO1J0NvIz6X/ulNWAmcix4QLCARO0fqpL8pN3pS5wvi3pq4z4jXMrPHG3KFahCnwMWIXW6MU+rEF5r+G0BOSfI9KZtEABExdpqgHnSZkIykrVe8jxPHUawk0s/5FZqibAfwkQjUhLwr2yDAUYtRl7BmQ0bIr48Rmullv0SY/9Ru4o5MoyvDCtEUhP7QKCvJVExxl31oEFYe55zDvexxRqim5RgzrkcTJg91E4YHflvnPq4hH8G2VIfCCJ9B84M08mpjrRVvJx8YIjHBOMGxxUaS87F+begGiUYQIDAQAB",
   "description": "Fast and reliable YouTube video downloader extension.",
   "permissions": [

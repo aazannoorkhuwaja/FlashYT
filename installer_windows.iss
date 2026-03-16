@@ -1,6 +1,6 @@
 [Setup]
 AppName=FlashYT
-AppVersion=2.2.3
+AppVersion=2.2.5
 AppPublisher=Aazan Noor Khuwaja
 AppPublisherURL=https://github.com/aazannoorkhuwaja/FlashYT
 DefaultDirName={autopf}\FlashYT
@@ -67,15 +67,16 @@ end;
 procedure InitializeWizard;
 begin
   WizardForm.FinishedLabel.Caption :=
-    '✅ FlashYT is installed!' + #13#10 + #13#10 +
-    'STEP 1 — Close your browser completely (all windows), then reopen it.' + #13#10 +
-    'The FlashYT extension should appear automatically.' + #13#10 + #13#10 +
-    '— If the extension does NOT appear —' + #13#10 +
-    '1. Open chrome://extensions in your browser' + #13#10 +
-    '2. Turn ON "Developer mode" (top-right toggle)' + #13#10 +
+    '✅ FlashYT host installed successfully!' + #13#10 + #13#10 +
+    'To complete setup, load the extension in your browser:' + #13#10 +
+    '1. Open your browser extensions page:' + #13#10 +
+    '   - Chrome: chrome://extensions' + #13#10 +
+    '   - Brave: brave://extensions' + #13#10 +
+    '   - Edge: edge://extensions' + #13#10 +
+    '2. Turn ON "Developer mode" (toggle in top right)' + #13#10 +
     '3. Click "Load unpacked"' + #13#10 +
-    '4. Select this folder: ' + ExpandConstant('{localappdata}\Programs\FlashYT\extension') + #13#10 +
-    '5. Reload any YouTube page' + #13#10 + #13#10 +
-    'Then visit any YouTube video and click the ⚡ Download button!' + #13#10 +
+    '4. Select this exact folder:' + #13#10 +
+    '   ' + ExpandConstant('{localappdata}\Programs\FlashYT\extension') + #13#10 + #13#10 +
+    '5. Open any YouTube video and click the ⚡ Download button!' + #13#10 +
     'Need help? github.com/aazannoorkhuwaja/FlashYT/issues';
 end;

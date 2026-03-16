@@ -8,7 +8,7 @@ echo ==================================================
 cd /d "%~dp0\.."
 
 :: ── Version (single source of truth) ─────────────────────────────────────────
-set "VERSION=2.2.3"
+set "VERSION=2.2.5"
 echo Build version: %VERSION%
 
 :: ── Preflight: vendor binaries must exist before Inno Setup can package them ──
