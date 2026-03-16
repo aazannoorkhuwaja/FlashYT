@@ -3,6 +3,9 @@ import sys
 import glob
 import subprocess
 import shutil
+
+# On Windows, suppress the black console popup for every subprocess spawned
+_WIN_NO_WINDOW = subprocess.CREATE_NO_WINDOW if sys.platform == 'win32' else 0
 import time
 
 from logger import log
@@ -102,12 +105,12 @@ def extract_cookies_to_file():
             # with --skip-download, causing a corrupt/empty cookie file.
             'https://www.youtube.com/',
         ]
-        result = subprocess.run(cmd, capture_output=True, text=True, timeout=40)
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=40, creationflags=_WIN_NO_WINDOW)
         if result.returncode != 0:
             log.error(f"[Cookies] yt-dlp cookie extraction failed: {result.stderr[:200]}")
             # Fallback: try the YouTube shorts feed (also has no format restriction)
             cmd[-1] = 'https://www.youtube.com/shorts/'
-            result2 = subprocess.run(cmd, capture_output=True, text=True, timeout=40)
+            result2 = subprocess.run(cmd, capture_output=True, text=True, timeout=40, creationflags=_WIN_NO_WINDOW)
             if result2.returncode != 0:
                 log.error(f"[Cookies] yt-dlp cookie extraction fallback also failed: {result2.stderr[:200]}")
 

@@ -241,7 +241,10 @@ def _prefetch_with_ytdlp(url, timeout_s=30):
         profile_timeout = max(3, min(15, int(remaining)))
         cmd = base_cmd + profile + cookie_args + [canonical_url]
         try:
-            proc = subprocess.run(cmd, capture_output=True, text=True, timeout=profile_timeout)
+            proc = subprocess.run(
+                cmd, capture_output=True, text=True, timeout=profile_timeout,
+                creationflags=(subprocess.CREATE_NO_WINDOW if sys.platform == 'win32' else 0),
+            )
         except Exception as exc:
             last_error = f'Fallback prefetch exception: {exc}'
             continue
@@ -494,7 +497,7 @@ def download_video(
         encoding='utf-8',
         errors='replace',
         start_new_session=(sys.platform != 'win32'),
-        creationflags=(subprocess.CREATE_NEW_PROCESS_GROUP if sys.platform == 'win32' else 0),
+        creationflags=((subprocess.CREATE_NEW_PROCESS_GROUP | subprocess.CREATE_NO_WINDOW) if sys.platform == 'win32' else 0),
     )
 
     job_state = {
