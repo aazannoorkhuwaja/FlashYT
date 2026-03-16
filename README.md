@@ -1,4 +1,4 @@
-# ⚡ FlashYT — One-Click YouTube Downloader (v2.2.3)
+# ⚡ FlashYT — One-Click YouTube Downloader (v2.2.5)
 
 > **Download YouTube videos in any quality, directly from your browser. No accounts. No cloud. Completely free.**
 
