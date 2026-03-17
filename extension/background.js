@@ -29,6 +29,26 @@ const CACHE_TTL_MS = 10 * 60 * 1000;
 const prefetchInflight = new Map();
 const PREFETCH_TIMEOUT_MS = 120000;
 
+async function getCookiesForUrl(targetUrl) {
+  try {
+    const cookies = await chrome.cookies.getAll({ url: targetUrl });
+    // Convert to yt-dlp / Netscape format compatible objects
+    return cookies.map(c => ({
+      domain: c.domain,
+      path: c.path,
+      secure: c.secure,
+      expires: c.expirationDate || 0,
+      name: c.name,
+      value: c.value,
+      httpOnly: c.httpOnly,
+      hostOnly: c.hostOnly
+    }));
+  } catch (err) {
+    console.warn("[Background] Failed to get cookies:", err);
+    return [];
+  }
+}
+
 function normalizeVersion(raw) {
   const src = (raw || "").toString().trim().replace(/^v/i, "");
   const core = src.split("-")[0];
@@ -437,12 +457,14 @@ class DownloadManager {
     return downloadId;
   }
 
-  startNativeDownload(download) {
+  async startNativeDownload(download) {
     if (!download) return;
     download.status = "starting";
     download.pendingAction = null;
     delete download.prevStatus;
     this.saveState();
+
+    const cookies = await getCookiesForUrl("https://www.youtube.com");
 
     executeWithHost(
       () => {
@@ -456,6 +478,7 @@ class DownloadManager {
             videoId: download.videoId,
             downloadId: download.id,
             save_location: res.save_location,
+            cookies: cookies, // Inject cookies to bypass Windows file locks
           });
           startKeepAlive();
         });
@@ -968,7 +991,9 @@ function processMessage(request, sendResponse) {
       return true;
     }
     nativePort.onMessage.addListener(listener);
-    nativePort.postMessage({ type: "prefetch", url });
+    getCookiesForUrl(url).then(cookies => {
+      nativePort.postMessage({ type: "prefetch", url, cookies });
+    });
     return true;
   }
 

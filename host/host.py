@@ -126,7 +126,7 @@ def prefetch_worker(prefetch_queue):
                 send_message({'type': 'prefetch_error', 'message': 'No URL provided for prefetch.', 'reqUrl': url})
                 continue
 
-            result = prefetch_qualities(url)
+            result = prefetch_qualities(url, cookies=msg.get('cookies'))
             if result.get('error'):
                 send_message({'type': 'prefetch_error', 'message': result['error'], 'reqUrl': url})
             else:
@@ -177,6 +177,7 @@ def download_worker(download_queue):
                 download_id=download_id,
                 video_id=video_id,
                 real_itag=real_itag,
+                cookies=msg.get('cookies'),
             )
             send_message(result)
         except Exception:

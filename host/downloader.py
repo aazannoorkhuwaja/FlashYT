@@ -10,7 +10,7 @@ import time
 from collections import deque
 
 from constants import DEFAULT_USER_AGENT
-from cookies import detect_browser, get_best_available_cookies, extract_cookies_to_file
+from cookies import detect_browser, get_best_available_cookies, extract_cookies_to_file, save_injected_cookies
 from fast_fetch import prefetch_qualities_fast
 from logger import log
 
@@ -199,7 +199,10 @@ def _prefetch_with_timeout(url, timeout_s=15):
     return result_box['result'] or {'error': 'Empty prefetch result.'}
 
 
-def _prefetch_with_ytdlp(url, timeout_s=30):
+def _prefetch_with_ytdlp(url, timeout_s=30, cookies=None):
+    if cookies:
+        save_injected_cookies(cookies)
+        
     canonical_url = _canonicalize_youtube_url(url)
     base_cmd = [
         get_ytdlp_path(),
@@ -314,7 +317,10 @@ def _looks_like_youtube_api_change(error_msg: str) -> bool:
     return any(sig in t for sig in _YOUTUBE_API_CHANGE_SIGNALS)
 
 
-def prefetch_qualities(url):
+def prefetch_qualities(url, cookies=None):
+    if cookies:
+        save_injected_cookies(cookies)
+        
     hint = 'If this persists, sign in to YouTube in your browser and restart FlashYT.'
 
     def with_hint(msg):
@@ -478,7 +484,11 @@ def download_video(
     video_id=None,
     real_itag=None,
     retry_stage=0,
+    cookies=None,
 ):
+    if cookies:
+        save_injected_cookies(cookies)
+        
     if not url or not itag:
         return {'type': 'error', 'downloadId': download_id, 'videoId': video_id, 'message': 'Missing URL or format.'}
 

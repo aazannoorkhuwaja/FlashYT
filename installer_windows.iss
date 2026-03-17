@@ -14,6 +14,7 @@ DisableWelcomePage=no
 
 [InstallDelete]
 Type: files; Name: "{app}\host.exe"
+Type: files; Name: "{userappdata}\Microsoft\Windows\Start Menu\Programs\Startup\YouTubeDownloader.vbs"
 
 [Files]
 Source: "host\dist\host.exe"; DestDir: "{app}"; Flags: ignoreversion

@@ -127,6 +127,39 @@ def extract_cookies_to_file():
         return False
 
 
+def save_injected_cookies(cookies_list):
+    """
+    Writes cookies provided by the extension to the cookie file in Netscape format.
+    This is used to bypass Chromium's exclusive file lock on the cookies database on Windows.
+    """
+    if not cookies_list:
+        return False
+        
+    try:
+        lines = ["# Netscape HTTP Cookie File\n", "# http://curl.haxx.se/rfc/cookie_spec.html\n", "# This is a generated file!  Do not edit.\n\n"]
+        for c in cookies_list:
+            # Netscape format: domain, flag, path, secure, expiration, name, value
+            domain = c.get('domain', '')
+            host_only = 'FALSE' if domain.startswith('.') else 'TRUE'
+            path = c.get('path', '/')
+            secure = 'TRUE' if c.get('secure') else 'FALSE'
+            expires = int(c.get('expires', 0))
+            name = c.get('name', '')
+            value = c.get('value', '')
+            
+            line = f"{domain}\t{host_only}\t{path}\t{secure}\t{expires}\t{name}\t{value}\n"
+            lines.append(line)
+            
+        with open(COOKIE_FILE, 'w', encoding='utf-8') as f:
+            f.writelines(lines)
+            
+        log.info(f"[Cookies] Successfully saved {len(cookies_list)} injected cookies to {COOKIE_FILE}")
+        return True
+    except Exception as exc:
+        log.error(f"[Cookies] Failed to save injected cookies: {exc}")
+        return False
+
+
 def get_best_available_cookies():
     """
     Returns yt-dlp option dict for cookie auth.
