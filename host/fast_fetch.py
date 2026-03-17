@@ -63,16 +63,9 @@ _BASE_HEADERS = [
 ]
 
 INNERTUBE_CLIENTS = {
-    "TVHTML5": {
-        "clientName": "TVHTML5",
-        "clientVersion": "7.20230405.08.01",
-        "hl": "en",
-        "gl": "US",
-        "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/113.0.0.0 Safari/537.36",
-    },
-    "ANDROID_TESTSUITE": {
-        "clientName": "ANDROID_TESTSUITE",
-        "clientVersion": "1.9.3",
+    "ANDROID_VR": {
+        "clientName": "ANDROID_VR",
+        "clientVersion": "1.50.31",
         "hl": "en",
         "gl": "US",
     },
@@ -84,18 +77,17 @@ INNERTUBE_CLIENTS = {
         "deviceModel": "iPhone16,2",
         "hl": "en",
         "gl": "US",
-    },
-    "ANDROID_EMBED": {
-        "clientName": "ANDROID",
-        "clientVersion": "17.31.35",
-        "osName": "Android",
-        "osVersion": "12",
-        "hl": "en",
-        "gl": "US",
+        "userAgent": "com.google.ios.youtube/19.45.4 (iPhone16,2; U; CPU iOS 17_7_2 like Mac OS X)",
     },
     "WEB": {
         "clientName": "WEB",
-        "clientVersion": "2.20241201.01.00",
+        "clientVersion": "2.20241213.01.00",
+        "hl": "en",
+        "gl": "US",
+    },
+    "ANDROID_TESTSUITE": {
+        "clientName": "ANDROID_TESTSUITE",
+        "clientVersion": "1.9.3",
         "hl": "en",
         "gl": "US",
     },
@@ -368,8 +360,8 @@ def prefetch_qualities_fast(url: str) -> dict:
 
     # Fire clients in parallel
     threads = []
-    # ANDROID_TESTSUITE is often the most reliable for HD DASH without signatures
-    for client in ("WEB", "IOS"):
+    # ANDROID_VR is excellent for high quality without complex signatures
+    for client in ("WEB", "IOS", "ANDROID_VR"):
         t = threading.Thread(target=fetch, args=(client,), daemon=True)
         t.start()
         threads.append(t)

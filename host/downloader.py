@@ -108,20 +108,29 @@ def _build_video_format_string(max_height):
         h = int(max_height)
     except (TypeError, ValueError):
         h = 1080
-    # Priority order matches fast_fetch.py size estimates (AVC H.264 is preferred):
-    # 1. AVC H.264 in mp4 container  ← the stream fast_fetch shows size for
-    # 2. Any AVC H.264 (any container, yt-dlp remuxes to mp4)
-    # 3. Any mp4 at this height (may include other codecs)
-    # 4. Best quality at this height regardless of codec (last resort VP9/webm)
-    return (
-        f"bestvideo[ext=mp4][vcodec^=avc][height<={h}]+bestaudio[ext=m4a]/"
-        f"bestvideo[vcodec^=avc][height<={h}]+bestaudio[ext=m4a]/"
-        f"bestvideo[ext=mp4][height<={h}]+bestaudio[ext=m4a]/"
-        f"bestvideo[height<={h}]+bestaudio[ext=m4a]/"
-        f"bestvideo[height<={h}]+bestaudio/"
-        f"bestvideo[height<={h}]/"
-        "bestvideo+bestaudio/best/bestvideo/bestaudio"
-    )
+    
+    # Priority order:
+    # 1. Prefer AVC (H.264) in MP4 for 1080p and below (widest compat)
+    # 2. Allow any codec (VP9/AV1) for 1440p/4K as AVC is rarely available there
+    # 3. Always prefer MP4 container if possible to avoid remuxing
+    if h > 1080:
+        return (
+            f"bestvideo[height<={h}][ext=mp4]+bestaudio[ext=m4a]/"
+            f"bestvideo[height<={h}]+bestaudio[ext=m4a]/"
+            f"bestvideo[height<={h}]+bestaudio/"
+            f"bestvideo[height<={h}]/"
+            "bestvideo+bestaudio/best"
+        )
+    else:
+        return (
+            f"bestvideo[vcodec^=avc][height<={h}][ext=mp4]+bestaudio[ext=m4a]/"
+            f"bestvideo[vcodec^=avc][height<={h}]+bestaudio[ext=m4a]/"
+            f"bestvideo[ext=mp4][height<={h}]+bestaudio[ext=m4a]/"
+            f"bestvideo[height<={h}]+bestaudio[ext=m4a]/"
+            f"bestvideo[height<={h}]+bestaudio/"
+            f"bestvideo[height<={h}]/"
+            "bestvideo+bestaudio/best"
+        )
 
 
 def _resolve_output_dir(path_hint):
@@ -558,6 +567,12 @@ def download_video(
                 })
             elif 'merger' in clean.lower() or 'ffmpeg' in clean.lower():
                 progress_callback({'percent': '99%', 'speed': 'Processing', 'eta': ''})
+            elif 'retrying' in clean.lower() or 'n challenge' in clean.lower():
+                # Surface yt-dlp internal retries to the UI so it doesn't look hung
+                msg = clean
+                if 'retrying' in clean.lower():
+                    msg = 'Retrying (Signature challenge)...'
+                progress_callback({'percent': '0%', 'speed': msg, 'eta': ''})
 
         process.stdout.close()
         process.wait()
