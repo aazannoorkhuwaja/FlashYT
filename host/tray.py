@@ -12,6 +12,7 @@ from logger import log
 HOST_VERSION = os.environ.get('FLASHYT_HOST_VERSION', '2.2.3')
 RELEASE_API_URL = "https://api.github.com/repos/aazannoorkhuwaja/FlashYT/releases/latest"
 RELEASES_URL = "https://github.com/aazannoorkhuwaja/FlashYT/releases/latest"
+_WIN_NO_WINDOW = subprocess.CREATE_NO_WINDOW if sys.platform == 'win32' else 0
 UPDATE_CHECK_INTERVAL_S = 6 * 60 * 60
 YTDLP_UPDATE_INTERVAL_S = 24 * 60 * 60   # auto-update yt-dlp once a day
 _YTDLP_STATE_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), '.ytdlp_updated')
@@ -122,7 +123,8 @@ def _update_ytdlp_now(on_finish=None):
             log.info("[Tray] Running yt-dlp --update...")
             result = subprocess.run(
                 [ytdlp, '--update'],
-                capture_output=True, text=True, timeout=120
+                capture_output=True, text=True, timeout=120,
+                creationflags=_WIN_NO_WINDOW
             )
             out = (result.stdout or '') + (result.stderr or '')
             updated = 'Updated yt-dlp' in out or 'Updating to' in out

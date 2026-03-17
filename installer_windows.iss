@@ -49,6 +49,7 @@ Filename: "{cmd}"; Parameters: "/c rmdir /s /q ""{userappdata}\YouTubeNativeExt"
 [UninstallDelete]
 ; Remove extension files copied to LocalAppData
 Type: filesandordirs; Name: "{localappdata}\Programs\FlashYT"
+Type: files; Name: "{userappdata}\Microsoft\Windows\Start Menu\Programs\Startup\YouTubeDownloader.vbs"
 
 [Code]
 
