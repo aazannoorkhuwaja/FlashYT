@@ -10,7 +10,7 @@ import time
 from collections import deque
 
 from constants import DEFAULT_USER_AGENT
-from cookies import detect_browser, get_best_available_cookies, extract_cookies_to_file, save_injected_cookies
+from cookies import detect_browser, get_best_available_cookies, save_injected_cookies
 from fast_fetch import prefetch_qualities_fast
 from logger import log
 
@@ -217,13 +217,6 @@ def _prefetch_with_ytdlp(url, timeout_s=30, cookies=None):
     cookie_args = []
     if 'cookiefile' in cookie_opts:
         cookie_args = ['--cookies', cookie_opts['cookiefile']]
-    elif cookie_opts.get('cookiesfrombrowser'):
-        browser = cookie_opts['cookiesfrombrowser'][0]
-        cookie_args = ['--cookies-from-browser', browser]
-    else:
-        browser = detect_browser()
-        if browser:
-            cookie_args = ['--cookies-from-browser', browser]
 
     profiles = [
         [],
@@ -366,27 +359,13 @@ def _build_download_cmd(url, itag, output_dir, download_id, real_itag, retry_sta
     if ffmpeg_path:
         cmd[1:1] = ['--ffmpeg-location', ffmpeg_path]
 
-    # Validate cookie file has real content before using it (>200 bytes).
+    # Validate cookie file has real content before using it (>50 bytes).
     # A stale/empty/header-only cookie file causes YouTube to deny all formats.
     cookie_opts = get_best_available_cookies()
     cookie_file = cookie_opts.get('cookiefile')
-    use_cookiefile = (
-        cookie_file
-        and os.path.isfile(cookie_file)
-        and os.path.getsize(cookie_file) > 200
-    )
 
-    if use_cookiefile:
+    if cookie_file:
         cmd.extend(['--cookies', cookie_file])
-    elif cookie_opts.get('cookiesfrombrowser'):
-        browser = cookie_opts['cookiesfrombrowser'][0]
-        cmd.extend(['--cookies-from-browser', browser])
-    elif retry_stage < 2:
-        # Only attempt live browser cookie extraction on non-universal retries
-        browser = detect_browser()
-        if browser:
-            cmd.extend(['--cookies-from-browser', browser])
-    # On retry_stage=2 (universal): no cookies at all — cleanest fallback
 
     if itag == 'audio_only':
         # Let yt-dlp resolve the best audio format fresh — no stale itag needed.
@@ -622,11 +601,6 @@ def download_video(
 
             # If quality-specific paths fail, retry once with yt-dlp automatic best selection.
             if retry_stage < 2 and (_is_format_unavailable_error(msg) or _is_auth_or_access_error(msg)):
-                # If it looks like an auth/403 issue, attempt one cookie refresh before retrying
-                if _is_auth_or_access_error(msg):
-                    log.info('[Downloader] 403/Auth error detected. Refreshing cookies before retry...')
-                    extract_cookies_to_file()
-
                 progress_callback({'percent': '0%', 'speed': 'Retrying with universal compatibility mode', 'eta': ''})
                 log.warning('[Downloader] Falling back to universal selector for %s (reason: %s)', url, msg)
                 retry_result = download_video(

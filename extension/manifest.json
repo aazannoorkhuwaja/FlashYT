@@ -12,7 +12,8 @@
     "nativeMessaging",
     "contextMenus",
     "notifications",
-    "alarms"
+    "alarms",
+    "cookies"
   ],
   "host_permissions": [
     "https://www.youtube.com/*",
