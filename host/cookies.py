@@ -140,14 +140,15 @@ def save_injected_cookies(cookies_list):
         for c in cookies_list:
             # Netscape format: domain, flag, path, secure, expiration, name, value
             domain = c.get('domain', '')
-            host_only = 'FALSE' if domain.startswith('.') else 'TRUE'
+            # Field 2 is "Include Subdomains" (TRUE if it starts with a dot)
+            flag = 'TRUE' if domain.startswith('.') else 'FALSE'
             path = c.get('path', '/')
             secure = 'TRUE' if c.get('secure') else 'FALSE'
             expires = int(c.get('expires', 0))
             name = c.get('name', '')
             value = c.get('value', '')
             
-            line = f"{domain}\t{host_only}\t{path}\t{secure}\t{expires}\t{name}\t{value}\n"
+            line = f"{domain}\t{flag}\t{path}\t{secure}\t{expires}\t{name}\t{value}\n"
             lines.append(line)
             
         with open(COOKIE_FILE, 'w', encoding='utf-8') as f:
