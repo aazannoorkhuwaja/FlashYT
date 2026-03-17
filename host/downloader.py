@@ -10,7 +10,7 @@ import time
 from collections import deque
 
 from constants import DEFAULT_USER_AGENT
-from cookies import detect_browser, get_best_available_cookies, save_injected_cookies
+from cookies import get_best_available_cookies, save_injected_cookies
 from fast_fetch import prefetch_qualities_fast
 from logger import log
 

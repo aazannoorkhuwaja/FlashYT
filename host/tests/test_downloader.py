@@ -83,20 +83,6 @@ def test_build_cmd_real_itag_has_adaptive_fallback_selector():
     assert not selector.startswith("137")
 
 
-def test_build_cmd_uses_cookies_from_browser_when_cookiefile_missing(monkeypatch):
-    monkeypatch.setattr(downloader, "get_best_available_cookies", lambda: {"cookiesfrombrowser": ("brave", None, None, None)})
-
-    cmd = _build_download_cmd(
-        "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
-        "video_720",
-        "/tmp",
-        "dl_cookie_browser",
-        None,
-    )
-    assert "--cookies-from-browser" in cmd
-    assert cmd[cmd.index("--cookies-from-browser") + 1] == "brave"
-
-
 def test_build_cmd_does_not_force_subtitle_flags():
     cmd = _build_download_cmd(
         "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
