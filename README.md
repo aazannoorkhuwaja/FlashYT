@@ -158,8 +158,24 @@ If `curl` or the script isn't available on your system:
 3. Load the extension in your browser as in Method 2 step 2
 
 ---
-
-## 🔧 Troubleshooting — Quick Fixes
+ 
+ ## 🔄 Updating FlashYT (v2.2.5+)
+ 
+ To get the latest 4K fixes and signature bypasses, you must update both parts:
+ 
+ ### 1. Update the Host
+ - **Windows**: Download and run the new **[FlashYT-setup.exe](https://github.com/aazannoorkhuwaja/FlashYT/releases/latest)**. It will overwrite your old version automatically.
+ - **Mac/Linux**: Re-run the one-line install command from the installation sections above.
+ 
+ ### 2. Update the Extension
+ Since FlashYT is loaded manually, it does not auto-update:
+ 1. Download the new [source code ZIP](https://github.com/aazannoorkhuwaja/FlashYT/archive/refs/heads/main.zip).
+ 2. Replace your old `extension` folder with the new one.
+ 3. Go to `chrome://extensions` and click the **🔄 Reload** icon on the FlashYT card.
+ 
+ ---
+ 
+ ## 🔧 Troubleshooting — Quick Fixes
 
 | Problem | Fix |
 |---|---|
