@@ -2,18 +2,12 @@
 # FlashYT Installer — installs native host, manifests, and dependencies.
 set -euo pipefail
 
-# Detect if running non-interactively (piped from curl)
+# If piped from curl, re-download and re-run interactively
 if [ ! -t 0 ]; then
-  echo ""
-  echo "⚠️  FlashYT detected it is running non-interactively (curl pipe mode)."
-  echo ""
-  echo "   Please download and run install.sh directly instead:"
-  echo ""
-  echo "   curl -L -o install.sh https://raw.githubusercontent.com/aazannoorkhuwaja/FlashYT/main/install.sh"
-  echo "   chmod +x install.sh"
-  echo "   bash install.sh"
-  echo ""
-  exit 1
+    TMP_INSTALLER="$(mktemp /tmp/flashyt_install_XXXXXX.sh)"
+    curl -fsSL https://raw.githubusercontent.com/aazannoorkhuwaja/FlashYT/main/install.sh -o "$TMP_INSTALLER"
+    chmod +x "$TMP_INSTALLER"
+    exec bash "$TMP_INSTALLER"
 fi
 
 echo "=================================================="

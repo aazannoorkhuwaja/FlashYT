@@ -39,13 +39,15 @@ from logger import log
 from cookies import COOKIE_FILE
 
 # SSL context — disabled by default for broad compat (old CA bundles on Windows/Linux).
-# Set FLASHYT_VERIFY_SSL=1 to re-enable full certificate validation.
+# Set FLASHYT_VERIFY_SSL=1 to enable proper certificate validation (recommended for security).
 import os as _os
 _ssl_ctx = ssl.create_default_context()
 if _os.environ.get('FLASHYT_VERIFY_SSL', '0') != '1':
     _ssl_ctx.check_hostname = False
     _ssl_ctx.verify_mode = ssl.CERT_NONE
-    log.debug("[FastFetch] SSL verification disabled (set FLASHYT_VERIFY_SSL=1 to enable).")
+    log.warning("[FastFetch] SSL verification DISABLED - this is insecure! Set FLASHYT_VERIFY_SSL=1 to enable.")
+else:
+    log.info("[FastFetch] SSL verification enabled (secure mode).")
 
 # Cookie Jar for authentication
 _cj = http.cookiejar.MozillaCookieJar()
