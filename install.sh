@@ -141,6 +141,24 @@ data["allowed_origins"] = [f"chrome-extension://{ext_id}/" for ext_id in ext_ids
 target.write_text(json.dumps(data, indent=2), encoding="utf-8")
 PY
 
+# 8) Handle Custom Extension ID (if provided)
+if [[ -f "$WORKDIR/extension_id.txt" ]]; then
+    CUSTOM_ID=$(cat "$WORKDIR/extension_id.txt" | tr -d '[:space:]')
+    if [[ -n "$CUSTOM_ID" ]]; then
+        echo "[*] Adding custom Extension ID: $CUSTOM_ID"
+        python3 - <<PY
+import json
+from pathlib import Path
+target = Path(r"$TARGET_MANIFEST")
+data = json.loads(target.read_text(encoding="utf-8"))
+origin = f"chrome-extension://$CUSTOM_ID/"
+if origin not in data["allowed_origins"]:
+    data["allowed_origins"].append(origin)
+target.write_text(json.dumps(data, indent=2), encoding="utf-8")
+PY
+    fi
+fi
+
 # 8) Register for browsers
 _register_browser() {
     local dir="$1"

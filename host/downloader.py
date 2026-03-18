@@ -115,10 +115,8 @@ def _build_video_format_string(max_height):
     # 3. Always prefer MP4 container if possible to avoid remuxing
     if h > 1080:
         return (
-            f"bestvideo[height<={h}][ext=mp4]+bestaudio[ext=m4a]/"
             f"bestvideo[height<={h}]+bestaudio[ext=m4a]/"
             f"bestvideo[height<={h}]+bestaudio/"
-            f"bestvideo[height<={h}]/"
             "bestvideo+bestaudio/best"
         )
     else:
