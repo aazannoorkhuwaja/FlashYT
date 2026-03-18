@@ -66,15 +66,28 @@ python3 -c "import sys; sys.exit(0 if sys.version_info >= (3, 8) else 1)" || {
     exit 1
 }
 
-# 3) ffmpeg
-if ! command -v ffmpeg >/dev/null 2>&1; then
-    echo "[X] ffmpeg is required but could not be found."
+# 3) ffmpeg & dependencies
+_install_pkg() {
+    local pkg=$1
+    echo "[*] Attempting to install missing dependency: $pkg"
     if [[ $IS_MAC -eq 1 ]]; then
-        echo "    Install via: brew install ffmpeg"
-    else
-        echo "    Install via: sudo apt install ffmpeg    (Ubuntu/Debian)"
+        brew install "$pkg" || true
+    elif command -v apt-get >/dev/null; then
+        sudo apt-get update -qq && sudo apt-get install -y "$pkg" || true
+    elif command -v dnf >/dev/null; then
+        sudo dnf install -y "$pkg" || true
+    elif command -v pacman >/dev/null; then
+        sudo pacman -S --noconfirm "$pkg" || true
     fi
-    exit 1
+}
+
+if ! command -v ffmpeg >/dev/null 2>&1; then
+    _install_pkg "ffmpeg"
+fi
+
+# Re-check ffmpeg
+if ! command -v ffmpeg >/dev/null 2>&1; then
+    echo "[!] Warning: ffmpeg still not found. 4K merging will fail."
 fi
 
 # 4) Dependencies
@@ -159,6 +172,22 @@ else
     _register_browser "$HOME/.var/app/org.chromium.Chromium/config/chromium/NativeMessagingHosts"
     _register_browser "$HOME/.var/app/com.brave.Browser/config/BraveSoftware/Brave-Browser/NativeMessagingHosts"
     _register_browser "$HOME/.var/app/com.microsoft.Edge/config/microsoft-edge/NativeMessagingHosts"
+    _register_browser "$HOME/.var/app/com.vivaldi.Vivaldi/config/vivaldi/NativeMessagingHosts"
+    _register_browser "$HOME/.var/app/com.opera.Opera/config/opera/NativeMessagingHosts"
+
+    # Additional browser configs
+    _register_browser "$HOME/.config/vivaldi/NativeMessagingHosts"
+    _register_browser "$HOME/.config/opera/NativeMessagingHosts"
+fi
+
+# 9) Diagnostic Check
+echo ""
+echo "[*] Performing final diagnostic check..."
+if [[ -f "$TARGET_MANIFEST" ]]; then
+    echo "[✓] Manifest generated successfully."
+else
+    echo "[X] Manifest generation failed!"
+    exit 1
 fi
 
 echo ""
