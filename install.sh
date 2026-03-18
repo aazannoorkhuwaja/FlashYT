@@ -143,13 +143,22 @@ if [[ $IS_MAC -eq 1 ]]; then
     _register_browser "$HOME/Library/Application Support/Microsoft Edge/NativeMessagingHosts"
     _register_browser "$HOME/Library/Application Support/Chromium/NativeMessagingHosts"
 else
+    # Standard .deb / manual installs
     _register_browser "$HOME/.config/google-chrome/NativeMessagingHosts"
     _register_browser "$HOME/.config/chromium/NativeMessagingHosts"
     _register_browser "$HOME/.config/BraveSoftware/Brave-Browser/NativeMessagingHosts"
     _register_browser "$HOME/.config/microsoft-edge/NativeMessagingHosts"
+    
+    # Snap installs
     _register_browser "$HOME/snap/chromium/current/.config/chromium/NativeMessagingHosts"
     _register_browser "$HOME/snap/brave/current/.config/BraveSoftware/Brave-Browser/NativeMessagingHosts"
     _register_browser "$HOME/snap/google-chrome/current/.config/google-chrome/NativeMessagingHosts"
+
+    # Flatpak installs
+    _register_browser "$HOME/.var/app/com.google.Chrome/config/google-chrome/NativeMessagingHosts"
+    _register_browser "$HOME/.var/app/org.chromium.Chromium/config/chromium/NativeMessagingHosts"
+    _register_browser "$HOME/.var/app/com.brave.Browser/config/BraveSoftware/Brave-Browser/NativeMessagingHosts"
+    _register_browser "$HOME/.var/app/com.microsoft.Edge/config/microsoft-edge/NativeMessagingHosts"
 fi
 
 echo ""
