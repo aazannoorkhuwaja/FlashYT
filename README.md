@@ -4,16 +4,17 @@
 
 ---
 
-## 🚀 1-Click Installation
+## 🚀 🚀 1-Click Installation & Update
 
-Copy and paste the command for your OS into your **Terminal** (Mac/Linux) or **PowerShell** (Windows):
+Use these commands to **Install** for the first time OR to **Update** to the latest version. Copy and paste into your **Terminal** (Mac/Linux) or **PowerShell** (Windows):
 
 | Operating System | Copy & Paste this Command |
 | :--- | :--- |
 | **🪟 Windows** | `irm https://raw.githubusercontent.com/aazannoorkhuwaja/FlashYT/main/install.ps1 | iex` |
 | **🍎 macOS / 🐧 Linux** | `curl -L https://raw.githubusercontent.com/aazannoorkhuwaja/FlashYT/main/install.sh | bash` |
 
-*After running, follow the **[setup guide below](#-loading-the-extension)** to load the extension folder into your browser.*
+> [!IMPORTANT]
+> **After updating/installing:** You MUST go to `chrome://extensions` and click the **🔄 Reload** icon on the FlashYT card to activate the new version.
 
 ---
 
