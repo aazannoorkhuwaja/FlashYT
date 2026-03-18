@@ -2,11 +2,18 @@
 
 > **Download YouTube videos in any quality, directly from your browser. No accounts. No cloud. Completely free.**
 
-![FlashYT Icon](https://raw.githubusercontent.com/aazannoorkhuwaja/FlashYT/main/extension/icons/icon128.png)
+---
 
-[![Version](https://img.shields.io/github/v/release/aazannoorkhuwaja/FlashYT?label=version&color=brightgreen)](https://github.com/aazannoorkhuwaja/FlashYT/releases/latest)
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey)]()
+## 🚀 1-Click Installation
+
+Copy and paste the command for your OS into your **Terminal** (Mac/Linux) or **PowerShell** (Windows):
+
+| Operating System | Copy & Paste this Command |
+| :--- | :--- |
+| **🪟 Windows** | `irm https://raw.githubusercontent.com/aazannoorkhuwaja/FlashYT/main/install.ps1 | iex` |
+| **🍎 macOS / 🐧 Linux** | `curl -L https://raw.githubusercontent.com/aazannoorkhuwaja/FlashYT/main/install.sh | bash` |
+
+*After running, follow the **[setup guide below](#-loading-the-extension)** to load the extension folder into your browser.*
 
 ---
 
