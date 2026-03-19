@@ -16,8 +16,7 @@ dependencyResolutionManagement {
     repositories {
         google()
         mavenCentral()
-        // ffmpeg-kit-full is published to Maven Central via arthenica
-        maven { url = uri("https://oss.sonatype.org/content/repositories/releases/") }
+        maven { url = uri("https://jitpack.io") }
     }
 }
 
