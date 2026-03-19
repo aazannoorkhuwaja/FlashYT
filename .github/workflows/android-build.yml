@@ -46,6 +46,7 @@ jobs:
           curl -L \
             "https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp_linux_aarch64" \
             -o android/app/src/main/assets/yt-dlp
+          chmod +x android/app/src/main/assets/yt-dlp
           echo "yt-dlp downloaded:"
           ls -lh android/app/src/main/assets/yt-dlp
 
