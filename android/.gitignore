@@ -1,0 +1,23 @@
+# Android project ignores
+local.properties
+
+# Binary assets — too large for git, downloaded by CI automatically
+app/src/main/assets/yt-dlp
+
+# Build outputs
+build/
+.gradle/
+app/build/
+dist/
+
+# Gradle daemon
+.gradle/
+
+# IDE
+.idea/
+*.iml
+*.iws
+
+# OS
+.DS_Store
+Thumbs.db

@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <!--
+        Theme.FlashYT
+        Material3 Dark, surface colors overridden with the Kinetic Vault deep-dark palette.
+    -->
+    <style name="Theme.FlashYT" parent="Theme.Material3.Dark.NoActionBar">
+        <item name="colorPrimary">@color/flashyt_red</item>
+        <item name="colorOnPrimary">@color/text_primary</item>
+        <item name="colorPrimaryContainer">@color/red_tint_20</item>
+        <item name="colorSurface">@color/bg_main</item>
+        <item name="colorOnSurface">@color/text_primary</item>
+        <item name="colorSurfaceVariant">@color/surface_container_low</item>
+        <item name="colorOnSurfaceVariant">@color/text_secondary</item>
+        <item name="colorBackground">@color/bg_main</item>
+        <item name="android:colorBackground">@color/bg_main</item>
+        <item name="bottomSheetDialogTheme">@style/ThemeOverlay_FlashYT_BottomSheet</item>
+    </style>
+
+    <!--
+        Theme.FlashYT.Transparent
+        Used by ShareActivity so Android renders the real background behind the bottom sheet,
+        giving the correct dark scrim effect over the calling app (YouTube).
+    -->
+    <style name="Theme.FlashYT.Transparent" parent="Theme.FlashYT">
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:windowIsTranslucent">true</item>
+        <item name="android:windowNoTitle">true</item>
+        <item name="android:windowAnimationStyle">@android:style/Animation</item>
+    </style>
+
+    <!-- Bottom sheet overlay — sets the sheet's background and corner radius -->
+    <style name="ThemeOverlay_FlashYT_BottomSheet" parent="ThemeOverlay.Material3.BottomSheetDialog">
+        <item name="bottomSheetStyle">@style/Widget.FlashYT.BottomSheet</item>
+        <item name="android:backgroundDimAmount">0.7</item>
+    </style>
+
+    <style name="Widget.FlashYT.BottomSheet" parent="Widget.Material3.BottomSheet.Modal">
+        <item name="backgroundTint">@color/bg_sheet</item>
+        <!-- Matches the mockup's rounded-t-[32px] corner radius -->
+        <item name="shapeAppearance">@style/ShapeAppearance.FlashYT.BottomSheet</item>
+    </style>
+
+    <style name="ShapeAppearance.FlashYT.BottomSheet" parent="">
+        <item name="cornerFamily">rounded</item>
+        <item name="cornerSizeTopLeft">32dp</item>
+        <item name="cornerSizeTopRight">32dp</item>
+        <item name="cornerSizeBottomLeft">0dp</item>
+        <item name="cornerSizeBottomRight">0dp</item>
+    </style>
+
+    <!-- Quality row text styles -->
+    <style name="TextAppearance.FlashYT.QualityLabel" parent="TextAppearance.Material3.BodyLarge">
+        <item name="android:textColor">@color/text_primary</item>
+        <item name="android:textSize">15sp</item>
+        <item name="android:fontFamily">sans-serif-medium</item>
+    </style>
+
+    <style name="TextAppearance.FlashYT.QualitySize" parent="TextAppearance.Material3.BodySmall">
+        <item name="android:textColor">@color/text_secondary</item>
+        <item name="android:textSize">13sp</item>
+    </style>
+
+</resources>

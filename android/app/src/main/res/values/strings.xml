@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">FlashYT</string>
+    <string name="not_youtube_link">Not a YouTube link</string>
+    <string name="binary_setup_failed">Setup failed — please try again</string>
+    <string name="fetch_failed">Could not load video info. Check your connection.</string>
+    <string name="preparing">Preparing…</string>
+    <string name="downloading">Downloading…</string>
+    <string name="download_complete">Download Complete!</string>
+    <string name="select_format">Select format</string>
+    <string name="direct_download_tagline">Direct Download • No Account</string>
+    <string name="cancel">CANCEL</string>
+    <string name="open_file">OPEN FILE</string>
+    <string name="share">SHARE</string>
+    <string name="loading_video">Loading video info…</string>
+</resources>

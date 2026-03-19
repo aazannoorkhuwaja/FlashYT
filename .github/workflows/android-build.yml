@@ -1,0 +1,80 @@
+name: Build Android APK
+
+on:
+  push:
+    branches:
+      - 'android/main'
+    paths:
+      - 'android/**'
+  pull_request:
+    branches:
+      - 'android/main'
+    paths:
+      - 'android/**'
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build Debug APK
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Cache Gradle dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-${{ hashFiles('android/**/*.gradle.kts', 'android/**/libs.versions.toml') }}
+          restore-keys: |
+            gradle-
+
+      # yt-dlp ARM64 binary — the only binary that needs to be downloaded.
+      # ffmpeg is handled automatically by the ffmpeg-kit-full Gradle dependency.
+      - name: Download yt-dlp ARM64 binary
+        run: |
+          mkdir -p android/app/src/main/assets
+          curl -L \
+            "https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp_linux_aarch64" \
+            -o android/app/src/main/assets/yt-dlp
+          echo "yt-dlp downloaded:"
+          ls -lh android/app/src/main/assets/yt-dlp
+
+      - name: Make gradlew executable
+        run: chmod +x android/gradlew
+
+      - name: Build debug APK
+        working-directory: android
+        run: ./gradlew :app:assembleDebug --stacktrace
+
+      - name: Verify APK was built
+        run: |
+          APK_PATH="android/app/build/outputs/apk/debug/app-debug.apk"
+          if [ ! -f "$APK_PATH" ]; then
+            echo "ERROR: APK not found at $APK_PATH"
+            exit 1
+          fi
+          echo "APK built successfully:"
+          ls -lh "$APK_PATH"
+
+      - name: Rename APK to FlashYT release name
+        run: |
+          mkdir -p android/dist
+          cp android/app/build/outputs/apk/debug/app-debug.apk \
+             android/dist/FlashYT-v1.0.0-debug.apk
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: FlashYT-v1.0.0-debug
+          path: android/dist/FlashYT-v1.0.0-debug.apk
+          retention-days: 30

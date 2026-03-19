@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<paths>
+    <!-- App-specific external storage (Downloads folder for this app) -->
+    <external-files-path
+        name="downloads"
+        path="Downloads/" />
+    <!-- App-specific internal cache (for any temp files) -->
+    <cache-path
+        name="cache"
+        path="." />
+</paths>

@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- ── Brand ──────────────────────────────────────────── -->
+    <color name="flashyt_red">#FF0000</color>
+
+    <!-- ── Surfaces (The "Deep Dark" / Kinetic Vault palette) -->
+    <color name="bg_main">#000000</color>         <!-- absolute black background  -->
+    <color name="bg_sheet">#0A0A0A</color>         <!-- bottom sheet surface        -->
+    <color name="surface_container_low">#1C1B1B</color>   <!-- content card bg             -->
+    <color name="surface_container">#201F1F</color>        <!-- interactive area bg         -->
+    <color name="surface_container_high">#2A2A2A</color>   <!-- elevated / pressed          -->
+    <color name="surface_container_highest">#353534</color><!-- highest elevation            -->
+
+    <!-- ── Text ──────────────────────────────────────────── -->
+    <color name="text_primary">#FFFFFF</color>
+    <color name="text_secondary">#737373</color>
+    <color name="text_tertiary">#404040</color>
+
+    <!-- ── Divider / Ghost Border ───────────────────────── -->
+    <color name="divider">#171717</color>
+
+    <!-- ── Red tint states ──────────────────────────────── -->
+    <color name="red_tint_10">#1AFF0000</color>   <!-- 10% opacity red overlay     -->
+    <color name="red_tint_20">#33FF0000</color>   <!-- 20% opacity red             -->
+</resources>
