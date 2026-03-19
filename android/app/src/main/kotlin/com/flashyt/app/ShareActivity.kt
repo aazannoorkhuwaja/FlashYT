@@ -153,8 +153,16 @@ class ShareActivity : AppCompatActivity() {
         info.formats.forEachIndexed { index, format ->
             val card = layoutInflater.inflate(R.layout.item_quality_option, container, false)
 
-            card.findViewById<TextView>(R.id.tvQualityLabel).text = format.label
-            card.findViewById<TextView>(R.id.tvQualitySize).text = "~${format.estimatedSizeMb} MB"
+            card.findViewById<TextView>(R.id.tvQualityLabel).text = format.primaryLabel
+            card.findViewById<TextView>(R.id.tvQualitySecondary).apply {
+                if (format.secondaryLabel != null) {
+                    text = format.secondaryLabel
+                    visibility = View.VISIBLE
+                } else {
+                    visibility = View.GONE
+                }
+            }
+            card.findViewById<TextView>(R.id.tvQualitySize).text = "${format.estimatedSizeMb} MB"
 
             // Show the lightning bolt icon only on the primary (1080p) card
             card.findViewById<View>(R.id.ivQualityIcon).visibility =

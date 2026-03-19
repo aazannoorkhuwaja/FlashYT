@@ -18,11 +18,14 @@ data class VideoInfo(
 
 data class VideoFormat(
     val formatId: String,
-    val label: String,
+    val primaryLabel: String,
+    val secondaryLabel: String? = null,
     val estimatedSizeMb: Int,
     val isAudioOnly: Boolean,
     val height: Int?
-)
+) {
+    val fullLabel: String get() = if (secondaryLabel != null) "$primaryLabel $secondaryLabel" else primaryLabel
+}
 
 // ---------------------------------------------------------------------------
 // Fetcher
@@ -32,10 +35,15 @@ object VideoInfoFetcher {
 
     /** The four quality tiers FlashYT always presents (regardless of what yt-dlp lists). */
     private val QUALITY_TIERS = listOf(
-        Triple("1080p HD",       1080, false),
-        Triple("720p",            720, false),
-        Triple("480p",            480, false),
-        Triple("Audio MP3",       null, true)
+        // Triple(Primary, Secondary, height, isAudio)
+        QualityTier("1080p", "HD",  1080, false),
+        QualityTier("720p",  null,  720,  false),
+        QualityTier("480p",  null,  480,  false),
+        QualityTier("Audio", "MP3", null, true)
+    )
+
+    private data class QualityTier(
+        val p: String, val s: String?, val h: Int?, val audio: Boolean
     )
 
     /**
@@ -84,13 +92,14 @@ object VideoInfoFetcher {
         // Extract best size estimates from the formats array
         val sizeMap = buildSizeMap(obj)
 
-        val formats = QUALITY_TIERS.map { (label, height, isAudio) ->
+        val formats = QUALITY_TIERS.map { tier ->
             VideoFormat(
-                formatId  = if (isAudio) "bestaudio" else "bestvideo[height<=${height}]+bestaudio",
-                label     = label,
-                estimatedSizeMb = sizeMap[height] ?: defaultSizeMb(height),
-                isAudioOnly = isAudio,
-                height    = height
+                formatId  = if (tier.audio) "bestaudio" else "bestvideo[height<=${tier.h}]+bestaudio",
+                primaryLabel = tier.p,
+                secondaryLabel = tier.s,
+                estimatedSizeMb = sizeMap[tier.h] ?: defaultSizeMb(tier.h),
+                isAudioOnly = tier.audio,
+                height    = tier.h
             )
         }
 

@@ -38,17 +38,30 @@
             android:textSize="14sp"
             android:visibility="gone" />
 
-        <!-- Quality label, e.g. "1080p HD", "720p", "Audio" -->
+        <!-- Quality label, e.g. "1080p", "720p", "Audio" -->
         <TextView
             android:id="@+id/tvQualityLabel"
-            android:layout_width="0dp"
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_weight="1"
             android:textColor="@color/text_primary"
             android:textSize="15sp"
             android:fontFamily="sans-serif-medium"
             android:letterSpacing="-0.01"
             android:text="Quality" />
+
+        <!-- Secondary label, e.g. "HD", "MP3" -->
+        <TextView
+            android:id="@+id/tvQualitySecondary"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginStart="6dp"
+            android:textColor="@color/text_tertiary"
+            android:textSize="13sp"
+            android:fontFamily="sans-serif-medium"
+            android:letterSpacing="-0.01"
+            android:visibility="gone"
+            android:text="HD" />
 
         <!-- Size estimate, e.g. "180 MB" -->
         <TextView

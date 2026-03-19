@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "surface-dim": "#131313",
+              "surface-container-high": "#2a2a2a",
+              "primary-fixed-dim": "#ffb4a8",
+              "tertiary-fixed-dim": "#acc7ff",
+              "on-primary-container": "#5c0000",
+              "tertiary": "#acc7ff",
+              "on-primary-fixed-variant": "#930100",
+              "on-error": "#690005",
+              "secondary": "#ffb4a8",
+              "error": "#ffb4ab",
+              "surface-tint": "#ffb4a8",
+              "on-tertiary": "#002f67",
+              "tertiary-fixed": "#d7e2ff",
+              "on-primary": "#690100",
+              "surface-bright": "#3a3939",
+              "surface-container-low": "#1c1b1b",
+              "primary-fixed": "#ffdad4",
+              "surface-container": "#201f1f",
+              "background": "#131313",
+              "on-secondary-fixed": "#410000",
+              "outline-variant": "#603e39",
+              "on-surface": "#e5e2e1",
+              "secondary-container": "#970100",
+              "error-container": "#93000a",
+              "inverse-on-surface": "#313030",
+              "primary": "#ffb4a8",
+              "surface": "#131313",
+              "on-secondary": "#690100",
+              "on-primary-fixed": "#410000",
+              "primary-container": "#ff5540",
+              "on-background": "#e5e2e1",
+              "surface-container-lowest": "#0e0e0e",
+              "on-tertiary-fixed": "#001a40",
+              "on-surface-variant": "#ebbbb4",
+              "on-tertiary-container": "#00285b",
+              "secondary-fixed-dim": "#ffb4a8",
+              "surface-container-highest": "#353534",
+              "secondary-fixed": "#ffdad4",
+              "tertiary-container": "#488fff",
+              "surface-variant": "#353534",
+              "outline": "#b18780",
+              "on-error-container": "#ffdad6",
+              "on-secondary-fixed-variant": "#930100",
+              "inverse-primary": "#c00100",
+              "on-secondary-container": "#ff9f90",
+              "on-tertiary-fixed-variant": "#004491",
+              "inverse-surface": "#e5e2e1"
+            },
+            fontFamily: {
+              "headline": ["Inter"],
+              "body": ["Inter"],
+              "label": ["Inter"]
+            },
+            borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        body { font-family: 'Inter', sans-serif; }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-surface min-h-screen flex flex-col items-center justify-center p-6 space-y-12">
+<!-- Top App Bar (Shared Component Context) -->
+<header class="fixed top-0 left-0 right-0 z-50 bg-[#131313] dark:bg-[#0E0E0E] flex items-center justify-between px-6 h-14 w-full">
+<div class="flex items-center gap-4">
+<button class="text-white hover:bg-[#201F1F] transition-colors p-2 rounded-full active:scale-95 duration-200">
+<span class="material-symbols-outlined">arrow_back</span>
+</button>
+<h1 class="text-xl font-black text-[#FFB4A8] dark:text-[#FF0000] font-['Inter'] tracking-tight">FlashYT</h1>
+</div>
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-[#AAAAAA]">more_vert</span>
+</div>
+</header>
+<!-- Content Canvas -->
+<main class="w-full max-w-lg space-y-16 pt-20">
+<!-- SECTION A: In-App Download View -->
+<section class="space-y-6">
+<div class="px-2">
+<h2 class="text-on-surface-variant text-sm font-bold uppercase tracking-widest opacity-60">Active Task</h2>
+</div>
+<div class="bg-surface-container-low p-6 rounded-xl relative overflow-hidden group">
+<!-- Header part: Thumbnail + Title + Cancel -->
+<div class="flex items-start gap-4 mb-6">
+<div class="w-24 h-16 rounded-lg overflow-hidden flex-shrink-0 bg-surface-container-highest">
+<img alt="Video Thumbnail" class="w-full h-full object-cover" data-alt="Cinematic YouTube video thumbnail with red accents" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAsJkaNWo4C6cqgcC4CQjLiUb_11qcAJglaLp7Ei7__ghSPSa0eDUuRjAc-QLdlBtYjS54WIxv_6y1FTYMGYHqr9thS2u3E0Vz8NdCQcMtyDBVLvM7TLNemlIh51nIaZOzZNe18KfIr7Qtr20xva61TpuW-Xk4Vm55nBsmP_yY1OPaPM2AzKmp4fgX5ALCNbPzYpKzCHGUoo0nCyTkoJQ1AGt2DZpDpnxwYp4Ve2qYhYFDNjR0rD2YPP5QNq1i8O5fCaGIxj8fcYY_H"/>
+</div>
+<div class="flex-grow min-w-0">
+<h3 class="text-on-surface font-semibold text-base leading-tight truncate">Designing FlashYT - The One-Click Downloader</h3>
+<p class="text-on-surface-variant text-xs mt-1">YouTube • 4K High Quality</p>
+</div>
+<button class="text-on-surface-variant hover:text-primary transition-colors p-1">
+<span class="material-symbols-outlined">close</span>
+</button>
+</div>
+<!-- Progress Section -->
+<div class="space-y-3">
+<div class="flex justify-between items-end">
+<span class="text-primary font-black text-sm uppercase tracking-tighter">downloading... 45%</span>
+<span class="text-on-surface-variant text-xs font-medium italic">2.3 MB/s • ~1 min left</span>
+</div>
+<!-- Progress Bar (The "Kinetic" Bar) -->
+<div class="h-1.5 w-full bg-surface-container-highest rounded-full overflow-hidden">
+<div class="h-full bg-[#FF0000] rounded-full w-[45%] relative">
+<!-- Subtle Glow effect -->
+<div class="absolute inset-0 bg-white/20 blur-[2px]"></div>
+</div>
+</div>
+</div>
+<!-- Subtle Tonal Layering Overlay -->
+<div class="absolute inset-x-0 bottom-0 h-[1px] bg-gradient-to-r from-transparent via-primary/20 to-transparent"></div>
+</div>
+</section>
+<!-- SECTION B: Android Notification Mockup -->
+<section class="space-y-4">
+<div class="px-2">
+<h2 class="text-on-surface-variant text-sm font-bold uppercase tracking-widest opacity-60">System Notification</h2>
+</div>
+<!-- Floating Notification Container -->
+<div class="bg-[#0F0F0F] rounded-2xl p-4 shadow-2xl border border-white/5 ring-1 ring-white/5 flex flex-col gap-4">
+<div class="flex items-start gap-4">
+<!-- Notification Icon -->
+<div class="flex-shrink-0 w-10 h-10 rounded-full bg-surface-container flex items-center justify-center">
+<span class="material-symbols-outlined text-[#FF0000] scale-90" data-weight="fill">bolt</span>
+</div>
+<!-- Text Content -->
+<div class="flex-grow min-w-0 pr-2">
+<div class="flex justify-between items-center mb-0.5">
+<span class="text-white text-xs font-medium opacity-90">FlashYT — Downloading</span>
+<span class="text-white/40 text-[10px]">now</span>
+</div>
+<p class="text-white text-sm font-normal truncate">Designing FlashYT - The One-Click Downloader</p>
+</div>
+</div>
+<!-- Action & Progress inside notification -->
+<div class="flex items-center gap-4 pl-14">
+<div class="flex-grow h-1 bg-white/10 rounded-full overflow-hidden">
+<div class="h-full bg-white rounded-full w-[45%]"></div>
+</div>
+<button class="text-[#FF0000] text-xs font-bold tracking-widest uppercase hover:bg-white/5 px-2 py-1 rounded transition-colors">
+                        CANCEL
+                    </button>
+</div>
+</div>
+</section>
+<!-- Background Brand Element (Visual Anchor) -->
+<div class="fixed bottom-[-100px] right-[-50px] opacity-[0.03] pointer-events-none select-none">
+<h1 class="text-[240px] font-black italic tracking-tighter">FLASH</h1>
+</div>
+</main>
+<!-- Bottom Action Button (Contextual FAB Suppression as per rules, but showing specialized status) -->
+<div class="fixed bottom-8 flex flex-col items-center gap-4 pointer-events-none">
+<div class="bg-surface-container-high/80 backdrop-blur-md px-6 py-3 rounded-full border border-white/5 flex items-center gap-3">
+<span class="flex h-2 w-2 rounded-full bg-primary animate-pulse"></span>
+<span class="text-on-surface text-sm font-medium">Background service active</span>
+</div>
+</div>
+</body></html>
