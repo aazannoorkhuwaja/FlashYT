@@ -168,8 +168,13 @@ Create a `.env` file in the `host` directory (copy from `.env.example`) to custo
 | `FLASHYT_MAX_CONCURRENT` | `3` | Maximum simultaneous downloads |
 | `FLASHYT_INNERTUBE_KEY` | *(auto)* | Custom InnerTube API key for quality detection |
 | `FLASHYT_SKIP_SSL_VERIFY` | `0` | Set to `1` (or `FLASHYT_VERIFY_SSL=0`) to disable SSL verification |
+| `FLASHYT_PREFETCH_TIMEOUT` | `10` | Timeout in seconds for quality prefetching |
 
 ---
+
+## Android App
+
+FlashYT also has an Android app! It allows you to download videos directly from the YouTube share sheet without a server. See [android/README.md](android/README.md) for build and installation instructions.
 
 ## License
 

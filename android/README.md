@@ -17,7 +17,7 @@ Everything runs locally on-device using a bundled `yt-dlp` binary and `ffmpeg-ki
 
 ### Prerequisites
 - Android Studio Ladybug (2024.2+) or JDK 17 + Android SDK
-- `yt-dlp_linux_aarch64` binary downloaded to `app/src/main/assets/yt-dlp`
+- `yt-dlp` binary (no extension) in `app/src/main/assets/`
 
 ### First-time binary setup
 ```bash
