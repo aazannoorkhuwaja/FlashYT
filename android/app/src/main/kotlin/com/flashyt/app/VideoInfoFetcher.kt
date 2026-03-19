@@ -1,6 +1,7 @@
 package com.flashyt.app
 
 import android.content.Context
+import android.util.Log
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
@@ -63,21 +64,21 @@ object VideoInfoFetcher {
                     "--no-playlist",
                     "--no-warnings",
                     url
-                )
-                    .redirectErrorStream(false)
-                    .start()
+                ).redirectErrorStream(true).start()
 
-                val jsonOutput = process.inputStream.bufferedReader().readText()
-                val stderrOutput = process.errorStream.bufferedReader().readText()
-                val exitCode = process.waitFor()
+                try {
+                    val jsonOutput = process.inputStream.bufferedReader().readText()
+                    val exitCode = process.waitFor()
 
-                if (exitCode != 0 || jsonOutput.isBlank()) {
-                    throw RuntimeException(
-                        "yt-dlp exited with code $exitCode.\nStderr: ${stderrOutput.take(300)}"
-                    )
+                    if (exitCode != 0 || jsonOutput.isBlank()) {
+                        Log.w("VideoInfoFetcher", "yt-dlp exited with code $exitCode (output length: ${jsonOutput.length})")
+                        throw RuntimeException("yt-dlp error (code $exitCode)")
+                    }
+
+                    parseVideoInfo(jsonOutput)
+                } finally {
+                    process.destroyForcibly()
                 }
-
-                parseVideoInfo(jsonOutput)
             }
         }
 

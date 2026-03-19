@@ -167,7 +167,7 @@ Create a `.env` file in the `host` directory (copy from `.env.example`) to custo
 |----------|---------|-------------|
 | `FLASHYT_MAX_CONCURRENT` | `3` | Maximum simultaneous downloads |
 | `FLASHYT_INNERTUBE_KEY` | *(auto)* | Custom InnerTube API key for quality detection |
-| `FLASHYT_VERIFY_SSL` | `0` | Set to `1` to enable strict SSL certificate validation |
+| `FLASHYT_SKIP_SSL_VERIFY` | `0` | Set to `1` (or `FLASHYT_VERIFY_SSL=0`) to disable SSL verification |
 
 ---
 

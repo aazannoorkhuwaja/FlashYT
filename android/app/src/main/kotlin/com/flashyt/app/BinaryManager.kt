@@ -26,8 +26,12 @@ object BinaryManager {
     suspend fun setup(context: Context): Boolean = withContext(Dispatchers.IO) {
         try {
             copyYtDlp(context)
-            verifyYtDlp(context)
+            if (!verifyYtDlp(context)) {
+                throw IllegalStateException("yt-dlp verification failed (binary may be corrupt or incompatible with this architecture)")
+            }
+            true
         } catch (e: Exception) {
+            android.util.Log.e("BinaryManager", "Setup failed: ${e.message}", e)
             false
         }
     }
@@ -49,12 +53,16 @@ object BinaryManager {
     private fun verifyYtDlp(context: Context): Boolean {
         return try {
             val ytDlp = File(getBinDir(context), YTDLP_BINARY)
-            ProcessBuilder(ytDlp.absolutePath, "--version")
+            val process = ProcessBuilder(ytDlp.absolutePath, "--version")
                 .redirectErrorStream(true)
                 .start()
-                .inputStream
-                .bufferedReader()
-                .readLine() != null
+            try {
+                val result = process.inputStream.bufferedReader().readLine()
+                process.waitFor()
+                result != null
+            } finally {
+                process.destroyForcibly()
+            }
         } catch (e: Exception) {
             false
         }

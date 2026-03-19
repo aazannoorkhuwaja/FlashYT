@@ -2,4 +2,4 @@
 yt-dlp
 pystray
 Pillow
-# secretstorage — install manually on Linux: pip install secretstorage
+secretstorage

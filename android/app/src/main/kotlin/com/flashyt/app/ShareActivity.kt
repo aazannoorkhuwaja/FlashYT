@@ -78,6 +78,19 @@ class ShareActivity : AppCompatActivity() {
         currentSheet?.dismiss()
     }
 
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray
+    ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        // Continue regardless of permission result - download will work, just no notifications
+        if (requestCode == REQUEST_NOTIFICATIONS) {
+            // Permission was denied, but we can continue without notification updates
+            // The download will still work, user just won't see progress
+        }
+    }
+
     // -----------------------------------------------------------------------
     // URL extraction
     // -----------------------------------------------------------------------
@@ -102,7 +115,7 @@ class ShareActivity : AppCompatActivity() {
                 BinaryManager.setup(this@ShareActivity)
             }
             if (!ready) {
-                dismissAndToast(getString(R.string.binary_setup_failed))
+                dismissAndToast("Critical Error: FlashYT binary setup failed. Check storage space and restart.")
                 return@launch
             }
 

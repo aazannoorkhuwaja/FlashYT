@@ -32,20 +32,25 @@ import urllib.error
 import ssl
 import os
 import http.cookiejar
+import copy
 from typing import Optional, List
 from constants import DEFAULT_USER_AGENT, FALLBACK_INNERTUBE_KEY
 from logger import log
 
 from cookies import COOKIE_FILE
 
-# SSL context — disabled by default for broad compat (old CA bundles on Windows/Linux).
-# Set FLASHYT_VERIFY_SSL=1 to enable proper certificate validation (recommended for security).
+# SSL context — secure by default.
+# Use FLASHYT_SKIP_SSL_VERIFY=1 or FLASHYT_VERIFY_SSL=0 to disable verification.
 import os as _os
+_skip_ssl = _os.environ.get('FLASHYT_SKIP_SSL_VERIFY')
+_verify_ssl = _os.environ.get('FLASHYT_VERIFY_SSL')
+
 _ssl_ctx = ssl.create_default_context()
-if _os.environ.get('FLASHYT_VERIFY_SSL', '0') != '1':
+# Backward sync: if verify=0 or skip=1, we disable.
+if _skip_ssl == '1' or _verify_ssl == '0':
     _ssl_ctx.check_hostname = False
     _ssl_ctx.verify_mode = ssl.CERT_NONE
-    log.warning("[FastFetch] SSL verification DISABLED - this is insecure! Set FLASHYT_VERIFY_SSL=1 to enable.")
+    log.warning("[FastFetch] SSL verification DISABLED (insecure mode).")
 else:
     log.info("[FastFetch] SSL verification enabled (secure mode).")
 
@@ -162,7 +167,9 @@ def _innertube_request(video_id: str, client_name: str) -> Optional[dict]:
                     json_str = json_str.replace('\\x22', '"').replace('\\x27', "'")
                     try:
                         return json.loads(json_str)
-                    except: continue
+                    except json.JSONDecodeError:
+                        log.warning("[FastFetch] Failed to parse extracted JSON from WEB client.")
+                        continue
                     
             return None
         except Exception as e:
@@ -313,7 +320,8 @@ def prefetch_qualities_fast(url: str) -> dict:
     Returns: {"title": str, "qualities": list, "duration": int}
           OR {"error": str}
     """
-    log.info(f"[FastFetch] Starting optimal InnerTube fetch for {url}")
+    timeout = int(os.environ.get('FLASHYT_PREFETCH_TIMEOUT', '10'))
+    log.info(f"[FastFetch] Starting optimal InnerTube fetch for {url} (timeout={timeout}s)")
     video_id = _extract_video_id(url)
     if not video_id:
         return {"error": "Could not extract video ID from URL."}
@@ -347,9 +355,10 @@ def prefetch_qualities_fast(url: str) -> dict:
             results["duration"] = int(duration)
             # Merge: higher resolution or better codec wins
             existing = results.setdefault("formats", {})
+            # Deep copy to prevent race if another thread is iterating
             for height, fmt in parsed.items():
                 if height not in existing or fmt["_codec_score"] > existing[height]["_codec_score"]:
-                    existing[height] = fmt
+                    existing[height] = copy.deepcopy(fmt)
 
             # Also grab audio-only formats from the best client
             streaming = data.get("streamingData", {})
@@ -368,7 +377,7 @@ def prefetch_qualities_fast(url: str) -> dict:
         t.start()
         threads.append(t)
 
-    deadline = time.time() + 10
+    deadline = time.time() + timeout
     for t in threads:
         remaining = deadline - time.time()
         if remaining <= 0:

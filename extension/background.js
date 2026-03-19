@@ -49,21 +49,15 @@ async function getCookiesForUrl(targetUrl) {
   }
 }
 
-function normalizeVersion(raw) {
-  const src = (raw || "").toString().trim().replace(/^v/i, "");
-  const core = src.split("-")[0];
-  const parts = core.split(".").map((p) => parseInt(p, 10));
-  if (parts.some((p) => Number.isNaN(p))) return [0, 0, 0];
-  while (parts.length < 3) parts.push(0);
-  return parts.slice(0, 3);
-}
-
 function compareVersions(a, b) {
-  const va = normalizeVersion(a);
-  const vb = normalizeVersion(b);
-  for (let i = 0; i < 3; i += 1) {
-    if (va[i] > vb[i]) return 1;
-    if (va[i] < vb[i]) return -1;
+  const normalize = (v) => v.toString().replace(/^v/i, "").split(/[-.]/).map((p) => parseInt(p, 10) || 0);
+  const va = normalize(a);
+  const vb = normalize(b);
+  for (let i = 0; i < Math.max(va.length, vb.length); i++) {
+    const l = va[i] || 0;
+    const r = vb[i] || 0;
+    if (l > r) return 1;
+    if (l < r) return -1;
   }
   return 0;
 }
@@ -236,19 +230,8 @@ async function checkForUpdates() {
   }
 }
 
-function isNewerVersion(latest, current) {
-  // Parse "2.10.3" into [2, 10, 3] and compare element by element
-  const latestParts = latest.split('.').map(Number);
-  const currentParts = current.split('.').map(Number);
-
-  for (let i = 0; i < Math.max(latestParts.length, currentParts.length); i++) {
-    const l = latestParts[i] || 0;
-    const c = currentParts[i] || 0;
-    if (l > c) return true;
-    if (l < c) return false;
-  }
-  return false; // Equal versions = not newer
-}
+// Use the unified compareVersions
+const isNewerVersion = (latest, current) => compareVersions(latest, current) > 0;
 
 function connectToNativeHost() {
   if (nativePort) return;
@@ -326,15 +309,24 @@ function markHostCompatibility(version) {
 }
 
 function clearPrefetchInflight(reason) {
-  prefetchInflight.forEach((entry) => {
-    if (entry.timer) clearTimeout(entry.timer);
-    if (nativePort && entry.listener) nativePort.onMessage.removeListener(entry.listener);
+  const inflight = Array.from(prefetchInflight.entries());
+  prefetchInflight.clear(); // Clear early to prevent re-triggering logic
+
+  inflight.forEach(([id, entry]) => {
+    if (entry.timer) {
+      clearTimeout(entry.timer);
+      entry.timer = null;
+    }
+    if (nativePort && entry.listener) {
+      nativePort.onMessage.removeListener(entry.listener);
+      entry.listener = null;
+    }
+    
     const payload = { type: "error", message: reason || "Prefetch failed." };
     (entry.responders || []).forEach((respond) => {
       try { respond(payload); } catch (_) { }
     });
   });
-  prefetchInflight.clear();
 }
 
 class DownloadManager {

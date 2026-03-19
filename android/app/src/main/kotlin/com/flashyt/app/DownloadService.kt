@@ -8,10 +8,12 @@ import android.net.Uri
 import android.os.Build
 import android.os.Environment
 import android.os.IBinder
+import android.util.Log
 import androidx.core.content.FileProvider
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import java.io.File
 
@@ -59,8 +61,13 @@ class DownloadService : Service() {
             )
         )
 
-        downloadJob = CoroutineScope(Dispatchers.IO).launch {
-            runDownload(url, isAudioOnly, height)
+        val serviceJob = SupervisorJob()
+        downloadJob = CoroutineScope(Dispatchers.IO + serviceJob).launch {
+            try {
+                runDownload(url, isAudioOnly, height)
+            } finally {
+                serviceJob.cancel()
+            }
             stopSelf()
         }
 
@@ -120,8 +127,16 @@ class DownloadService : Service() {
             }
 
         } catch (e: Exception) {
+            Log.e("DownloadService", "Download failed: ", e)
+            showErrorNotification("Download failed: ${e.message}")
             stopForeground(STOP_FOREGROUND_REMOVE)
         }
+    }
+
+    private fun showErrorNotification(message: String) {
+        val notif = FlashYTNotificationManager.buildErrorNotification(this, message)
+        (getSystemService(NOTIFICATION_SERVICE) as NotificationManager)
+            .notify(FlashYTNotificationManager.NOTIF_ID_ERROR, notif)
     }
 
     // -----------------------------------------------------------------------
@@ -168,7 +183,9 @@ class DownloadService : Service() {
     private fun getDownloadDirectory(): String {
         val dir = getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS)
             ?: filesDir
-        dir.mkdirs()
+        if (!dir.exists() && !dir.mkdirs()) {
+            throw IllegalStateException("Failed to create download directory: ${dir.absolutePath}")
+        }
         return dir.absolutePath
     }
 

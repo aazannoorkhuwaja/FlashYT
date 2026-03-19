@@ -26,29 +26,34 @@ paused_jobs = {}
 
 
 def _terminate_process_tree(proc, timeout_s=3):
+    """Kills a process and all its children recursively."""
+    if proc is None:
+        return True
     if proc.poll() is not None:
         return True
 
+    log.debug(f"[Downloader] Terminating process tree for PID {proc.pid}")
     try:
         if sys.platform == 'win32':
-            # taskkill /T kills the entire process tree (yt-dlp + ffmpeg children).
-            # proc.terminate() only kills yt-dlp, leaving ffmpeg orphaned on Windows.
             import subprocess as _sp
-            _sp.run(
-                ['taskkill', '/F', '/T', '/PID', str(proc.pid)],
-                capture_output=True,
-            )
+            # Taskkill with /F (force) and /T (tree) is the most reliable way on Windows
+            _sp.run(['taskkill', '/F', '/T', '/PID', str(proc.pid)], 
+                    capture_output=True, check=False)
         else:
             try:
+                # Kill the entire process group
                 os.killpg(os.getpgid(proc.pid), signal.SIGTERM)
             except Exception:
                 proc.terminate()
 
+        # Wait for exit
         deadline = time.time() + timeout_s
         while proc.poll() is None and time.time() < deadline:
             time.sleep(0.1)
 
+        # Force kill if still alive
         if proc.poll() is None:
+            log.warning(f"[Downloader] PID {proc.pid} still alive after SIGTERM, force killing")
             if sys.platform == 'win32':
                 proc.kill()
             else:
@@ -56,10 +61,14 @@ def _terminate_process_tree(proc, timeout_s=3):
                     os.killpg(os.getpgid(proc.pid), signal.SIGKILL)
                 except Exception:
                     proc.kill()
+        
         return proc.poll() is not None
     except Exception as exc:
-        log.warning('[Downloader] terminate process tree failed: %s', exc)
-        return False
+        log.warning(f"[Downloader] terminate process tree failed for PID {proc.pid}: {exc}")
+        # One last ditch attempt
+        try: proc.kill()
+        except: pass
+        return proc.poll() is not None
 
 
 
@@ -355,7 +364,6 @@ def _build_download_cmd(url, itag, output_dir, download_id, real_itag, retry_sta
         '--newline',
         '--no-warnings',
         '--no-update',
-        '--no-check-certificate',
         '--user-agent', DEFAULT_USER_AGENT,
         '--continue',
         '--part',
@@ -363,16 +371,27 @@ def _build_download_cmd(url, itag, output_dir, download_id, real_itag, retry_sta
         '--cache-dir', os.path.join(os.path.expanduser('~'), '.flashyt_cache', download_id or 'default'),
         '-o', os.path.join(output_dir, '%(title)s.%(ext)s'),
     ]
+
+    # Security: Only skip certificate validation if the user explicitly opted out.
+    # Matches fast_fetch.py logic for consistency.
+    _skip_ssl = os.environ.get('FLASHYT_SKIP_SSL_VERIFY')
+    _verify_ssl = os.environ.get('FLASHYT_VERIFY_SSL')
+    if _skip_ssl == '1' or _verify_ssl == '0':
+        cmd.insert(1, '--no-check-certificate')
+        log.warning("[Downloader] SSL certificate validation disabled for yt-dlp.")
     if ffmpeg_path:
         cmd[1:1] = ['--ffmpeg-location', ffmpeg_path]
 
-    # Validate cookie file has real content before using it (>50 bytes).
-    # A stale/empty/header-only cookie file causes YouTube to deny all formats.
     cookie_opts = get_best_available_cookies()
     cookie_file = cookie_opts.get('cookiefile')
 
-    if cookie_file:
-        cmd.extend(['--cookies', cookie_file])
+    if cookie_file and os.path.exists(cookie_file):
+        # Validate cookie file has real content before using it (>50 bytes).
+        # A stale/empty/header-only cookie file causes YouTube to deny all formats.
+        if os.path.getsize(cookie_file) > 50:
+            cmd.extend(['--cookies', cookie_file])
+        else:
+            log.warning(f"[Downloader] Skipping small/empty cookie file: {cookie_file}")
 
     if itag == 'audio_only':
         # Let yt-dlp resolve the best audio format fresh — no stale itag needed.

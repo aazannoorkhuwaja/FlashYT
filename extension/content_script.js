@@ -180,6 +180,10 @@ function renderModalContent() {
 
 
 function startDownload(qualityObj, title, videoId) {
+    if (!qualityObj || !qualityObj.itag) {
+        showToast("Invalid quality selected.", true);
+        return;
+    }
     const btn = document.getElementById('ytdl-native-btn');
     if (btn) {
         btn.textContent = 'Starting... (0%)';

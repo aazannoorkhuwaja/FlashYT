@@ -20,7 +20,7 @@ DEFAULT_DOWNLOAD_WORKERS = max(1, int(os.environ.get('FLASHYT_MAX_CONCURRENT', '
 DEFAULT_PREFETCH_WORKERS = max(1, int(os.environ.get('FLASHYT_PREFETCH_WORKERS', '2')))
 _resume_wait_lock = threading.Lock()
 _resume_waiting = set()
-HOST_VERSION = os.environ.get('FLASHYT_HOST_VERSION', '2.2.3')
+HOST_VERSION = os.environ.get('FLASHYT_HOST_VERSION', '2.2.5')
 
 
 def send_message(msg):
@@ -253,13 +253,13 @@ def perform_update(download_url, version):
         return { "type": "update_done" }
         
     except urllib.error.URLError as e:
-        log(f"[UPDATE] Network error: {e}")
+        log.error(f"[UPDATE] Network error: {e}")
         return {
             "type": "update_error",
             "message": f"Network error during download: {str(e)}. Check your internet connection."
         }
     except Exception as e:
-        log(f"[UPDATE] Unexpected error: {e}")
+        log.error(f"[UPDATE] Unexpected error: {e}")
         error_msg = str(e)
         if isinstance(e, PermissionError):
             error_msg = "Permission denied writing to temp folder. Please update manually."
