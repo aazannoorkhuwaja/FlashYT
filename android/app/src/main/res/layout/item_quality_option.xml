@@ -5,18 +5,23 @@
     Rows separated by a subtle 1dp divider at the bottom (using background gradient).
     First row gets a red tint background when highlighted by ShareActivity.
 -->
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<com.google.android.material.card.MaterialCardView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
-    android:layout_height="wrap_content"
-    android:orientation="vertical"
-    android:background="?android:attr/selectableItemBackground"
+    android:layout_height="56dp"
+    android:layout_marginBottom="1dp"
+    app:cardCornerRadius="0dp"
+    app:cardElevation="0dp"
+    app:cardBackgroundColor="@android:color/transparent"
+    app:strokeWidth="0dp"
     android:clickable="true"
-    android:focusable="true">
+    android:focusable="true"
+    android:checkable="true"
+    style="?attr/materialCardViewStyle">
 
-    <!-- Row content -->
     <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="56dp"
+        android:layout_height="match_parent"
         android:orientation="horizontal"
         android:gravity="center_vertical"
         android:paddingStart="16dp"
@@ -27,12 +32,13 @@
             android:id="@+id/ivQualityIcon"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginEnd="8dp"
+            android:layout_marginEnd="10dp"
             android:text="⚡"
+            android:textColor="@color/flashyt_red"
             android:textSize="14sp"
             android:visibility="gone" />
 
-        <!-- Quality label, e.g. "1080p HD", "720p", "Audio MP3" -->
+        <!-- Quality label, e.g. "1080p HD", "720p", "Audio" -->
         <TextView
             android:id="@+id/tvQualityLabel"
             android:layout_width="0dp"
@@ -40,7 +46,6 @@
             android:layout_weight="1"
             android:textColor="@color/text_primary"
             android:textSize="15sp"
-            android:textStyle="normal"
             android:fontFamily="sans-serif-medium"
             android:letterSpacing="-0.01"
             android:text="Quality" />
@@ -52,14 +57,9 @@
             android:layout_height="wrap_content"
             android:textColor="@color/text_secondary"
             android:textSize="13sp"
+            android:fontFamily="sans-serif-medium"
             android:text="— MB" />
 
     </LinearLayout>
 
-    <!-- Subtle bottom divider (no hard lines — uses near-invisible divider color) -->
-    <View
-        android:layout_width="match_parent"
-        android:layout_height="1dp"
-        android:background="@color/divider" />
-
-</LinearLayout>
+</com.google.android.material.card.MaterialCardView>

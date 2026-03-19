@@ -162,12 +162,11 @@ class ShareActivity : AppCompatActivity() {
 
             // Highlight the first card (1080p) with the red accent
             if (index == 0) {
-                (card as? MaterialCardView)?.setCardBackgroundColor(
-                    ContextCompat.getColor(this, R.color.flashyt_card_selected)
-                )
-                (card as? MaterialCardView)?.strokeWidth = 2
-                (card as? MaterialCardView)?.strokeColor =
-                    ContextCompat.getColor(this, R.color.flashyt_red)
+                (card as? MaterialCardView)?.let { mcv ->
+                    mcv.setCardBackgroundColor(ContextCompat.getColor(this, R.color.red_tint_10))
+                    mcv.strokeWidth = 2
+                    mcv.strokeColor = ContextCompat.getColor(this, R.color.flashyt_red)
+                }
             }
 
             card.setOnClickListener {

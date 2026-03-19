@@ -35,7 +35,7 @@ object VideoInfoFetcher {
         Triple("1080p HD",       1080, false),
         Triple("720p",            720, false),
         Triple("480p",            480, false),
-        Triple("Audio Only (MP3)", null, true)
+        Triple("Audio MP3",       null, true)
     )
 
     /**
