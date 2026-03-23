@@ -38,8 +38,7 @@ jobs:
           restore-keys: |
             gradle-
 
-      # yt-dlp ARM64 binary — the only binary that needs to be downloaded.
-      # ffmpeg is handled automatically by the ffmpeg-kit-full Gradle dependency.
+      # yt-dlp ARM64 binary
       - name: Download yt-dlp ARM64 binary
         run: |
           mkdir -p android/app/src/main/assets
@@ -49,6 +48,18 @@ jobs:
           chmod +x android/app/src/main/assets/yt-dlp
           echo "yt-dlp downloaded:"
           ls -lh android/app/src/main/assets/yt-dlp
+
+      # ffmpeg ARM64 static binary — bundled alongside yt-dlp to avoid ffmpeg-kit dependency
+      # (ffmpeg-kit was removed from Maven Central in April 2025)
+      - name: Download ffmpeg ARM64 static binary
+        run: |
+          mkdir -p android/app/src/main/assets
+          curl -L \
+            "https://github.com/eugeneware/ffmpeg-static/releases/latest/download/ffmpeg-linux-arm64" \
+            -o android/app/src/main/assets/ffmpeg
+          chmod +x android/app/src/main/assets/ffmpeg
+          echo "ffmpeg downloaded:"
+          ls -lh android/app/src/main/assets/ffmpeg
 
       - name: Make gradlew executable
         run: chmod +x android/gradlew

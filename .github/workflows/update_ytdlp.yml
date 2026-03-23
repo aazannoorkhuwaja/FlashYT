@@ -5,10 +5,9 @@ on:
     - cron: '0 0 * * 1' # Every Monday at 00:00 UTC
   workflow_dispatch: # Allow manual trigger
 
-# Required for create-pull-request action to push branches and open PRs
+# Required for pushing commits to main
 permissions:
   contents: write
-  pull-requests: write
 
 jobs:
   check-ytdlp-update:
@@ -16,6 +15,8 @@ jobs:
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
         
       - name: Fetch Latest yt-dlp Version
         id: get_ytdlp_version
@@ -33,7 +34,7 @@ jobs:
           fi
           echo "local_version=$LOCAL_VERSION" >> $GITHUB_OUTPUT
           
-      - name: Compare Versions and Update
+      - name: Update Version File and Push
         if: steps.get_ytdlp_version.outputs.latest_version != steps.read_local_version.outputs.local_version
         run: |
           echo "{\"version\": \"${{ steps.get_ytdlp_version.outputs.latest_version }}\"}" > .yt_dlp_version.json
@@ -41,17 +42,9 @@ jobs:
           git config --local user.name "GitHub Action"
           git add .yt_dlp_version.json
           git commit -m "chore: bump yt-dlp to ${{ steps.get_ytdlp_version.outputs.latest_version }}"
-          
-      - name: Create Pull Request
-        if: steps.get_ytdlp_version.outputs.latest_version != steps.read_local_version.outputs.local_version
-        uses: peter-evans/create-pull-request@v6
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          commit-message: "chore: bump yt-dlp to ${{ steps.get_ytdlp_version.outputs.latest_version }}"
-          title: "chore: bump yt-dlp to ${{ steps.get_ytdlp_version.outputs.latest_version }}"
-          body: |
-            Automatically generated PR to bump `yt-dlp` to version `${{ steps.get_ytdlp_version.outputs.latest_version }}`.
-            
-            This is critical to maintain compatibility with YouTube's rolling cipher updates.
-          branch: update-ytdlp-${{ steps.get_ytdlp_version.outputs.latest_version }}
-          base: main
+          git push
+          echo "✅ Bumped yt-dlp version to ${{ steps.get_ytdlp_version.outputs.latest_version }}"
+
+      - name: No Update Needed
+        if: steps.get_ytdlp_version.outputs.latest_version == steps.read_local_version.outputs.local_version
+        run: echo "yt-dlp is already up to date at ${{ steps.read_local_version.outputs.local_version }}"

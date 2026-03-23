@@ -1,7 +1,6 @@
 package com.flashyt.app
 
 import android.content.Context
-import com.arthenica.ffmpegkit.FFmpegKitConfig
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -10,12 +9,13 @@ import java.io.File
  * Manages the setup and paths of binary executables required for downloading.
  *
  * yt-dlp: bundled in assets/yt-dlp (ARM64 standalone binary), copied to filesDir/bin on first launch.
- * ffmpeg: provided automatically by the ffmpeg-kit-full Gradle dependency — no manual bundling needed.
- *         FFmpegKitConfig.getFFmpegPath(context) returns the correct path at runtime.
+ * ffmpeg: bundled in assets/ffmpeg (ARM64 static binary), copied to filesDir/bin on first launch.
+ *         Both binaries are passed to yt-dlp via their absolute paths on disk.
  */
 object BinaryManager {
 
     private const val YTDLP_BINARY = "yt-dlp"
+    private const val FFMPEG_BINARY = "ffmpeg"
 
     /**
      * Ensures yt-dlp is copied from assets and executable.
@@ -25,7 +25,8 @@ object BinaryManager {
      */
     suspend fun setup(context: Context): Boolean = withContext(Dispatchers.IO) {
         try {
-            copyYtDlp(context)
+            copyBinary(context, YTDLP_BINARY)
+            copyBinary(context, FFMPEG_BINARY)
             if (!verifyYtDlp(context)) {
                 throw IllegalStateException("yt-dlp verification failed (binary may be corrupt or incompatible with this architecture)")
             }
@@ -36,11 +37,11 @@ object BinaryManager {
         }
     }
 
-    private fun copyYtDlp(context: Context) {
+    private fun copyBinary(context: Context, name: String) {
         val binDir = getBinDir(context)
-        val dest = File(binDir, YTDLP_BINARY)
+        val dest = File(binDir, name)
         if (!dest.exists()) {
-            context.assets.open(YTDLP_BINARY).use { input ->
+            context.assets.open(name).use { input ->
                 dest.outputStream().use { output ->
                     input.copyTo(output)
                 }
@@ -73,12 +74,12 @@ object BinaryManager {
         File(getBinDir(context), YTDLP_BINARY).absolutePath
 
     /**
-     * Absolute path to the ffmpeg binary managed by ffmpeg-kit-full.
-     * ffmpeg-kit extracts its native binary on first use — no manual setup required.
+     * Absolute path to the ffmpeg binary in the app's private files directory.
+     * The binary is bundled in assets/ffmpeg and extracted on first launch.
      * This path is passed to yt-dlp via --ffmpeg-location.
      */
     fun getFfmpegPath(context: Context): String =
-        FFmpegKitConfig.getFFmpegPath(context)
+        File(getBinDir(context), FFMPEG_BINARY).absolutePath
 
     private fun getBinDir(context: Context): File =
         File(context.filesDir, "bin").also { it.mkdirs() }

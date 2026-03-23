@@ -42,7 +42,7 @@ android {
 
     // Do not compress the yt-dlp binary — compression breaks native executables
     androidResources {
-        noCompress += listOf("yt-dlp")
+        noCompress += listOf("yt-dlp", "ffmpeg")
     }
 
     buildFeatures {
@@ -56,7 +56,4 @@ dependencies {
     implementation(libs.material)
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.coil)
-    // ffmpeg-kit provides ffmpeg as a properly configured native library
-    // No manual binary bundling or chmod needed for ffmpeg
-    implementation(libs.ffmpeg.kit.full)
 }
