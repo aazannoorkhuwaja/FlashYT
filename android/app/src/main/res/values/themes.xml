@@ -13,7 +13,6 @@
         <item name="colorOnSurface">@color/text_primary</item>
         <item name="colorSurfaceVariant">@color/surface_container_low</item>
         <item name="colorOnSurfaceVariant">@color/text_secondary</item>
-        <item name="colorBackground">@color/bg_main</item>
         <item name="android:colorBackground">@color/bg_main</item>
         <item name="bottomSheetDialogTheme">@style/ThemeOverlay_FlashYT_BottomSheet</item>
     </style>

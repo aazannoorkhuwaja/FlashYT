@@ -153,8 +153,8 @@ class ShareActivity : AppCompatActivity() {
         view.findViewById<ImageView>(R.id.imgThumbnail).load(info.thumbnailUrl) {
             crossfade(true)
             transformations(RoundedCornersTransformation(8f))
-            placeholder(R.color.flashyt_card_bg)
-            error(R.color.flashyt_card_bg)
+            placeholder(R.color.surface_container_low)
+            error(R.color.surface_container_low)
         }
 
         // Metadata
@@ -212,7 +212,7 @@ class ShareActivity : AppCompatActivity() {
     private fun startDownload(url: String, format: VideoFormat) {
         Intent(this, DownloadService::class.java).apply {
             putExtra("url", url)
-            putExtra("format_label", format.label)
+            putExtra("format_label", format.fullLabel)
             putExtra("is_audio_only", format.isAudioOnly)
             putExtra("height", format.height ?: 0)
         }.also { startForegroundService(it) }

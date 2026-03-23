@@ -126,7 +126,7 @@ object VideoInfoFetcher {
             result[h] = maxOf(result[h] ?: 0L, size)
         }
 
-        return result.mapValues { (size) -> (size / 1_048_576L).toInt() }
+        return result.mapValues { (_, size) -> (size / 1_048_576L).toInt() }
     }
 
     /** Conservative fallback sizes when yt-dlp doesn't report filesize data. */
