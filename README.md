@@ -1,187 +1,110 @@
 <h1 align="center">⚡ FlashYT</h1>
 
 <p align="center">
-  <strong>One-click YouTube video downloader — runs directly inside your browser.</strong><br>
-  No accounts. No cloud. No subscriptions. 100% private.
+  <strong>The easiest, one-click YouTube video downloader — directly inside your browser.</strong><br>
+  No accounts. No ads. No subscriptions. 100% private and lightning fast.
 </p>
 
 <p align="center">
   <a href="https://github.com/aazannoorkhuwaja/FlashYT/releases/latest">
     <img src="https://img.shields.io/github/v/release/aazannoorkhuwaja/FlashYT?color=brightgreen&label=Latest" alt="Latest Release">
   </a>
-  <img src="https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey" alt="Platform">
+  <img src="https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux%20%7C%20Android-lightgrey" alt="Platform">
   <a href="LICENSE">
     <img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="MIT License">
-  </a>
-  <a href="https://github.com/aazannoorkhuwaja/FlashYT/stargazers">
-    <img src="https://img.shields.io/github/stars/aazannoorkhuwaja/FlashYT?style=social" alt="Stars">
   </a>
 </p>
 
 ---
 
-## Overview
+## �� Overview
 
-FlashYT adds a **Download** button directly under every YouTube video. Select a quality, click download — that's it. Downloads happen locally on your machine with live progress tracking.
+FlashYT adds a magic **Download** button right under every YouTube video you watch. Just click it, pick your quality, and the video saves straight to your computer.
 
 ![FlashYT Demo](docs/images/flashyt_demo.gif)
 
-**Key capabilities:**
-- Download in any quality, up to **4K / 8K**
-- Live progress bar with speed, percentage, and ETA
-- Pause, resume, and cancel downloads
-- Supports Chrome, Brave, Edge, and all Chromium-based browsers
-- Works on Windows, macOS, and Linux
+✨ **Why FlashYT?**
+- **4K & 8K Support**: Download the absolute highest quality available.
+- **Lightning Fast**: Downloads directly to your PC (no slow waiting in a browser tab).
+- **Live Progress**: See download speed, percentage, and ETA instantly.
+- **Private**: Everything happens on your PC. No data is sent to us.
+- **Universal**: Works on Chrome, Edge, and Brave (Windows, Mac, and Linux).
 
 ---
 
-## Requirements
+## 🚀 Installation (Takes 2 minutes)
 
-- A **Chromium-based browser** (Chrome, Brave, Edge, etc.)
-- [`yt-dlp`](https://github.com/yt-dlp/yt-dlp) and [`ffmpeg`](https://ffmpeg.org/) — installed automatically by the setup scripts
+Because FlashYT is so powerful, it comes in two parts: a background app (Host) and the browser button (Extension). 
 
----
+### Step 1: Install the App (Host)
 
-## Installation
+**🖥️ Windows Users:**
+1. Download **`FlashYT-setup.exe`** from the [Latest Release page](https://github.com/aazannoorkhuwaja/FlashYT/releases/latest).
+2. Double-click the file to run the installer. *(If Windows shows a blue "Windows protected your PC" popup, just click **More info** -> **Run anyway**).*
 
-> **After installing or updating**, you must reload the extension at `chrome://extensions` by clicking the **🔄 Reload** icon on the FlashYT card.
-
-### Windows
-
-**Option A — PowerShell (recommended)**
-```powershell
-irm https://raw.githubusercontent.com/aazannoorkhuwaja/FlashYT/main/install.ps1 | iex
-```
-
-**Option B — Manual**
-1. Download [`FlashYT-setup.exe`](https://github.com/aazannoorkhuwaja/FlashYT/releases/latest) from the Releases page.
-2. Run the installer. If Windows shows a SmartScreen warning, click **More info → Run anyway**.
-3. Load the extension (see [Loading the Extension](#loading-the-extension)).
+**🍏 Mac & 🐧 Linux Users:**
+1. Open the **Terminal** app.
+2. Paste this exact command and hit Enter:
+   ```bash
+   curl -sSL https://raw.githubusercontent.com/aazannoorkhuwaja/FlashYT/main/install.sh | bash
+   ```
 
 ---
 
-### macOS / Linux
+### Step 2: Add the Button to your Browser (Extension)
 
-**Option A — Terminal one-liner (recommended)**
-```bash
-curl -L https://raw.githubusercontent.com/aazannoorkhuwaja/FlashYT/main/install.sh | bash
-```
+Since FlashYT isn't in the Chrome Web Store, you just need to load it manually once.
 
-**Option B — Manual**
-```bash
-curl -L -o install.sh https://raw.githubusercontent.com/aazannoorkhuwaja/FlashYT/main/install.sh
-chmod +x install.sh
-bash install.sh
-```
-
-The script auto-detects your package manager (`apt`, `dnf`, `pacman`, or `brew`) and installs `ffmpeg` and all Python dependencies.
-
----
-
-## Loading the Extension
-
-Because FlashYT is not on the Chrome Web Store, the extension must be loaded manually. This is a one-time step.
-
-1. Open your browser's extensions page:
-   | Browser | URL |
-   |---------|-----|
-   | Chrome | `chrome://extensions` |
-   | Brave | `brave://extensions` |
-   | Edge | `edge://extensions` |
-
-2. Enable **Developer mode** (toggle in the top-right corner).
-3. Click **Load unpacked**.
+1. Open your browser and go to the extensions page:
+   - **Chrome**: Type `chrome://extensions` in the address bar.
+   - **Edge**: Type `edge://extensions` in the address bar.
+   - **Brave**: Type `brave://extensions` in the address bar.
+2. Turn ON **Developer mode** (a toggle switch usually in the top-right corner).
+3. Click the **Load unpacked** button.
 4. Select the `extension` folder:
-   - **Windows:** `%localappdata%\Programs\FlashYT\extension`
-   - **macOS / Linux:** The `extension` folder inside the downloaded ZIP or repo.
-
-5. Open any YouTube video — the ⚡ Download button will appear below the player.
+   - **Windows:** Copy and paste `%LOCALAPPDATA%\Programs\FlashYT\extension` into the folder selection bar and hit Select Folder.
+   - **Mac/Linux:** Select the `extension` folder that the installer opened up for you.
 
 ---
 
-## Updating
-
-Use the same commands as installation. The scripts are idempotent — they safely overwrite the previous version.
-
-| Platform | Command |
-|----------|---------|
-| **Windows (PowerShell)** | `irm https://raw.githubusercontent.com/aazannoorkhuwaja/FlashYT/main/install.ps1 \| iex` |
-| **macOS / Linux** | `curl -L https://raw.githubusercontent.com/aazannoorkhuwaja/FlashYT/main/install.sh \| bash` |
-
-After updating the host, **reload the extension** at `chrome://extensions`.
+### Step 3: You're Done! 🎉
+Go open any YouTube video and refresh the page. You will see the new **⚡ Download** button right under the video player!
 
 ---
 
-## Manual Dependency Setup (Advanced)
+## 📱 FlashYT for Android
 
-If the automated scripts fail, install dependencies manually:
-
-```bash
-# Ubuntu / Debian
-sudo apt install ffmpeg python3-pip
-pip3 install yt-dlp pystray Pillow secretstorage
-
-# Arch Linux
-sudo pacman -S ffmpeg python-pip yt-dlp
-
-# Fedora
-sudo dnf install ffmpeg python3-pip
-pip3 install yt-dlp pystray Pillow
-```
-
-Then run the setup script from the repository root:
-```bash
-bash install.sh
-```
+FlashYT also has an Android app that lets you download videos directly from the YouTube app's share menu.
+1. Download the `FlashYT-...-debug.apk` file from the [Releases page](https://github.com/aazannoorkhuwaja/FlashYT/releases/latest).
+2. Install it on your phone.
+3. Open YouTube, tap **Share** -> **More** -> select the **FlashYT** icon, and pick your download quality!
 
 ---
 
-## Troubleshooting
+## 🔄 How to Update
 
-| Symptom | Solution |
-|---------|----------|
-| **"Host not connected"** | Re-run the installer, then reload the extension at `chrome://extensions` |
-| **Extension not visible** | Ensure Developer mode is enabled and the correct `extension` folder was selected |
-| **Download stuck at 0%** | Re-run the installer to update `yt-dlp` to the latest version |
-| **Download button missing** | Hard-refresh YouTube: `Ctrl+Shift+R` (Windows/Linux) or `Cmd+Shift+R` (macOS) |
-| **Antivirus blocking** | Add FlashYT to your antivirus exceptions and re-run the installer |
+YouTube changes things often, so keeping FlashYT updated is important! 
+- **Windows**: Just download and run the newest `FlashYT-setup.exe` from the Releases page.
+- **Mac/Linux**: Run the same Terminal command from Step 1 again.
 
-### Log Files
-
-For detailed diagnostics, inspect the host log:
-
-| Platform | Log location |
-|----------|-------------|
-| Windows | `%APPDATA%\YouTubeNativeExt\host.log` |
-| macOS / Linux | `~/.config/YouTubeNativeExt/host.log` |
-
-[Open a GitHub issue](https://github.com/aazannoorkhuwaja/FlashYT/issues) and paste the log contents if you need further assistance.
+> **Important**: After updating, go back to `chrome://extensions` and click the little **🔄 Reload** icon on the FlashYT card to refresh the browser button!
 
 ---
 
-## Configuration
+## 🛠️ Troubleshooting
 
-Create a `.env` file in the `host` directory (copy from `.env.example`) to customize behaviour:
+- **I clicked Download but it says "Host not connected"?**
+  The browser lost connection to the background app. Try reloading the extension in `chrome://extensions`. If it persists, just run the installer from Step 1 again!
+  
+- **Downloads fail with "This video is not available"?**
+  YouTube sometimes blocks downloads for Age-Restricted or "YouTube Kids" videos if you aren't signed in. Make sure you are signed into YouTube in your browser and try again!
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `FLASHYT_MAX_CONCURRENT` | `3` | Maximum simultaneous downloads |
-| `FLASHYT_INNERTUBE_KEY` | *(auto)* | Custom InnerTube API key for quality detection |
-| `FLASHYT_SKIP_SSL_VERIFY` | `0` | Set to `1` (or `FLASHYT_VERIFY_SSL=0`) to disable SSL verification |
-| `FLASHYT_PREFETCH_TIMEOUT` | `10` | Timeout in seconds for quality prefetching |
-
----
-
-## Android App
-
-FlashYT also has an Android app! It allows you to download videos directly from the YouTube share sheet without a server. See [android/README.md](android/README.md) for build and installation instructions.
-
-## License
-
-[MIT](LICENSE) — free to use, modify, and distribute.
+- **I don't see the Download button?**
+  Hard refresh the YouTube page by pressing `Ctrl + Shift + R` (Windows) or `Cmd + Shift + R` (Mac). Make sure the extension is turned on in `chrome://extensions`.
 
 ---
 
 <p align="center">
-  Built by <a href="https://www.linkedin.com/in/aazan-noor-khuwaja-cs/">Aazan Noor Khuwaja</a>
+  <i>Built with ❤️ by <a href="https://www.linkedin.com/in/aazan-noor-khuwaja-cs/">Aazan Noor Khuwaja</a></i><br>
+  Released under the MIT License.
 </p>

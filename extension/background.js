@@ -12,6 +12,7 @@ const UPDATE_CHECK_INTERVAL_HOURS = 6; // Check every 6 hours
 let nativePort = null;
 let hostConnected = false;
 let keepAliveTimer = null;
+let reconnectTimeout = null;
 let hostVersion = null;
 let hostUpdateRequired = false;
 let updateFetchInFlight = null;
@@ -27,7 +28,7 @@ const formatCache = new Map();
 const CACHE_MAX = 50;
 const CACHE_TTL_MS = 10 * 60 * 1000;
 const prefetchInflight = new Map();
-const PREFETCH_TIMEOUT_MS = 120000;
+const PREFETCH_TIMEOUT_MS = 180000;
 
 async function getCookiesForUrl(targetUrl) {
   try {
@@ -111,7 +112,9 @@ function broadcastUpdateStatus() {
 }
 
 function handleNativeMessage(response) {
-  if (response.type === "ping") {
+  if (response.type === "pong") {
+    hostConnected = true;
+    startKeepAlive();
     if (!hostConnected || hostVersion !== response.version) {
       markHostCompatibility(response.version);
     }
@@ -250,7 +253,6 @@ function connectToNativeHost() {
     });
     // Immediately ping to verify the connection
     nativePort.postMessage({ type: "ping" });
-    startKeepAlive();
   } catch (err) {
     console.error("[Background] Failed to connect to native host:", err);
     nativePort = null;
@@ -292,7 +294,6 @@ function markHostCompatibility(version) {
   const normalized = (version || "").toString().trim();
   hostVersion = normalized || "legacy";
   hostUpdateRequired = compareVersions(hostVersion, MIN_REQUIRED_HOST_VERSION) < 0;
-  hostConnected = !hostUpdateRequired;
 
   if (hostUpdateRequired) {
     const guidance = getHostUpdateGuidance();
@@ -321,7 +322,7 @@ function clearPrefetchInflight(reason) {
       nativePort.onMessage.removeListener(entry.listener);
       entry.listener = null;
     }
-    
+
     const payload = { type: "error", message: reason || "Prefetch failed." };
     (entry.responders || []).forEach((respond) => {
       try { respond(payload); } catch (_) { }
@@ -343,25 +344,30 @@ class DownloadManager {
   }
 
   restoreState() {
-    chrome.storage.local.get(["active_downloads"], (result) => {
-      const saved = result.active_downloads || {};
+    try {
+      chrome.storage.local.get(["active_downloads"], (result) => {
+        const saved = result.active_downloads || {};
+        console.log(`[Manager] Restoring state, found ${Object.keys(saved).length} downloads`);
 
-      // On restore, any download that was mid-flight (queued/starting/downloading/resuming)
-      // is reset to 'paused' so it does NOT silently re-download without user action.
-      // Completed, error, cancelled, and paused entries are kept as-is.
-      const AUTO_START_STATUSES = new Set(["queued", "starting", "downloading", "pausing", "resuming", "cancelling"]);
-      for (const dl of Object.values(saved)) {
-        if (AUTO_START_STATUSES.has(dl.status)) {
-          dl.status = "paused";
-          dl.pendingAction = null;
-          dl.speed = 0;
+        // On restore, any download that was mid-flight (queued/starting/downloading/resuming)
+        // is reset to 'paused' so it does NOT silently re-download without user action.
+        // Completed, error, cancelled, and paused entries are kept as-is.
+        const AUTO_START_STATUSES = new Set(["queued", "starting", "downloading", "pausing", "resuming", "cancelling"]);
+        for (const dl of Object.values(saved)) {
+          if (AUTO_START_STATUSES.has(dl.status)) {
+            dl.status = "paused";
+            dl.pendingAction = null;
+            dl.speed = 0;
+          }
         }
-      }
 
-      this.downloads = saved;
-      this.saveState();
-      // Do NOT call processQueue() here — restored downloads require explicit resume.
-    });
+        this.downloads = saved;
+        this.saveState();
+        // Do NOT call processQueue() here — restored downloads require explicit resume.
+      });
+    } catch (err) {
+      console.error("[Manager] Failed to restore download state:", err);
+    }
   }
 
   loadSettings() {
@@ -451,37 +457,50 @@ class DownloadManager {
 
   async startNativeDownload(download) {
     if (!download) return;
-    download.status = "starting";
-    download.pendingAction = null;
-    delete download.prevStatus;
-    this.saveState();
+    try {
+      download.status = "starting";
+      download.pendingAction = null;
+      delete download.prevStatus;
+      this.saveState();
+      console.log(`[Manager] Starting download ${download.id} for video ${download.videoId}`);
 
-    const cookies = await getCookiesForUrl("https://www.youtube.com");
+      const cookies = await getCookiesForUrl("https://www.youtube.com");
 
-    executeWithHost(
-      () => {
-        chrome.storage.local.get({ save_location: "~/Downloads" }, (res) => {
-          nativePort.postMessage({
-            type: "download",
-            url: download.url,
-            itag: download.quality,
-            real_itag: download.real_itag,
-            title: download.title,
-            videoId: download.videoId,
-            downloadId: download.id,
-            save_location: res.save_location,
-            cookies: cookies, // Inject cookies to bypass Windows file locks
+      executeWithHost(
+        () => {
+          chrome.storage.local.get({ save_location: "~/Downloads" }, (res) => {
+            nativePort.postMessage({
+              type: "download",
+              url: download.url,
+              itag: download.quality,
+              real_itag: download.real_itag,
+              title: download.title,
+              videoId: download.videoId,
+              downloadId: download.id,
+              save_location: res.save_location,
+              cookies: cookies, // Inject cookies to bypass Windows file locks
+            });
+            startKeepAlive();
+            console.log(`[Manager] Download message dispatched to host for ${download.id}`);
           });
-          startKeepAlive();
-        });
-      },
-      () => {
+        },
+        () => {
+          console.error(`[Manager] Host execution payload failed for ${download.id}`);
+          download.status = "error";
+          download.pendingAction = null;
+          this.saveState();
+          this.processQueue();
+        }
+      );
+    } catch (err) {
+      console.error(`[Manager] Exception starting download ${download?.id}:`, err);
+      if (download) {
         download.status = "error";
         download.pendingAction = null;
         this.saveState();
         this.processQueue();
       }
-    );
+    }
   }
 
   updateProgress(payload) {
@@ -517,52 +536,56 @@ class DownloadManager {
   }
 
   markTerminal(payload) {
-    const dl = this.findDownload(payload);
-    if (!dl) return;
+    try {
+      const dl = this.findDownload(payload);
+      if (!dl) return;
 
-    if (payload.type === "cancelled") {
-      delete this.downloads[dl.id];
-      this.saveState();
-      this.processQueue();
-      return;
-    }
+      console.log(`[Manager] Terminal state received for ${dl.id}: ${payload.type}`);
 
-    dl.status = payload.type === "error" ? "error" : "completed";
-    dl.pendingAction = null;
-    delete dl.prevStatus;
-    dl.speed = 0;
-    if (payload.type === "done") dl.progress = 100;
-
-    if (payload.type === "done") {
-      chrome.storage.local.get({ history: [] }, (data) => {
-        const history = [{
-          videoId: dl.videoId,
-          title: dl.title,
-          thumbnail: dl.thumbnail,
-          filename: payload.filename || dl.filename,
-          size_mb: payload.size_mb || 0,
-          actual_quality: payload.actual_quality || '',
-          path: payload.path || "",
-          already_exists: !!payload.already_exists,
-          time: Date.now(),
-        }, ...data.history].slice(0, 50);
-        chrome.storage.local.set({ history });
-      });
-
-      if (chrome.notifications) {
-        chrome.notifications.create({
-          type: "basic",
-          iconUrl: "icons/icon128.png",
-          title: payload.already_exists ? "⚡ FlashYT – Already Downloaded" : "⚡ FlashYT – Download Complete",
-          message: payload.filename || "Video ready.",
-        });
+      if (payload.type === "cancelled") {
+        delete this.downloads[dl.id];
+        this.saveState();
+        this.processQueue();
+        return;
       }
-    }
 
-    this.saveState();
-    this.processQueue();
-    if (!Object.values(this.downloads).some((d) => ["downloading", "starting", "pausing", "resuming", "cancelling"].includes(d.status))) {
-      stopKeepAlive();
+      dl.status = payload.type === "error" ? "error" : "completed";
+      dl.pendingAction = null;
+      delete dl.prevStatus;
+      dl.speed = 0;
+      if (payload.type === "done") dl.progress = 100;
+
+      if (payload.type === "done") {
+        chrome.storage.local.get({ history: [] }, (data) => {
+          const history = [{
+            videoId: dl.videoId,
+            title: dl.title,
+            thumbnail: dl.thumbnail,
+            filename: payload.filename || dl.filename,
+            size_mb: payload.size_mb || 0,
+            actual_quality: payload.actual_quality || '',
+            path: payload.path || "",
+            already_exists: !!payload.already_exists,
+            time: Date.now(),
+          }, ...data.history].slice(0, 50);
+          chrome.storage.local.set({ history });
+        });
+
+        if (chrome.notifications) {
+          chrome.notifications.create({
+            type: "basic",
+            iconUrl: "icons/icon128.png",
+            title: payload.already_exists ? "⚡ FlashYT – Already Downloaded" : "⚡ FlashYT – Download Complete",
+            message: payload.filename || "Video ready.",
+          });
+        }
+      }
+
+      if (!Object.values(this.downloads).some((d) => ["downloading", "starting", "pausing", "resuming", "cancelling"].includes(d.status))) {
+        stopKeepAlive();
+      }
+    } catch (err) {
+      console.error("[Manager] Exception bridging terminal status update:", err);
     }
   }
 
@@ -665,6 +688,10 @@ class DownloadManager {
 const manager = new DownloadManager();
 
 function connectToHost() {
+  if (reconnectTimeout) {
+    clearTimeout(reconnectTimeout);
+    reconnectTimeout = null;
+  }
   if (nativePort) return;
   nativePort = chrome.runtime.connectNative(HOST_NAME);
 
@@ -676,6 +703,7 @@ function connectToHost() {
     }
 
     if (response.type === "pong") {
+      hostConnected = true;
       markHostCompatibility(response.version);
       if (hostConnected) manager.processQueue();
       refreshUpdateState(false);
@@ -710,6 +738,13 @@ function connectToHost() {
     hostUpdateRequired = false;
     broadcastUpdateStatus();
     clearPrefetchInflight("Host disconnected during format fetch.");
+
+    if (!notInstalled && !reconnectTimeout) {
+      reconnectTimeout = setTimeout(() => {
+        reconnectTimeout = null;
+        connectToHost();
+      }, 5000);
+    }
   });
 
   nativePort.postMessage({ type: "ping" });
@@ -985,6 +1020,9 @@ function processMessage(request, sendResponse) {
     nativePort.onMessage.addListener(listener);
     getCookiesForUrl(url).then(cookies => {
       nativePort.postMessage({ type: "prefetch", url, cookies });
+    }).catch(err => {
+      console.error("[FlashYT] getCookiesForUrl failed:", err);
+      finalize({ type: "error", message: "Failed to get cookies: " + err.message });
     });
     return true;
   }
