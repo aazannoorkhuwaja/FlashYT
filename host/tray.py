@@ -9,7 +9,7 @@ from urllib.request import Request, urlopen
 
 from logger import log
 
-HOST_VERSION = os.environ.get('FLASHYT_HOST_VERSION', '2.2.6')
+HOST_VERSION = os.environ.get('FLASHYT_HOST_VERSION', '2.2.7')
 RELEASE_API_URL = "https://api.github.com/repos/aazannoorkhuwaja/FlashYT/releases/latest"
 RELEASES_URL = "https://github.com/aazannoorkhuwaja/FlashYT/releases/latest"
 _WIN_NO_WINDOW = subprocess.CREATE_NO_WINDOW if sys.platform == 'win32' else 0
