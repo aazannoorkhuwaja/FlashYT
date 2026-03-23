@@ -9,7 +9,7 @@ from urllib.request import Request, urlopen
 
 from logger import log
 
-HOST_VERSION = os.environ.get('FLASHYT_HOST_VERSION', '2.2.3')
+HOST_VERSION = os.environ.get('FLASHYT_HOST_VERSION', '2.2.6')
 RELEASE_API_URL = "https://api.github.com/repos/aazannoorkhuwaja/FlashYT/releases/latest"
 RELEASES_URL = "https://github.com/aazannoorkhuwaja/FlashYT/releases/latest"
 _WIN_NO_WINDOW = subprocess.CREATE_NO_WINDOW if sys.platform == 'win32' else 0
@@ -172,7 +172,8 @@ def _schedule_ytdlp_auto_update():
     last_run = 0.0
     try:
         if os.path.exists(_YTDLP_STATE_FILE):
-            last_run = float(open(_YTDLP_STATE_FILE).read().strip())
+            with open(_YTDLP_STATE_FILE) as f:
+                last_run = float(f.read().strip())
     except Exception:
         pass
 
