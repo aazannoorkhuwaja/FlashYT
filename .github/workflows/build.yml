@@ -175,8 +175,61 @@ jobs:
             host/
             scripts/
           
+  build-android:
+    needs: [test]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Cache Gradle dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-${{ hashFiles('android/**/*.gradle.kts', 'android/**/libs.versions.toml') }}
+          restore-keys: |
+            gradle-
+
+      - name: Download yt-dlp ARM64 binary
+        run: |
+          mkdir -p android/app/src/main/assets
+          curl -L "https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp_linux_aarch64" -o android/app/src/main/assets/yt-dlp
+          chmod +x android/app/src/main/assets/yt-dlp
+
+      - name: Download ffmpeg ARM64 static binary
+        run: |
+          mkdir -p android/app/src/main/assets
+          curl -L "https://github.com/eugeneware/ffmpeg-static/releases/latest/download/ffmpeg-linux-arm64" -o android/app/src/main/assets/ffmpeg
+          chmod +x android/app/src/main/assets/ffmpeg
+
+      - name: Make gradlew executable
+        run: chmod +x android/gradlew
+
+      - name: Build debug APK
+        working-directory: android
+        run: ./gradlew :app:assembleDebug --stacktrace
+
+      - name: Rename APK to FlashYT release name
+        run: |
+          mkdir -p android/dist
+          cp android/app/build/outputs/apk/debug/app-debug.apk android/dist/FlashYT-android-debug.apk
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: flashyt-android-apk
+          path: android/dist/FlashYT-android-debug.apk
+
   release:
-    needs: [build-windows, build-mac-linux]
+    needs: [build-windows, build-mac-linux, build-android]
     if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     permissions:
@@ -193,6 +246,11 @@ jobs:
           name: flashyt-install-bundle
           path: mac_linux_bundle
           
+      - name: Download Android Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: flashyt-android-apk
+          
       - name: Zip Mac/Linux Resources
         run: |
           cd mac_linux_bundle
@@ -206,6 +264,7 @@ jobs:
           files: |
             FlashYT-setup.exe
             FlashYT-linux-macos-bundle.zip
+            FlashYT-android-debug.apk
           fail_on_unmatched_files: true
           generate_release_notes: true
           draft: false
