@@ -1,4 +1,10 @@
 document.addEventListener('DOMContentLoaded', () => {
+    // === DYNAMIC VERSIONING ===
+    const aboutVersion = document.getElementById('about-app-version');
+    if (aboutVersion) {
+        aboutVersion.textContent = `v${chrome.runtime.getManifest().version} • Native Extension`;
+    }
+
     // === THEME HANDLING ===
     const body = document.body;
     const themeToggle = document.getElementById('theme-toggle');
