@@ -1,8 +1,8 @@
 <h1 align="center">⚡ FlashYT</h1>
 
 <p align="center">
-  <strong>The easiest, one-click YouTube video downloader — directly inside your browser.</strong><br>
-  No accounts. No ads. No subscriptions. 100% private and lightning fast.
+  <strong>A browser extension with a local companion app for downloading YouTube videos.</strong><br>
+  Choose formats and monitor download progress from your browser.
 </p>
 
 <p align="center">
@@ -17,24 +17,25 @@
 
 ---
 
-## �� Overview
+## ⚡ Overview
 
-FlashYT adds a magic **Download** button right under every YouTube video you watch. Just click it, pick your quality, and the video saves straight to your computer.
+FlashYT adds a **Download** action to supported YouTube pages. The browser extension sends requests to a local Python host, which manages downloads through `yt-dlp`.
 
 ![FlashYT Demo](docs/images/flashyt_demo.gif)
 
-✨ **Why FlashYT?**
-- **4K & 8K Support**: Download the absolute highest quality available.
-- **Lightning Fast**: Downloads directly to your PC (no slow waiting in a browser tab).
-- **Live Progress**: See download speed, percentage, and ETA instantly.
-- **Private**: Everything happens on your PC. No data is sent to us.
-- **Universal**: Works on Chrome, Edge, and Brave (Windows, Mac, and Linux).
+[Download button](docs/images/yt_download_button.png) · [Quality selection](docs/images/quality_selector.png) · [Active download queue](docs/images/active_queue.png)
+
+✨ **Key features**
+- **Quality selection:** Choose from the formats available for a video.
+- **Local processing:** A companion host handles downloads instead of a remote FlashYT service.
+- **Progress tracking:** View the status of active downloads.
+- **Browser integration:** Extension support for Chrome, Edge, and Brave; platform setup instructions are below.
 
 ---
 
-## 🚀 Installation (Takes 2 minutes)
+## 🚀 Installation
 
-Because FlashYT is so powerful, it comes in two parts: a background app (Host) and the browser button (Extension). 
+FlashYT has two parts: the local background app (host) and the browser extension.
 
 ### Step 1: Install the App (Host)
 
